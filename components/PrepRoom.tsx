@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BehavioralAnswer } from '../types';
 import { BEHAVIORAL_THEMES } from '../constants';
 import { generateBehavioralPrompt } from '../services/geminiService';
@@ -13,9 +13,29 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
   const [activeThemeId, setActiveThemeId] = useState(BEHAVIORAL_THEMES[0].id);
   const [currentPrompt, setCurrentPrompt] = useState('');
   const [loadingPrompt, setLoadingPrompt] = useState(false);
+  
+  // Timer State
+  const [timeLeft, setTimeLeft] = useState(600); // 10 minutes in seconds
+  const [timerRunning, setTimerRunning] = useState(false);
+  const timerRef = useRef<number | null>(null);
 
   const activeTheme = BEHAVIORAL_THEMES.find(t => t.id === activeThemeId)!;
   const activeAnswer = answers.find(a => a.themeId === activeThemeId) || { themeId: activeThemeId, bullets: [''] };
+
+  useEffect(() => {
+    if (timerRunning && timeLeft > 0) {
+      timerRef.current = window.setInterval(() => {
+        setTimeLeft(prev => prev - 1);
+      }, 1000);
+    } else if (timeLeft === 0) {
+      setTimerRunning(false);
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [timerRunning, timeLeft]);
 
   const handleFetchPrompt = async () => {
     setLoadingPrompt(true);
@@ -27,6 +47,28 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
     } finally {
       setLoadingPrompt(false);
     }
+  };
+
+  const toggleTimer = () => {
+    if (timerRunning) {
+      setTimerRunning(false);
+      if (timerRef.current) clearInterval(timerRef.current);
+    } else {
+      if (timeLeft === 0) setTimeLeft(600);
+      setTimerRunning(true);
+    }
+  };
+
+  const resetTimer = () => {
+    setTimerRunning(false);
+    if (timerRef.current) clearInterval(timerRef.current);
+    setTimeLeft(600);
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const updateBullet = (index: number, val: string) => {
@@ -117,14 +159,36 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
         </div>
 
         <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-8 border border-slate-200 dark:border-slate-800 border-dashed flex flex-col items-center justify-center text-center h-min self-start">
-            <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center text-2xl mb-4 shadow-sm">⏱️</div>
+            <div className={`w-24 h-24 bg-white dark:bg-slate-800 rounded-full flex flex-col items-center justify-center mb-4 shadow-sm border ${timerRunning ? 'border-emerald-500 animate-pulse' : 'border-slate-200 dark:border-slate-700'}`}>
+                <span className={`text-2xl font-bold font-mono ${timeLeft < 60 ? 'text-rose-500' : 'text-slate-800 dark:text-slate-100'}`}>
+                  {formatTime(timeLeft)}
+                </span>
+                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-tighter">Remaining</span>
+            </div>
             <h3 className="text-xl font-bold mb-2 text-slate-800 dark:text-slate-100">Simulation Protocol</h3>
             <p className="text-slate-500 dark:text-slate-400 text-sm max-w-xs mb-6">
               Pick one question and answer it out loud. 10 minutes max. No judgment. Just exposure to the pressure.
             </p>
-            <button className="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 px-8 py-3 rounded-xl text-sm font-bold border border-slate-200 dark:border-slate-700 transition-all text-slate-700 dark:text-slate-200 shadow-sm">
-              Start Timer
-            </button>
+            <div className="flex space-x-2">
+              <button 
+                onClick={toggleTimer}
+                className={`px-8 py-3 rounded-xl text-sm font-bold transition-all shadow-sm ${
+                  timerRunning 
+                    ? 'bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200' 
+                    : 'bg-emerald-600 text-white hover:bg-emerald-500'
+                }`}
+              >
+                {timerRunning ? 'Stop Timer' : (timeLeft === 600 ? 'Start Timer' : 'Resume')}
+              </button>
+              {timeLeft !== 600 && (
+                <button 
+                  onClick={resetTimer}
+                  className="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 px-6 py-3 rounded-xl text-sm font-bold border border-slate-200 dark:border-slate-700 transition-all text-slate-700 dark:text-slate-200 shadow-sm"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
         </div>
       </div>
     </div>
