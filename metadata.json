@@ -1,0 +1,8 @@
+{
+  "name": "Mission: Employed",
+  "description": "A high-performance execution dashboard for software engineers following a disciplined, 3-phase job acquisition strategy. Features daily task tracking, a mechanical job application pipeline with strict criteria filtering, and behavioral prep assistance using Gemini AI.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
