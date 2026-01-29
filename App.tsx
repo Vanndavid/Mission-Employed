@@ -4,7 +4,26 @@ import { AppState, JobApplication, JobStatus, DailyLog, BehavioralAnswer } from 
 import { PHASE2_CRITERIA, BEHAVIORAL_THEMES, MENTAL_RULES } from './constants';
 import { generateCodingProblem, generateBehavioralPrompt, analyzeJobDescription } from './services/geminiService';
 
-// --- Sub-components (defined outside to avoid re-renders) ---
+// --- Helper Functions ---
+
+const isWeekday = (date: Date) => {
+  const day = date.getDay();
+  return day !== 0 && day !== 6;
+};
+
+const getRecentWeekdays = (count: number) => {
+  const dates: string[] = [];
+  let d = new Date();
+  while (dates.length < count) {
+    if (isWeekday(d)) {
+      dates.push(d.toISOString().split('T')[0]);
+    }
+    d.setDate(d.getDate() - 1);
+  }
+  return dates;
+};
+
+// --- Sub-components ---
 
 const Sidebar = ({ activeTab, setActiveTab }: { activeTab: string, setActiveTab: (t: string) => void }) => {
   const tabs = [
@@ -61,6 +80,33 @@ const Dashboard = ({ logs, onToggleTask }: { logs: Record<string, DailyLog>, onT
     }
   };
 
+  // Calculate Streak and History
+  const historyDates = useMemo(() => getRecentWeekdays(28).reverse(), [logs]);
+  
+  const streakData = useMemo(() => {
+    let currentStreak = 0;
+    const sortedWeekdays = getRecentWeekdays(100); 
+    
+    for (const date of sortedWeekdays) {
+      const log = logs[date];
+      const isComplete = log && log.codingEasy && log.codingMedium && log.behavioral && log.simulation;
+      
+      if (isComplete) {
+        currentStreak++;
+      } else {
+        if (date !== today) break;
+      }
+    }
+    return currentStreak;
+  }, [logs, today]);
+
+  const taskStats = [
+    { id: 'codingEasy', label: '1 Easy Problem', time: '60-90m (Combined)' },
+    { id: 'codingMedium', label: '1 Medium Problem', time: '60-90m (Combined)' },
+    { id: 'behavioral', label: 'Behavioral Prep', time: '20-30m' },
+    { id: 'simulation', label: 'Interview Sim', time: '10m' },
+  ];
+
   return (
     <div className="space-y-8">
       <header>
@@ -69,12 +115,7 @@ const Dashboard = ({ logs, onToggleTask }: { logs: Record<string, DailyLog>, onT
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { id: 'codingEasy', label: '1 Easy Problem', time: '60-90m (Combined)' },
-          { id: 'codingMedium', label: '1 Medium Problem', time: '60-90m (Combined)' },
-          { id: 'behavioral', label: 'Behavioral Prep', time: '20-30m' },
-          { id: 'simulation', label: 'Interview Sim', time: '10m' },
-        ].map((task) => (
+        {taskStats.map((task) => (
           <div 
             key={task.id}
             onClick={() => onToggleTask(today, task.id as keyof DailyLog)}
@@ -143,31 +184,96 @@ const Dashboard = ({ logs, onToggleTask }: { logs: Record<string, DailyLog>, onT
               </div>
             )}
           </div>
+
+          <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700">
+            <h3 className="text-xl font-bold mb-6 flex items-center">
+              <span className="mr-2">📅</span> Protocol History (Last 28 Weekdays)
+            </h3>
+            <div className="grid grid-cols-4 sm:grid-cols-7 lg:grid-cols-14 gap-2">
+              {historyDates.map(date => {
+                const log = logs[date];
+                const isComplete = log && log.codingEasy && log.codingMedium && log.behavioral && log.simulation;
+                const d = new Date(date);
+                const dayLabel = d.toLocaleDateString(undefined, { weekday: 'short' });
+                const dateLabel = d.getDate();
+                
+                return (
+                  <div key={date} className="group relative">
+                    <div className={`aspect-square rounded-lg border flex flex-col items-center justify-center transition-all ${
+                      isComplete ? 'bg-emerald-500/20 border-emerald-500/40' : 'bg-slate-900/50 border-slate-800'
+                    }`}>
+                      <div className="grid grid-cols-2 gap-1 p-1">
+                        <div className={`w-1.5 h-1.5 rounded-full ${log?.codingEasy ? 'bg-emerald-400' : 'bg-slate-700'}`} />
+                        <div className={`w-1.5 h-1.5 rounded-full ${log?.codingMedium ? 'bg-emerald-400' : 'bg-slate-700'}`} />
+                        <div className={`w-1.5 h-1.5 rounded-full ${log?.behavioral ? 'bg-emerald-400' : 'bg-slate-700'}`} />
+                        <div className={`w-1.5 h-1.5 rounded-full ${log?.simulation ? 'bg-emerald-400' : 'bg-slate-700'}`} />
+                      </div>
+                    </div>
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-800 text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
+                      {dayLabel} {dateLabel}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-6 flex items-center justify-center space-x-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+              <div className="flex items-center"><div className="w-2 h-2 rounded-full bg-emerald-400 mr-2"></div> Completed</div>
+              <div className="flex items-center"><div className="w-2 h-2 rounded-full bg-slate-700 mr-2"></div> Pending</div>
+            </div>
+          </div>
         </div>
 
         <div className="space-y-6">
-           <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700 h-full">
+           <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700 h-full flex flex-col">
             <h3 className="text-xl font-bold mb-4 flex items-center">
-              <span className="mr-2">🔥</span> Streak
+              <span className="mr-2">🔥</span> Current Streak
             </h3>
-            <div className="flex items-center justify-center py-8">
-              <div className="relative">
-                 <svg className="w-32 h-32 transform -rotate-90">
-                    <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-slate-700" />
-                    <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" strokeDasharray="364.4" strokeDashoffset="200" className="text-emerald-500" />
+            <div className="flex-1 flex flex-col items-center justify-center py-8">
+              <div className="relative w-48 h-48">
+                 {/* Fixed SVG: Added viewBox and adjusted cx/cy/r to prevent clipping. Start from top by rotating SVG -90deg. */}
+                 <svg viewBox="0 0 200 200" className="w-full h-full transform -rotate-90">
+                    <circle 
+                      cx="100" 
+                      cy="100" 
+                      r="90" 
+                      stroke="currentColor" 
+                      strokeWidth="12" 
+                      fill="transparent" 
+                      className="text-slate-800" 
+                    />
+                    <circle 
+                      cx="100" 
+                      cy="100" 
+                      r="90" 
+                      stroke="currentColor" 
+                      strokeWidth="12" 
+                      fill="transparent" 
+                      strokeDasharray="565.48" 
+                      strokeDashoffset={565.48 - (Math.min(streakData, 30) / 30) * 565.48}
+                      className="text-emerald-500 transition-all duration-1000 ease-out" 
+                      strokeLinecap="round"
+                    />
                  </svg>
-                 <div className="absolute inset-0 flex flex-col items-center justify-center rotate-90">
-                    <span className="text-3xl font-bold">12</span>
-                    <span className="text-[10px] text-slate-500 uppercase font-bold">Days</span>
+                 {/* Text center div: Removed inner rotation that was causing the vertical flip. */}
+                 <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-5xl font-bold text-slate-100 tracking-tighter">{streakData}</span>
+                    <span className="text-[10px] text-slate-500 uppercase font-bold tracking-[0.2em] mt-1">Weekdays</span>
                  </div>
               </div>
             </div>
-            <div className="space-y-3">
-              <p className="text-sm text-slate-400 text-center">Protocol compliance is the only metric that matters.</p>
-              <div className="grid grid-cols-7 gap-1">
-                {Array.from({length: 28}).map((_, i) => (
-                  <div key={i} className={`h-2 rounded-sm ${i < 12 ? 'bg-emerald-500' : 'bg-slate-700'}`}></div>
-                ))}
+            <div className="space-y-4">
+              <p className="text-sm text-slate-400 text-center italic">"The only way out is through the protocol."</p>
+              <div className="p-4 bg-slate-900/50 rounded-xl border border-slate-800">
+                <div className="flex justify-between items-center text-xs mb-2">
+                  <span className="text-slate-500 font-bold uppercase tracking-widest">Next Milestone</span>
+                  <span className="text-emerald-400 font-bold">{Math.max(5, Math.ceil((streakData + 1) / 5) * 5)} Days</span>
+                </div>
+                <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-emerald-500 transition-all duration-1000" 
+                    style={{ width: `${(streakData % 5) * 20 || (streakData > 0 ? 100 : 0)}%` }}
+                  ></div>
+                </div>
               </div>
             </div>
            </div>
@@ -360,7 +466,6 @@ const Pipeline = ({ applications, onAdd, onUpdateStatus, onDelete }: {
                        <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${app.criteriaScore >= 6 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700/50 text-slate-300'}`}>
                           {app.criteriaScore}
                        </span>
-                       <div className="hidden group-hover:block text-[10px] text-slate-500">Criteria Met</div>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-500">
