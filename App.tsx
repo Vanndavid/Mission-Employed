@@ -10,7 +10,13 @@ import { TheCodex } from './components/TheCodex';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved) return saved as 'light' | 'dark';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
   
+  // Local Storage State Persistence
   const [state, setState] = useState<AppState>(() => {
     const saved = localStorage.getItem('mission_employed_state');
     if (saved) return JSON.parse(saved);
@@ -26,6 +32,18 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('mission_employed_state', JSON.stringify(state));
   }, [state]);
+
+  useEffect(() => {
+    localStorage.setItem('theme', theme);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
+  // Handlers
+  const toggleTheme = () => setTheme(t => t === 'light' ? 'dark' : 'light');
 
   const handleToggleTask = (date: string, task: keyof DailyLog) => {
     setState(prev => {
@@ -52,7 +70,10 @@ export default function App() {
       criteriaScore: newApp.criteriaMet?.length || 0,
       notes: newApp.notes || ''
     };
-    setState(prev => ({ ...prev, applications: [app, ...prev.applications] }));
+    setState(prev => ({
+      ...prev,
+      applications: [app, ...prev.applications]
+    }));
   };
 
   const handleUpdateAppStatus = (id: string, status: JobStatus) => {
@@ -78,19 +99,39 @@ export default function App() {
     }));
   };
 
+  // Rendering
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+    <div className="min-h-screen text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} theme={theme} toggleTheme={toggleTheme} />
+      
       <main className="ml-64 flex-1 p-8 min-h-screen">
         <div className="max-w-6xl mx-auto">
-          {activeTab === 'dashboard' && <Dashboard logs={state.dailyLogs} onToggleTask={handleToggleTask} />}
-          {activeTab === 'applications' && <Pipeline applications={state.applications} onAdd={handleAddApplication} onUpdateStatus={handleUpdateAppStatus} onDelete={handleDeleteApp} />}
-          {activeTab === 'prep' && <PrepRoom answers={state.behavioralAnswers} onUpdateAnswer={handleUpdateBehavioral} />}
-          {activeTab === 'rules' && <TheCodex />}
+          {activeTab === 'dashboard' && (
+            <Dashboard logs={state.dailyLogs} onToggleTask={handleToggleTask} />
+          )}
+          {activeTab === 'applications' && (
+            <Pipeline 
+              applications={state.applications} 
+              onAdd={handleAddApplication} 
+              onUpdateStatus={handleUpdateAppStatus} 
+              onDelete={handleDeleteApp} 
+            />
+          )}
+          {activeTab === 'prep' && (
+            <PrepRoom 
+              answers={state.behavioralAnswers} 
+              onUpdateAnswer={handleUpdateBehavioral} 
+            />
+          )}
+          {activeTab === 'rules' && (
+            <TheCodex />
+          )}
         </div>
       </main>
+
       <footer className="fixed bottom-4 right-4 flex space-x-2">
-         <button onClick={() => {
+         <button 
+           onClick={() => {
              const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
              const downloadAnchorNode = document.createElement('a');
              downloadAnchorNode.setAttribute("href", dataStr);
@@ -98,7 +139,10 @@ export default function App() {
              document.body.appendChild(downloadAnchorNode);
              downloadAnchorNode.click();
              downloadAnchorNode.remove();
-           }} className="bg-slate-800 hover:bg-slate-700 p-2 rounded-lg border border-slate-700 text-slate-500 text-xs font-bold">
+           }}
+           className="bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 text-xs font-bold shadow-sm"
+           title="Export State"
+         >
            Export Data
          </button>
       </footer>

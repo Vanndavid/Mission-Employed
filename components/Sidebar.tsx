@@ -4,9 +4,11 @@ import React from 'react';
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (t: string) => void;
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
+export const Sidebar = ({ activeTab, setActiveTab, theme, toggleTheme }: SidebarProps) => {
   const tabs = [
     { id: 'dashboard', label: 'Mission Control', icon: '🚀' },
     { id: 'applications', label: 'Pipeline', icon: '📁' },
@@ -15,10 +17,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
   ];
 
   return (
-    <div className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col h-screen fixed left-0 top-0">
+    <div className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col h-screen fixed left-0 top-0 transition-colors">
       <div className="p-6">
-        <h1 className="text-xl font-bold text-emerald-500 tracking-tight">MISSION: EMPLOYED</h1>
-        <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest font-semibold">Mechanical Execution</p>
+        <h1 className="text-xl font-bold text-emerald-600 dark:text-emerald-500 tracking-tight">MISSION: EMPLOYED</h1>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-widest font-semibold">Mechanical Execution</p>
       </div>
       <nav className="flex-1 px-4 py-4 space-y-2">
         {tabs.map(tab => (
@@ -26,7 +28,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === tab.id ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'text-slate-400 hover:bg-slate-800'
+              activeTab === tab.id 
+                ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 shadow-sm' 
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
             }`}
           >
             <span className="mr-3 text-lg">{tab.icon}</span>
@@ -34,9 +38,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
           </button>
         ))}
       </nav>
-      <div className="p-4 bg-slate-800/50 m-4 rounded-xl border border-slate-700">
-        <h3 className="text-xs font-bold text-slate-500 uppercase mb-2">Mental Rule #1</h3>
-        <p className="text-sm text-slate-300">"Applying is mechanical, not strategic."</p>
+
+      <div className="px-4 py-2">
+        <button 
+          onClick={toggleTheme}
+          className="w-full flex items-center justify-between px-4 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all"
+        >
+          <span>{theme === 'light' ? 'Dark Mode' : 'Light Mode'}</span>
+          <span>{theme === 'light' ? '🌙' : '☀️'}</span>
+        </button>
+      </div>
+
+      <div className="p-4 bg-slate-50 dark:bg-slate-800/50 m-4 rounded-xl border border-slate-200 dark:border-slate-700">
+        <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase mb-2">Mental Rule #1</h3>
+        <p className="text-sm text-slate-600 dark:text-slate-300">"Applying is mechanical, not strategic."</p>
       </div>
     </div>
   );
