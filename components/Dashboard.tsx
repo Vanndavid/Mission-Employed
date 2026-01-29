@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { DailyLog } from '../types';
 import { getRecentWeekdays, calculateStreak } from '../utils';
-import { generateCodingProblem } from '../services/geminiService';
+import { generateCodingProblem, evaluateSolution } from '../services/geminiService';
 import { DAILY_TASKS } from '../constants';
 
 interface DashboardProps {
@@ -16,9 +16,14 @@ export const Dashboard = ({ logs, onToggleTask }: DashboardProps) => {
 
   const [aiProblem, setAiProblem] = useState<{ title: string, description: string, examples: string[] } | null>(null);
   const [loadingProblem, setLoadingProblem] = useState(false);
+  const [userSolution, setUserSolution] = useState('');
+  const [feedback, setFeedback] = useState('');
+  const [evaluating, setEvaluating] = useState(false);
 
   const fetchProblem = async (diff: 'easy' | 'medium') => {
     setLoadingProblem(true);
+    setFeedback('');
+    setUserSolution('');
     try {
       const p = await generateCodingProblem(diff);
       setAiProblem(p);
@@ -26,6 +31,20 @@ export const Dashboard = ({ logs, onToggleTask }: DashboardProps) => {
       console.error(e);
     } finally {
       setLoadingProblem(false);
+    }
+  };
+
+  const handleSubmitSolution = async () => {
+    if (!aiProblem || !userSolution.trim()) return;
+    setEvaluating(true);
+    try {
+      const result = await evaluateSolution(aiProblem.title, aiProblem.description, userSolution);
+      setFeedback(result);
+    } catch (e) {
+      console.error(e);
+      setFeedback("Failed to evaluate. Ensure your API key is valid.");
+    } finally {
+      setEvaluating(false);
     }
   };
 
@@ -94,17 +113,63 @@ export const Dashboard = ({ logs, onToggleTask }: DashboardProps) => {
                 Engaging Intelligence Core...
               </div>
             ) : aiProblem ? (
-              <div className="space-y-4">
-                <h4 className="text-lg font-bold text-emerald-600 dark:text-emerald-400 underline decoration-emerald-500/30 underline-offset-4">{aiProblem.title}</h4>
-                <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-lg mono text-sm leading-relaxed text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-slate-800">
-                  {aiProblem.description}
+              <div className="space-y-6">
+                <div>
+                  <h4 className="text-lg font-bold text-emerald-600 dark:text-emerald-400 underline decoration-emerald-500/30 underline-offset-4">{aiProblem.title}</h4>
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-lg mono text-sm leading-relaxed text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-slate-800 mt-2">
+                    {aiProblem.description}
+                  </div>
                 </div>
+
                 <div className="space-y-2">
                   <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">Examples:</p>
                   {aiProblem.examples.map((ex, i) => (
                     <div key={i} className="text-xs bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800 mono text-emerald-700 dark:text-emerald-300/70">{ex}</div>
                   ))}
                 </div>
+
+                <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex justify-between items-center">
+                    <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">Your Solution / Strategy:</p>
+                  </div>
+                  <textarea
+                    className="w-full h-40 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-lg focus:outline-none focus:border-emerald-500 transition-colors text-sm font-mono text-slate-800 dark:text-slate-200"
+                    placeholder="Describe your approach or write code here..."
+                    value={userSolution}
+                    onChange={(e) => setUserSolution(e.target.value)}
+                  />
+                  <button
+                    onClick={handleSubmitSolution}
+                    disabled={evaluating || !userSolution.trim()}
+                    className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center ${
+                      evaluating || !userSolution.trim()
+                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'
+                      : 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-600/10'
+                    }`}
+                  >
+                    {evaluating ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Evaluating...
+                      </>
+                    ) : 'Submit for Feedback'}
+                  </button>
+                </div>
+
+                {feedback && (
+                  <div className="mt-4 p-5 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div className="flex items-center mb-2">
+                      <span className="text-xl mr-2">🤖</span>
+                      <h5 className="font-bold text-blue-800 dark:text-blue-300 text-sm uppercase tracking-wider">Interviewer Feedback</h5>
+                    </div>
+                    <p className="text-sm text-slate-700 dark:text-blue-100/80 leading-relaxed italic">
+                      {feedback}
+                    </p>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="h-48 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm italic">

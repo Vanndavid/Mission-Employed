@@ -26,6 +26,20 @@ export async function generateCodingProblem(difficulty: 'easy' | 'medium') {
   return JSON.parse(response.text);
 }
 
+export async function evaluateSolution(problemTitle: string, problemDescription: string, userSolution: string) {
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: `You are a technical interviewer. Evaluate the following coding solution/strategy for the problem "${problemTitle}".
+    Problem Description: ${problemDescription}
+    
+    User's Solution/Strategy: 
+    ${userSolution}
+    
+    Provide concise, constructive feedback. Identify if the logic is correct, if there are edge cases missed, or if the time/space complexity could be improved. Keep it professional and helpful.`,
+  });
+  return response.text;
+}
+
 export async function generateBehavioralPrompt(theme: string) {
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
