@@ -29,13 +29,23 @@ export async function generateCodingProblem(difficulty: 'easy' | 'medium') {
 export async function evaluateSolution(problemTitle: string, problemDescription: string, userSolution: string) {
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `You are a technical interviewer. Evaluate the following coding solution/strategy for the problem "${problemTitle}".
+    contents: `You are a rigorous technical interviewer. Evaluate the following coding solution/strategy for the problem "${problemTitle}". 
+    Be unbiased and critical. Do not sugar-coat shortcomings.
+    
     Problem Description: ${problemDescription}
+    User's Solution: ${userSolution}
     
-    User's Solution/Strategy: 
-    ${userSolution}
-    
-    Provide concise, constructive feedback. Identify if the logic is correct, if there are edge cases missed, or if the time/space complexity could be improved. Keep it professional and helpful.`,
+    Structure your feedback exactly like this:
+    ### 📊 Performance Metrics
+    * Logic Correctness: [Score/Status]
+    * Complexity: [Time/Space complexity analysis]
+
+    ### 🔍 Critical Analysis
+    * [Bullet points of edge cases missed or logic flaws]
+    * [Unbiased critique of the approach]
+
+    ### 🛠 Actionable Improvements
+    * [Specific technical steps to optimize or fix]`,
   });
   return response.text;
 }
@@ -44,6 +54,29 @@ export async function generateBehavioralPrompt(theme: string) {
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: `Give me a realistic behavioral interview question for the theme: "${theme}". Keep it brief and professional.`,
+  });
+  return response.text;
+}
+
+export async function evaluateSpeech(theme: string, prompt: string, userText: string) {
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: `You are a high-stakes executive recruiter. Evaluate the following interview response with zero sugar-coating. Provide a critical, unbiased analysis of the transcription. 
+    
+    Question Asked: ${prompt}
+    User's Response: ${userText}
+    
+    Structure your feedback exactly like this:
+    ### 🎯 Execution Summary
+    * [Key takeaways of the response]
+    * [Did it actually answer the question?]
+
+    ### ⚖️ Unbiased Critiques
+    * [Identify vagueness, lack of STAR structure, or rambling]
+    * [Identify missed opportunities for impact]
+
+    ### 🚀 Training Directives
+    * [Specific adjustments for the next simulation]`,
   });
   return response.text;
 }

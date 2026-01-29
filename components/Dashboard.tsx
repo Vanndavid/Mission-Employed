@@ -116,7 +116,7 @@ export const Dashboard = ({ logs, onToggleTask }: DashboardProps) => {
               <div className="space-y-6">
                 <div>
                   <h4 className="text-lg font-bold text-emerald-600 dark:text-emerald-400 underline decoration-emerald-500/30 underline-offset-4">{aiProblem.title}</h4>
-                  <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-lg mono text-sm leading-relaxed text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-slate-800 mt-2">
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-lg mono text-sm leading-relaxed text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-slate-800 mt-2 whitespace-pre-wrap">
                     {aiProblem.description}
                   </div>
                 </div>
@@ -160,14 +160,14 @@ export const Dashboard = ({ logs, onToggleTask }: DashboardProps) => {
                 </div>
 
                 {feedback && (
-                  <div className="mt-4 p-5 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <div className="flex items-center mb-2">
+                  <div className="mt-4 p-5 bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 rounded-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div className="flex items-center mb-4 border-b border-slate-200 dark:border-slate-700 pb-2">
                       <span className="text-xl mr-2">🤖</span>
-                      <h5 className="font-bold text-blue-800 dark:text-blue-300 text-sm uppercase tracking-wider">Interviewer Feedback</h5>
+                      <h5 className="font-bold text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wider">Interviewer Assessment</h5>
                     </div>
-                    <p className="text-sm text-slate-700 dark:text-blue-100/80 leading-relaxed italic">
+                    <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap font-sans">
                       {feedback}
-                    </p>
+                    </div>
                   </div>
                 )}
               </div>

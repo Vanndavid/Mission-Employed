@@ -1,6 +1,7 @@
 
 import { DailyLog } from './types';
 import { DAILY_TASKS } from './constants';
+import { Blob } from '@google/genai';
 
 export const isWeekday = (date: Date) => {
   const day = date.getDay();
@@ -40,3 +41,37 @@ export const calculateStreak = (logs: Record<string, DailyLog>) => {
   }
   return currentStreak;
 };
+
+// Manual Base64 Encoding as per Gemini API rules
+export function encode(bytes: Uint8Array) {
+  let binary = '';
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+// Manual Base64 Decoding as per Gemini API rules
+export function decode(base64: string) {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+// Create PCM Blob for Gemini Live API
+export function createPCMBlob(data: Float32Array): Blob {
+  const l = data.length;
+  const int16 = new Int16Array(l);
+  for (let i = 0; i < l; i++) {
+    int16[i] = data[i] * 32768;
+  }
+  return {
+    data: encode(new Uint8Array(int16.buffer)),
+    mimeType: 'audio/pcm;rate=16000',
+  };
+}
