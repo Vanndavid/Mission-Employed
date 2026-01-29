@@ -54,7 +54,7 @@ export const Dashboard = ({ logs, onToggleTask }: DashboardProps) => {
   return (
     <div className="space-y-8">
       <header>
-        <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-50">Daily Requirements</h2>
+        <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-50">Mission Control</h2>
         <p className="text-slate-500 dark:text-slate-400 mt-2">Zero judgment. Just execution. Weekday protocol.</p>
       </header>
 
@@ -88,7 +88,7 @@ export const Dashboard = ({ logs, onToggleTask }: DashboardProps) => {
           <div className="bg-white dark:bg-slate-800/50 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold flex items-center">
-                <span className="mr-2">🧩</span> Training Prompt
+                <span className="mr-2">🧩</span> Coding Protocol
               </h3>
               <div className="space-x-2">
                 <button 

@@ -10,10 +10,10 @@ interface SidebarProps {
 
 export const Sidebar = ({ activeTab, setActiveTab, theme, toggleTheme }: SidebarProps) => {
   const tabs = [
-    { id: 'dashboard', label: 'Mission Control', icon: '🚀' },
-    { id: 'applications', label: 'Pipeline', icon: '📁' },
-    { id: 'prep', label: 'Training Room', icon: '🧠' },
-    { id: 'rules', label: 'The Codex', icon: '📜' },
+    { id: 'dashboard', label: 'Mission Control', sub: 'Checklist & Coding', icon: '🚀' },
+    { id: 'applications', label: 'Pipeline', sub: 'Mechanical Applying', icon: '📁' },
+    { id: 'prep', label: 'Training Room', sub: 'Behavioral & Sim', icon: '🧠' },
+    { id: 'rules', label: 'The Codex', sub: 'Mental Guidelines', icon: '📜' },
   ];
 
   return (
@@ -27,14 +27,19 @@ export const Sidebar = ({ activeTab, setActiveTab, theme, toggleTheme }: Sidebar
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+            className={`w-full flex flex-col items-start px-4 py-3 rounded-lg transition-colors border ${
               activeTab === tab.id 
-                ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 shadow-sm' 
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20 shadow-sm' 
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 border-transparent'
             }`}
           >
-            <span className="mr-3 text-lg">{tab.icon}</span>
-            {tab.label}
+            <div className="flex items-center">
+              <span className="mr-3 text-lg">{tab.icon}</span>
+              <span className="text-sm font-bold">{tab.label}</span>
+            </div>
+            <span className={`text-[10px] ml-8 uppercase tracking-tighter font-medium ${activeTab === tab.id ? 'text-emerald-500/70' : 'text-slate-400'}`}>
+              {tab.sub}
+            </span>
           </button>
         ))}
       </nav>
