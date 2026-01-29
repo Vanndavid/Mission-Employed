@@ -45,14 +45,19 @@ export default function App() {
   // Handlers
   const toggleTheme = () => setTheme(t => t === 'light' ? 'dark' : 'light');
 
-  const handleToggleTask = (date: string, task: keyof DailyLog) => {
+  const handleToggleTask = (date: string, taskId: string) => {
     setState(prev => {
-      const currentLog = prev.dailyLogs[date] || { date, codingEasy: false, codingMedium: false, behavioral: false, simulation: false };
+      const existingLog = prev.dailyLogs[date] || { date, completions: {} };
+      const newCompletions = { 
+        ...existingLog.completions, 
+        [taskId]: !existingLog.completions[taskId] 
+      };
+      
       return {
         ...prev,
         dailyLogs: {
           ...prev.dailyLogs,
-          [date]: { ...currentLog, [task]: !currentLog[task as keyof DailyLog] }
+          [date]: { ...existingLog, completions: newCompletions }
         }
       };
     });

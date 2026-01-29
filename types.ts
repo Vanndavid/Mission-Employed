@@ -20,10 +20,7 @@ export interface JobApplication {
 
 export interface DailyLog {
   date: string; // ISO string YYYY-MM-DD
-  codingEasy: boolean;
-  codingMedium: boolean;
-  behavioral: boolean;
-  simulation: boolean;
+  completions: Record<string, boolean>; // Maps task ID to completion status
 }
 
 export interface BehavioralAnswer {
@@ -42,4 +39,10 @@ export interface AppState {
 export interface Criteria {
   id: string;
   label: string;
+}
+
+export interface TaskDefinition {
+  id: string;
+  label: string;
+  time: string;
 }

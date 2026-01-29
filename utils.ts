@@ -1,5 +1,6 @@
 
 import { DailyLog } from './types';
+import { DAILY_TASKS } from './constants';
 
 export const isWeekday = (date: Date) => {
   const day = date.getDay();
@@ -25,7 +26,9 @@ export const calculateStreak = (logs: Record<string, DailyLog>) => {
   
   for (const date of sortedWeekdays) {
     const log = logs[date];
-    const isComplete = log && log.codingEasy && log.codingMedium && log.behavioral && log.simulation;
+    
+    // Check if ALL configured tasks are complete for this day
+    const isComplete = log && DAILY_TASKS.every(task => log.completions[task.id]);
     
     if (isComplete) {
       currentStreak++;

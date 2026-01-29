@@ -3,15 +3,16 @@ import React, { useState, useMemo } from 'react';
 import { DailyLog } from '../types';
 import { getRecentWeekdays, calculateStreak } from '../utils';
 import { generateCodingProblem } from '../services/geminiService';
+import { DAILY_TASKS } from '../constants';
 
 interface DashboardProps {
   logs: Record<string, DailyLog>;
-  onToggleTask: (date: string, task: keyof DailyLog) => void;
+  onToggleTask: (date: string, taskId: string) => void;
 }
 
 export const Dashboard = ({ logs, onToggleTask }: DashboardProps) => {
   const today = new Date().toISOString().split('T')[0];
-  const currentLog = logs[today] || { date: today, codingEasy: false, codingMedium: false, behavioral: false, simulation: false };
+  const currentLog = logs[today] || { date: today, completions: {} };
 
   const [aiProblem, setAiProblem] = useState<{ title: string, description: string, examples: string[] } | null>(null);
   const [loadingProblem, setLoadingProblem] = useState(false);
@@ -31,13 +32,6 @@ export const Dashboard = ({ logs, onToggleTask }: DashboardProps) => {
   const historyDates = useMemo(() => getRecentWeekdays(28).reverse(), []);
   const streakData = useMemo(() => calculateStreak(logs), [logs, today]);
 
-  const taskStats = [
-    { id: 'codingEasy', label: '1 Easy Problem', time: '60-90m (Combined)' },
-    { id: 'codingMedium', label: '1 Medium Problem', time: '60-90m (Combined)' },
-    { id: 'behavioral', label: 'Behavioral Prep', time: '20-30m' },
-    { id: 'simulation', label: 'Interview Sim', time: '10m' },
-  ];
-
   return (
     <div className="space-y-8">
       <header>
@@ -46,25 +40,28 @@ export const Dashboard = ({ logs, onToggleTask }: DashboardProps) => {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {taskStats.map((task) => (
-          <div 
-            key={task.id}
-            onClick={() => onToggleTask(today, task.id as keyof DailyLog)}
-            className={`p-6 rounded-2xl border-2 cursor-pointer transition-all ${
-              currentLog[task.id as keyof DailyLog] 
-                ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500/50 shadow-lg shadow-emerald-500/5' 
-                : 'bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-500 shadow-sm'
-            }`}
-          >
-            <div className="flex justify-between items-start mb-4">
-              <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${currentLog[task.id as keyof DailyLog] ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 dark:border-slate-600'}`}>
-                {currentLog[task.id as keyof DailyLog] && <span className="text-white text-xs">✓</span>}
-              </span>
-              <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider">{task.time}</span>
+        {DAILY_TASKS.map((task) => {
+          const isDone = !!currentLog.completions[task.id];
+          return (
+            <div 
+              key={task.id}
+              onClick={() => onToggleTask(today, task.id)}
+              className={`p-6 rounded-2xl border-2 cursor-pointer transition-all ${
+                isDone 
+                  ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500/50 shadow-lg shadow-emerald-500/5' 
+                  : 'bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-500 shadow-sm'
+              }`}
+            >
+              <div className="flex justify-between items-start mb-4">
+                <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${isDone ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 dark:border-slate-600'}`}>
+                  {isDone && <span className="text-white text-xs">✓</span>}
+                </span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider">{task.time}</span>
+              </div>
+              <h3 className="font-bold text-lg">{task.label}</h3>
             </div>
-            <h3 className="font-bold text-lg">{task.label}</h3>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -123,7 +120,7 @@ export const Dashboard = ({ logs, onToggleTask }: DashboardProps) => {
             <div className="grid grid-cols-4 sm:grid-cols-7 lg:grid-cols-14 gap-2">
               {historyDates.map(date => {
                 const log = logs[date];
-                const isComplete = log && log.codingEasy && log.codingMedium && log.behavioral && log.simulation;
+                const isComplete = log && DAILY_TASKS.every(task => log.completions[task.id]);
                 const d = new Date(date);
                 const dayLabel = d.toLocaleDateString(undefined, { weekday: 'short' });
                 const dateLabel = d.getDate();
@@ -136,10 +133,9 @@ export const Dashboard = ({ logs, onToggleTask }: DashboardProps) => {
                         : 'bg-slate-50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-800'
                     }`}>
                       <div className="grid grid-cols-2 gap-1 p-1">
-                        <div className={`w-1.5 h-1.5 rounded-full ${log?.codingEasy ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'}`} />
-                        <div className={`w-1.5 h-1.5 rounded-full ${log?.codingMedium ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'}`} />
-                        <div className={`w-1.5 h-1.5 rounded-full ${log?.behavioral ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'}`} />
-                        <div className={`w-1.5 h-1.5 rounded-full ${log?.simulation ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'}`} />
+                        {DAILY_TASKS.slice(0, 4).map(task => (
+                           <div key={task.id} className={`w-1.5 h-1.5 rounded-full ${log?.completions[task.id] ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'}`} />
+                        ))}
                       </div>
                     </div>
                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-800 text-[10px] text-white rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">

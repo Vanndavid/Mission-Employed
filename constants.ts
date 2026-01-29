@@ -1,5 +1,12 @@
 
-import { Criteria } from './types';
+import { Criteria, TaskDefinition } from './types';
+
+export const DAILY_TASKS: TaskDefinition[] = [
+  { id: 'codingEasy', label: '1 Easy Problem', time: '60-90m (Combined)' },
+  { id: 'codingMedium', label: '1 Medium Problem', time: '60-90m (Combined)' },
+  { id: 'behavioral', label: 'Behavioral Prep', time: '20-30m' },
+  { id: 'simulation', label: 'Interview Sim', time: '10m' }
+];
 
 export const PHASE2_CRITERIA: Criteria[] = [
   { id: 'small_mid', label: 'Small–mid company' },
