@@ -15,7 +15,8 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
   const [loadingPrompt, setLoadingPrompt] = useState(false);
   
   // Timer State
-  const [timeLeft, setTimeLeft] = useState(600); // 10 minutes in seconds
+  const [durationMinutes, setDurationMinutes] = useState(10);
+  const [timeLeft, setTimeLeft] = useState(600); // in seconds
   const [timerRunning, setTimerRunning] = useState(false);
   const timerRef = useRef<number | null>(null);
 
@@ -37,6 +38,15 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
     };
   }, [timerRunning, timeLeft]);
 
+  // Sync timeLeft when duration changes and timer is not running or at its start
+  const handleDurationChange = (val: string) => {
+    const mins = parseInt(val) || 0;
+    setDurationMinutes(mins);
+    if (!timerRunning) {
+      setTimeLeft(mins * 60);
+    }
+  };
+
   const handleFetchPrompt = async () => {
     setLoadingPrompt(true);
     try {
@@ -54,7 +64,7 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
       setTimerRunning(false);
       if (timerRef.current) clearInterval(timerRef.current);
     } else {
-      if (timeLeft === 0) setTimeLeft(600);
+      if (timeLeft <= 0) setTimeLeft(durationMinutes * 60);
       setTimerRunning(true);
     }
   };
@@ -62,7 +72,7 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
   const resetTimer = () => {
     setTimerRunning(false);
     if (timerRef.current) clearInterval(timerRef.current);
-    setTimeLeft(600);
+    setTimeLeft(durationMinutes * 60);
   };
 
   const formatTime = (seconds: number) => {
@@ -165,10 +175,28 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
                 </span>
                 <span className="text-[10px] text-slate-400 uppercase font-bold tracking-tighter">Remaining</span>
             </div>
+            
             <h3 className="text-xl font-bold mb-2 text-slate-800 dark:text-slate-100">Simulation Protocol</h3>
+            
+            <div className="mb-6 flex items-center space-x-2">
+              <label htmlFor="duration" className="text-xs font-bold text-slate-400 uppercase">Duration:</label>
+              <input 
+                id="duration"
+                type="number" 
+                min="1"
+                max="60"
+                value={durationMinutes}
+                onChange={(e) => handleDurationChange(e.target.value)}
+                disabled={timerRunning}
+                className="w-16 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-1 rounded text-center text-sm font-bold text-emerald-600 dark:text-emerald-400 focus:outline-none disabled:opacity-50"
+              />
+              <span className="text-xs font-bold text-slate-400 uppercase">min</span>
+            </div>
+
             <p className="text-slate-500 dark:text-slate-400 text-sm max-w-xs mb-6">
-              Pick one question and answer it out loud. 10 minutes max. No judgment. Just exposure to the pressure.
+              Pick one question and answer it out loud. No judgment. Just exposure to the pressure.
             </p>
+            
             <div className="flex space-x-2">
               <button 
                 onClick={toggleTimer}
@@ -178,9 +206,9 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
                     : 'bg-emerald-600 text-white hover:bg-emerald-500'
                 }`}
               >
-                {timerRunning ? 'Stop Timer' : (timeLeft === 600 ? 'Start Timer' : 'Resume')}
+                {timerRunning ? 'Stop Timer' : (timeLeft === (durationMinutes * 60) ? 'Start Timer' : 'Resume')}
               </button>
-              {timeLeft !== 600 && (
+              {(timeLeft !== (durationMinutes * 60)) && (
                 <button 
                   onClick={resetTimer}
                   className="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 px-6 py-3 rounded-xl text-sm font-bold border border-slate-200 dark:border-slate-700 transition-all text-slate-700 dark:text-slate-200 shadow-sm"
