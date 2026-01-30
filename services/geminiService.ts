@@ -1,5 +1,6 @@
 
 import { GoogleGenAI, Type, Modality } from "@google/genai";
+import { Criteria } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -97,20 +98,15 @@ export async function evaluateSpeech(theme: string, prompt: string, userText: st
   return response.text;
 }
 
-export async function analyzeJobDescription(jd: string) {
+export async function analyzeJobDescription(jd: string, criteria: Criteria[]) {
+  const criteriaText = criteria.map((c, i) => `${i + 1}. [ID: ${c.id}] ${c.label}`).join('\n');
+  
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `Analyze the following job description against these 8 criteria for a "mechanical" job search:
-    1. Small-mid company (vs FAANG/Mega-corp)
-    2. Not "elite" status (Top-tier R&D, Big Tech)
-    3. Backend or Full-stack focus
-    4. Business domain (telecom, healthcare, logistics, insurance)
-    5. SQL involved
-    6. Likely Recruiter-led (not just blind portal)
-    7. Focus on Maintenance + incremental build (not 0-to-1 deep tech)
-    8. No signals of extreme algorithm-heavy interviews (Leetcode Hard vibes)
+    contents: `Analyze the following job description against these specific evaluation criteria:
+    ${criteriaText}
 
-    Return a JSON object indicating which are met.
+    Determine which of these criteria are met based on the text provided.
     
     Job Description: ${jd}`,
     config: {
@@ -120,9 +116,9 @@ export async function analyzeJobDescription(jd: string) {
         properties: {
           criteriaMetIds: { 
             type: Type.ARRAY, 
-            items: { type: Type.STRING, description: "Return the IDs matching: small_mid, not_faang, backend_fullstack, business_domain, sql_involved, recruiter_led, maintenance, no_algo_heavy" } 
+            items: { type: Type.STRING, description: "Return only the IDs of the criteria that are met." } 
           },
-          reasoning: { type: Type.STRING }
+          reasoning: { type: Type.STRING, description: "Briefly explain why these criteria were or were not met." }
         },
         required: ["criteriaMetIds", "reasoning"],
       }

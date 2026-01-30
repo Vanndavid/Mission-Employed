@@ -1,18 +1,24 @@
 
 import React, { useState } from 'react';
-import { JobApplication, JobStatus } from '../types';
-import { PHASE2_CRITERIA } from '../constants';
+import { JobApplication, JobStatus, Criteria } from '../types';
 import { analyzeJobDescription } from '../services/geminiService';
 
 interface PipelineProps {
   applications: JobApplication[];
+  criteria: Criteria[];
+  targetScore: number;
   onAdd: (app: Partial<JobApplication>) => void;
   onUpdateStatus: (id: string, s: JobStatus) => void;
   onDelete: (id: string) => void;
+  onUpdateProtocol: (criteria: Criteria[], target: number) => void;
 }
 
-export const Pipeline = ({ applications, onAdd, onUpdateStatus, onDelete }: PipelineProps) => {
+export const Pipeline = ({ applications, criteria, targetScore, onAdd, onUpdateStatus, onDelete, onUpdateProtocol }: PipelineProps) => {
   const [isAdding, setIsAdding] = useState(false);
+  const [isConfiguring, setIsConfiguring] = useState(false);
+  const [tempCriteria, setTempCriteria] = useState<Criteria[]>(criteria);
+  const [tempTarget, setTempTarget] = useState(targetScore);
+  
   const [newApp, setNewApp] = useState<Partial<JobApplication>>({
     company: '',
     role: '',
@@ -35,7 +41,7 @@ export const Pipeline = ({ applications, onAdd, onUpdateStatus, onDelete }: Pipe
     if (!newApp.notes) return;
     setAnalyzing(true);
     try {
-      const result = await analyzeJobDescription(newApp.notes);
+      const result = await analyzeJobDescription(newApp.notes, criteria);
       setNewApp(prev => ({
         ...prev,
         criteriaMet: result.criteriaMetIds,
@@ -55,20 +61,81 @@ export const Pipeline = ({ applications, onAdd, onUpdateStatus, onDelete }: Pipe
     setIsAdding(false);
   };
 
+  const handleSaveProtocol = () => {
+    onUpdateProtocol(tempCriteria, tempTarget);
+    setIsConfiguring(false);
+  };
+
+  const updateCriteriaLabel = (index: number, label: string) => {
+    const next = [...tempCriteria];
+    next[index] = { ...next[index], label };
+    setTempCriteria(next);
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-end">
         <div>
           <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-50">The Pipeline</h2>
-          <p className="text-slate-500 dark:text-slate-400 mt-2">Apply only to roles meeting 4/8 criteria.</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-2">Apply only to roles meeting {targetScore}/{criteria.length} criteria.</p>
         </div>
-        <button 
-          onClick={() => setIsAdding(!isAdding)}
-          className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-xl font-bold transition-all shadow-lg shadow-emerald-600/20"
-        >
-          {isAdding ? 'Cancel' : 'Add Application'}
-        </button>
+        <div className="flex space-x-3">
+          <button 
+            onClick={() => { setIsConfiguring(!isConfiguring); setIsAdding(false); }}
+            className={`px-4 py-2 rounded-xl font-bold transition-all border ${
+              isConfiguring 
+              ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-slate-300 dark:border-slate-600' 
+              : 'text-slate-500 hover:text-emerald-600 border-slate-200 dark:border-slate-700'
+            }`}
+          >
+            ⚙️ Protocol Settings
+          </button>
+          <button 
+            onClick={() => { setIsAdding(!isAdding); setIsConfiguring(false); }}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-xl font-bold transition-all shadow-lg shadow-emerald-600/20"
+          >
+            {isAdding ? 'Cancel' : 'Add Application'}
+          </button>
+        </div>
       </div>
+
+      {isConfiguring && (
+        <div className="bg-slate-50 dark:bg-slate-900 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl p-8 animate-in slide-in-from-top-4 duration-300">
+          <div className="flex justify-between items-center mb-8">
+             <h3 className="text-xl font-black uppercase italic tracking-tighter text-slate-800 dark:text-slate-100">Configure Mission Parameters</h3>
+             <div className="flex items-center space-x-3">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Target Score:</span>
+                <input 
+                  type="number" 
+                  min="1" 
+                  max={tempCriteria.length} 
+                  value={tempTarget} 
+                  onChange={e => setTempTarget(parseInt(e.target.value))}
+                  className="w-16 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-lg font-black text-center text-emerald-600 dark:text-emerald-400"
+                />
+             </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            {tempCriteria.map((c, i) => (
+              <div key={c.id} className="space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Criterion {i+1}</span>
+                <input 
+                  value={c.label}
+                  onChange={e => updateCriteriaLabel(i, e.target.value)}
+                  placeholder={`Criterion ${i+1}`}
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-xl text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-slate-800 dark:text-slate-100"
+                />
+              </div>
+            ))}
+          </div>
+          <button 
+            onClick={handleSaveProtocol}
+            className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-emerald-500 transition-all shadow-xl shadow-emerald-600/10"
+          >
+            Lock-in New Protocol
+          </button>
+        </div>
+      )}
 
       {isAdding && (
         <div className="bg-white dark:bg-slate-800/80 rounded-2xl p-8 border border-slate-200 dark:border-slate-700 animate-in slide-in-from-top duration-300 shadow-xl">
@@ -108,9 +175,9 @@ export const Pipeline = ({ applications, onAdd, onUpdateStatus, onDelete }: Pipe
               </button>
             </div>
             <div className="space-y-4">
-              <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">Criteria Check (Need 4+)</h3>
+              <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">Criteria Check (Need {targetScore}+)</h3>
               <div className="grid grid-cols-1 gap-2">
-                {PHASE2_CRITERIA.map(c => (
+                {criteria.map(c => (
                   <label key={c.id} className="flex items-center p-3 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 cursor-pointer hover:border-emerald-500/50 transition-colors group">
                     <input 
                       type="checkbox" 
@@ -128,14 +195,14 @@ export const Pipeline = ({ applications, onAdd, onUpdateStatus, onDelete }: Pipe
                 ))}
               </div>
               <div className="pt-4 flex items-center justify-between">
-                <span className={`text-xl font-bold ${newApp.criteriaMet?.length! >= 4 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
-                  Score: {newApp.criteriaMet?.length}/8
+                <span className={`text-xl font-bold ${newApp.criteriaMet?.length! >= targetScore ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
+                  Score: {newApp.criteriaMet?.length}/{criteria.length}
                 </span>
                 <button 
-                  disabled={newApp.criteriaMet?.length! < 4}
+                  disabled={newApp.criteriaMet?.length! < targetScore}
                   onClick={handleSubmit}
                   className={`px-8 py-3 rounded-xl font-bold transition-all ${
-                    newApp.criteriaMet?.length! >= 4 
+                    newApp.criteriaMet?.length! >= targetScore 
                     ? 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-xl shadow-emerald-600/20' 
                     : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
                   }`}
@@ -186,9 +253,10 @@ export const Pipeline = ({ applications, onAdd, onUpdateStatus, onDelete }: Pipe
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center space-x-2">
-                       <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${app.criteriaScore >= 6 ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' : 'bg-slate-100 dark:bg-slate-700/50 text-slate-500 dark:text-slate-300'}`}>
+                       <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${app.criteriaScore >= targetScore ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' : 'bg-slate-100 dark:bg-slate-700/50 text-slate-500 dark:text-slate-300'}`}>
                           {app.criteriaScore}
                        </span>
+                       <span className="text-[10px] text-slate-400">/{criteria.length}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-500">

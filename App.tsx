@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { AppState, JobApplication, JobStatus, DailyLog } from './types';
-import { BEHAVIORAL_THEMES } from './constants';
+import { AppState, JobApplication, JobStatus, Criteria } from './types';
+import { BEHAVIORAL_THEMES, PHASE2_CRITERIA } from './constants';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { Pipeline } from './components/Pipeline';
@@ -19,11 +19,19 @@ export default function App() {
   // Local Storage State Persistence
   const [state, setState] = useState<AppState>(() => {
     const saved = localStorage.getItem('mission_employed_state');
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Migration for old state if needed
+      if (!parsed.customCriteria) parsed.customCriteria = PHASE2_CRITERIA;
+      if (!parsed.targetScore) parsed.targetScore = 4;
+      return parsed;
+    }
     return {
       applications: [],
       dailyLogs: {},
       behavioralAnswers: BEHAVIORAL_THEMES.map(t => ({ themeId: t.id, bullets: [''] })),
+      customCriteria: PHASE2_CRITERIA,
+      targetScore: 4,
       baseCV: '',
       baseCoverLetter: ''
     };
@@ -104,6 +112,14 @@ export default function App() {
     }));
   };
 
+  const handleUpdateProtocol = (criteria: Criteria[], target: number) => {
+    setState(prev => ({
+      ...prev,
+      customCriteria: criteria,
+      targetScore: target
+    }));
+  };
+
   // Rendering
   return (
     <div className="min-h-screen text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
@@ -119,7 +135,10 @@ export default function App() {
               applications={state.applications} 
               onAdd={handleAddApplication} 
               onUpdateStatus={handleUpdateAppStatus} 
-              onDelete={handleDeleteApp} 
+              onDelete={handleDeleteApp}
+              criteria={state.customCriteria}
+              targetScore={state.targetScore}
+              onUpdateProtocol={handleUpdateProtocol}
             />
           )}
           {activeTab === 'prep' && (

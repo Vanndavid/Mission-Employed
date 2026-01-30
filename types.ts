@@ -14,7 +14,7 @@ export interface JobApplication {
   dateApplied: string;
   status: JobStatus;
   criteriaScore: number;
-  criteriaMet: string[]; // List of IDs from PHASE2_CRITERIA
+  criteriaMet: string[]; // List of IDs from criteria
   notes: string;
 }
 
@@ -28,17 +28,19 @@ export interface BehavioralAnswer {
   bullets: string[];
 }
 
+export interface Criteria {
+  id: string;
+  label: string;
+}
+
 export interface AppState {
   applications: JobApplication[];
   dailyLogs: Record<string, DailyLog>;
   behavioralAnswers: BehavioralAnswer[];
+  customCriteria: Criteria[];
+  targetScore: number;
   baseCV: string;
   baseCoverLetter: string;
-}
-
-export interface Criteria {
-  id: string;
-  label: string;
 }
 
 export interface TaskDefinition {
