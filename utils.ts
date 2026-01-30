@@ -3,39 +3,46 @@ import { DailyLog } from './types';
 import { DAILY_TASKS } from './constants';
 import { Blob } from '@google/genai';
 
-export const isWeekday = (date: Date) => {
-  const day = date.getDay();
-  return day !== 0 && day !== 6;
+/**
+ * Returns YYYY-MM-DD for a given date in LOCAL time.
+ */
+export const getLocalDateString = (date: Date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
-export const getRecentWeekdays = (count: number) => {
+/**
+ * Returns the most recent X days as YYYY-MM-DD strings in descending order.
+ */
+export const getRecentDays = (count: number) => {
   const dates: string[] = [];
   let d = new Date();
-  while (dates.length < count) {
-    if (isWeekday(d)) {
-      dates.push(d.toISOString().split('T')[0]);
-    }
+  for (let i = 0; i < count; i++) {
+    dates.push(getLocalDateString(d));
     d.setDate(d.getDate() - 1);
   }
   return dates;
 };
 
 export const calculateStreak = (logs: Record<string, DailyLog>) => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
   let currentStreak = 0;
-  const sortedWeekdays = getRecentWeekdays(100); 
+  // Look back at the last 100 potential days
+  const sortedDays = getRecentDays(100); 
   
-  for (const date of sortedWeekdays) {
+  for (const date of sortedDays) {
     const log = logs[date];
     
-    // Check if ALL configured tasks are complete for this day
+    // A day is complete if all tasks in the protocol are checked
     const isComplete = log && DAILY_TASKS.every(task => log.completions[task.id]);
     
     if (isComplete) {
       currentStreak++;
     } else {
-      // If today is not complete, we don't break the streak yet, but we don't count it.
-      // If a past weekday is not complete, the streak breaks.
+      // If it's today and not complete, don't break the streak yet, just don't increment.
+      // If it's a past day and not complete, the streak is broken.
       if (date !== today) break;
     }
   }

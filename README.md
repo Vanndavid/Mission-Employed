@@ -1,3 +1,4 @@
+
 # Mission: Employed 🚀
 
 **Mission: Employed** is a high-performance execution dashboard designed for software engineers who treat the job search as a mechanical process rather than an emotional one. Built on a foundation of disciplined protocols and powered by Google Gemini AI, it removes decision fatigue and replaces it with cold, calculated execution.
@@ -7,7 +8,7 @@
 ### 🧩 Coding Protocol (Mission Control)
 *   **Targeted Practice:** Generate algorithm and system design problems categorized by difficulty (Easy/Medium).
 *   **AI Assessment:** Receive unbiased, critical feedback on logic, time/space complexity, and edge cases with zero sugar-coating.
-*   **Streak Tracking:** Monitor weekday consistency with an integrated progress visualizer and milestone tracker.
+*   **Streak Tracking:** Monitor everyday consistency with an integrated progress visualizer and milestone tracker.
 
 ### 🧠 Behavioral & Simulation Protocol (Training Room)
 *   **Fact Archive:** Maintain a database of raw, data-driven facts for key behavioral themes (Weakness, Challenge, Failure, Impact).
@@ -16,12 +17,13 @@
 *   **Executive Review:** Receive high-stakes, unbiased critiques of your delivery, STAR structure, and missed opportunities for impact.
 
 ### 📁 Pipeline Protocol (Mechanical Applying)
-*   **Strict Filtering:** Only apply to roles meeting a minimum 4/8 score on specific "mechanical" criteria (e.g., small-mid size, SQL-involved, maintenance-focused).
-*   **AI Job Scan:** Automatically analyze job descriptions to check criteria alignment and identify "elite-status" signals or algorithm-heavy traps.
+*   **Dynamic Filtering:** Define your own custom evaluation criteria (e.g., salary range, company size, tech stack).
+*   **AI Job Scan:** Automatically analyze job descriptions against your custom criteria to identify "elite-status" signals or algorithm-heavy traps.
 *   **Mission Logging:** Track application status with a zero-emotion, high-visibility interface.
 
 ### 📜 The Codex
 *   **Non-Negotiable Rules:** A dedicated section for mental guardrails (Dos and Don'ts) designed to prevent "strategy-shifting" and emotional burnout.
+*   **Emergency Protocol:** A specialized mode for handling emotional interference or burnout during high-stress search periods.
 
 ## 💻 Tech Stack
 

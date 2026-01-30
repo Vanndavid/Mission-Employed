@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { DailyLog } from '../types';
-import { getRecentWeekdays, calculateStreak } from '../utils';
+import { getRecentDays, calculateStreak, getLocalDateString } from '../utils';
 import { generateCodingProblem, evaluateSolution } from '../services/geminiService';
 import { DAILY_TASKS } from '../constants';
 
@@ -11,7 +11,7 @@ interface DashboardProps {
 }
 
 export const Dashboard = ({ logs, onToggleTask }: DashboardProps) => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
   const currentLog = logs[today] || { date: today, completions: {} };
 
   const [aiProblem, setAiProblem] = useState<{ title: string, description: string, examples: string[] } | null>(null);
@@ -48,14 +48,17 @@ export const Dashboard = ({ logs, onToggleTask }: DashboardProps) => {
     }
   };
 
-  const historyDates = useMemo(() => getRecentWeekdays(28).reverse(), []);
-  const streakData = useMemo(() => calculateStreak(logs), [logs, today]);
+  // Ensure dates recalculate if the day changes, but they stay stable across simple renders
+  const historyDates = useMemo(() => getRecentDays(28).reverse(), [today]);
+  
+  // Recalculate streak whenever logs change
+  const streakData = useMemo(() => calculateStreak(logs), [logs]);
 
   return (
     <div className="space-y-8">
       <header>
         <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-50">Mission Control</h2>
-        <p className="text-slate-500 dark:text-slate-400 mt-2">Zero judgment. Just execution. Weekday protocol.</p>
+        <p className="text-slate-500 dark:text-slate-400 mt-2">Zero judgment. Just execution. Everyday protocol.</p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -180,13 +183,15 @@ export const Dashboard = ({ logs, onToggleTask }: DashboardProps) => {
 
           <div className="bg-white dark:bg-slate-800/50 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
             <h3 className="text-xl font-bold mb-6 flex items-center">
-              <span className="mr-2">📅</span> Protocol History (Last 28 Weekdays)
+              <span className="mr-2">📅</span> Protocol History (Last 28 Days)
             </h3>
             <div className="grid grid-cols-4 sm:grid-cols-7 lg:grid-cols-14 gap-2">
               {historyDates.map(date => {
                 const log = logs[date];
                 const isComplete = log && DAILY_TASKS.every(task => log.completions[task.id]);
-                const d = new Date(date);
+                // Construct date properly for display (YYYY-MM-DD to Local Date)
+                const parts = date.split('-');
+                const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
                 const dayLabel = d.toLocaleDateString(undefined, { weekday: 'short' });
                 const dateLabel = d.getDate();
                 
@@ -245,7 +250,7 @@ export const Dashboard = ({ logs, onToggleTask }: DashboardProps) => {
                  </svg>
                  <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <span className="text-5xl font-bold text-slate-900 dark:text-slate-100 tracking-tighter">{streakData}</span>
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold tracking-[0.2em] mt-1">Weekdays</span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold tracking-[0.2em] mt-1">Days</span>
                  </div>
               </div>
             </div>
