@@ -2,9 +2,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BehavioralAnswer } from '../types';
 import { BEHAVIORAL_THEMES } from '../constants';
-import { generateBehavioralPrompt, evaluateSpeech } from '../services/geminiService';
+import { generateBehavioralPrompt, evaluateSpeech, textToSpeech } from '../services/geminiService';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
-import { createPCMBlob } from '../utils';
+import { createPCMBlob, decodeAudioPCM, decode } from '../utils';
 
 interface PrepRoomProps {
   answers: BehavioralAnswer[];
@@ -27,6 +27,7 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
   const [transcription, setTranscription] = useState('');
   const [feedback, setFeedback] = useState('');
   const [evaluating, setEvaluating] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const sessionRef = useRef<any>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
 
@@ -71,7 +72,39 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
     }
   };
 
+  const playQuestion = async (text: string) => {
+    setIsSpeaking(true);
+    try {
+      const base64Audio = await textToSpeech(text);
+      if (base64Audio) {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+        const audioBuffer = await decodeAudioPCM(decode(base64Audio), ctx, 24000, 1);
+        const source = ctx.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(ctx.destination);
+        
+        return new Promise((resolve) => {
+          source.onended = () => {
+            setIsSpeaking(false);
+            ctx.close();
+            resolve(true);
+          };
+          source.start();
+        });
+      }
+    } catch (e) {
+      console.error("TTS Error:", e);
+    }
+    setIsSpeaking(false);
+  };
+
   const startRecording = async () => {
+    if (!currentPrompt) return;
+    
+    // 1. Read the question out loud
+    await playQuestion(currentPrompt);
+
+    // 2. Start Recording & Live Transcription
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -268,15 +301,16 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
                 <button 
                   onClick={handleFetchPrompt}
                   className="px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-500 rounded text-xs font-bold transition-all shadow-sm"
-                  disabled={loadingPrompt || isRecording}
+                  disabled={loadingPrompt || isRecording || isSpeaking}
                 >
                   {loadingPrompt ? 'Loading...' : 'Generate Challenge'}
                 </button>
               </div>
               
               {currentPrompt ? (
-                <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-emerald-500/20 shadow-inner">
-                  <p className="text-lg font-medium text-slate-700 dark:text-slate-200 italic text-center">
+                <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-emerald-500/20 shadow-inner relative overflow-hidden">
+                  {isSpeaking && <div className="absolute inset-0 bg-emerald-500/5 animate-pulse" />}
+                  <p className="text-lg font-medium text-slate-700 dark:text-slate-200 italic text-center relative z-10">
                     "{currentPrompt.trim()}"
                   </p>
                 </div>
@@ -325,7 +359,7 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
             </div>
           </div>
 
-          <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-8 border border-slate-200 dark:border-slate-800 border-dashed flex flex-col items-center justify-center text-center">
+          <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-8 border border-slate-200 dark:border-slate-700 border-dashed flex flex-col items-center justify-center text-center">
               <div className={`w-24 h-24 bg-white dark:bg-slate-800 rounded-full flex flex-col items-center justify-center mb-4 shadow-sm border ${timerRunning ? 'border-emerald-500 animate-pulse' : 'border-slate-200 dark:border-slate-700'}`}>
                   <span className={`text-2xl font-bold font-mono ${timeLeft < 60 ? 'text-rose-500' : 'text-slate-800 dark:text-slate-100'}`}>
                     {formatTime(timeLeft)}
@@ -342,28 +376,28 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
                   max="60"
                   value={durationMinutes}
                   onChange={(e) => handleDurationChange(e.target.value)}
-                  disabled={timerRunning || isRecording}
+                  disabled={timerRunning || isRecording || isSpeaking}
                   className="w-16 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-1 rounded text-center text-sm font-bold text-emerald-600 dark:text-emerald-400 focus:outline-none disabled:opacity-50"
                 />
                 <span className="text-xs font-bold text-slate-400 uppercase">min</span>
               </div>
 
               <p className="text-slate-500 dark:text-slate-400 text-xs max-w-xs mb-6">
-                Execution Rule: You MUST answer out loud. Click "Start Recording" to begin the simulation and transcription.
+                Execution Rule: You MUST answer out loud. Click "Start Recording" to have the interviewer read the question and begin.
               </p>
               
               <div className="flex flex-col space-y-2 w-full max-w-[240px]">
                 {!isRecording ? (
                   <button 
                     onClick={startRecording}
-                    disabled={!currentPrompt}
+                    disabled={!currentPrompt || isSpeaking}
                     className={`px-8 py-3 rounded-xl text-sm font-bold transition-all shadow-sm ${
-                      !currentPrompt 
+                      !currentPrompt || isSpeaking
                       ? 'bg-slate-200 text-slate-400 cursor-not-allowed' 
                       : 'bg-emerald-600 text-white hover:bg-emerald-500'
                     }`}
                   >
-                    Start Recording
+                    {isSpeaking ? 'Interviewer Speaking...' : 'Start Recording'}
                   </button>
                 ) : (
                   <button 

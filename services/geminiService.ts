@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, Modality } from "@google/genai";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -56,6 +56,22 @@ export async function generateBehavioralPrompt(theme: string) {
     contents: `Give me a realistic behavioral interview question for the theme: "${theme}". Keep it brief and professional.`,
   });
   return response.text;
+}
+
+export async function textToSpeech(text: string) {
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash-preview-tts",
+    contents: [{ parts: [{ text: `Read this interview question clearly and professionally: ${text}` }] }],
+    config: {
+      responseModalities: [Modality.AUDIO],
+      speechConfig: {
+        voiceConfig: {
+          prebuiltVoiceConfig: { voiceName: 'Kore' },
+        },
+      },
+    },
+  });
+  return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
 }
 
 export async function evaluateSpeech(theme: string, prompt: string, userText: string) {
