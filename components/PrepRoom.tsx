@@ -28,8 +28,12 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
   const [feedback, setFeedback] = useState('');
   const [evaluating, setEvaluating] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [sessionError, setSessionError] = useState<string | null>(null);
+
   const sessionRef = useRef<any>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
 
   const activeTheme = BEHAVIORAL_THEMES.find(t => t.id === activeThemeId)!;
   const activeAnswer = answers.find(a => a.themeId === activeThemeId) || { themeId: activeThemeId, bullets: [''] };
@@ -48,7 +52,7 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [timerRunning, timeLeft]);
+  }, [timerRunning, timeLeft, isRecording]);
 
   const handleDurationChange = (val: string) => {
     const mins = parseInt(val) || 0;
@@ -62,11 +66,13 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
     setLoadingPrompt(true);
     setTranscription('');
     setFeedback('');
+    setSessionError(null);
     try {
       const p = await generateBehavioralPrompt(activeTheme.label);
       setCurrentPrompt(p);
     } catch (e) {
       console.error(e);
+      setSessionError("Failed to fetch prompt.");
     } finally {
       setLoadingPrompt(false);
     }
@@ -100,6 +106,8 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
 
   const startRecording = async () => {
     if (!currentPrompt) return;
+    setSessionError(null);
+    setTranscription('');
     
     // 1. Read the question out loud
     await playQuestion(currentPrompt);
@@ -107,11 +115,21 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
     // 2. Start Recording & Live Transcription
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+      
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-      const source = audioContextRef.current.createMediaStreamSource(stream);
-      const scriptProcessor = audioContextRef.current.createScriptProcessor(4096, 1, 1);
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+      audioContextRef.current = audioCtx;
+      
+      // Explicitly resume context for modern browsers
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+      }
+
+      const source = audioCtx.createMediaStreamSource(stream);
+      const scriptProcessor = audioCtx.createScriptProcessor(4096, 1, 1);
+      scriptProcessorRef.current = scriptProcessor;
 
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-12-2025',
@@ -119,7 +137,8 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
           onopen: () => {
             console.debug('Gemini Live session opened');
             source.connect(scriptProcessor);
-            scriptProcessor.connect(audioContextRef.current!.destination);
+            scriptProcessor.connect(audioCtx.destination);
+            
             scriptProcessor.onaudioprocess = (e) => {
               const inputData = e.inputBuffer.getChannelData(0);
               const pcmBlob = createPCMBlob(inputData);
@@ -134,8 +153,15 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
               setTranscription(prev => prev + text);
             }
           },
-          onerror: (e) => console.error('Gemini Live error:', e),
-          onclose: () => console.debug('Gemini Live session closed'),
+          onerror: (e) => {
+            console.error('Gemini Live error:', e);
+            setSessionError("Transcription connection error. Try restarting.");
+            stopRecording();
+          },
+          onclose: (e) => {
+            console.debug('Gemini Live session closed', e);
+            setIsRecording(false);
+          },
         },
         config: {
           responseModalities: [Modality.AUDIO],
@@ -145,10 +171,10 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
 
       sessionRef.current = await sessionPromise;
       setIsRecording(true);
-      if (!timerRunning) setTimerRunning(true);
+      setTimerRunning(true);
     } catch (err) {
       console.error('Failed to start recording:', err);
-      alert('Microphone access is required for the simulation protocol.');
+      setSessionError('Microphone access or connection failed.');
     }
   };
 
@@ -156,6 +182,14 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
     if (sessionRef.current) {
       sessionRef.current.close();
       sessionRef.current = null;
+    }
+    if (scriptProcessorRef.current) {
+      scriptProcessorRef.current.disconnect();
+      scriptProcessorRef.current = null;
+    }
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = null;
     }
     if (audioContextRef.current) {
       audioContextRef.current.close();
@@ -169,24 +203,15 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
   const handleSubmitSimulation = async () => {
     if (!transcription.trim() || !currentPrompt) return;
     setEvaluating(true);
+    setSessionError(null);
     try {
       const result = await evaluateSpeech(activeTheme.label, currentPrompt, transcription);
       setFeedback(result);
     } catch (e) {
       console.error(e);
-      setFeedback("Failed to evaluate simulation. Check your connection.");
+      setSessionError("Failed to evaluate simulation. Check your connection.");
     } finally {
       setEvaluating(false);
-    }
-  };
-
-  const toggleTimer = () => {
-    if (timerRunning) {
-      if (isRecording) stopRecording();
-      else setTimerRunning(false);
-    } else {
-      if (timeLeft <= 0) setTimeLeft(durationMinutes * 60);
-      setTimerRunning(true);
     }
   };
 
@@ -196,6 +221,7 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
     setTimeLeft(durationMinutes * 60);
     setTranscription('');
     setFeedback('');
+    setSessionError(null);
   };
 
   const formatTime = (seconds: number) => {
@@ -238,10 +264,10 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
           {BEHAVIORAL_THEMES.map(theme => (
             <button 
               key={theme.id}
-              onClick={() => { setActiveThemeId(theme.id); setCurrentPrompt(''); setTranscription(''); setFeedback(''); }}
+              onClick={() => { setActiveThemeId(theme.id); setCurrentPrompt(''); setTranscription(''); setFeedback(''); setSessionError(null); }}
               className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap border ${
                 activeThemeId === theme.id 
-                  ? 'bg-emerald-600 dark:bg-emerald-500 text-white border-emerald-600 dark:border-emerald-500 shadow-md shadow-emerald-500/20' 
+                  ? 'bg-emerald-600 dark:bg-emerald-50 text-white border-emerald-600 dark:border-emerald-500 shadow-md shadow-emerald-500/20' 
                   : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-500'
               }`}
             >
@@ -320,6 +346,12 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
                 </div>
               )}
 
+              {sessionError && (
+                <div className="mt-4 p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 rounded-lg text-rose-600 dark:text-rose-400 text-xs font-bold text-center">
+                  ⚠️ {sessionError}
+                </div>
+              )}
+
               {transcription && (
                 <div className="mt-6 space-y-2">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Live Transcription</p>
@@ -349,7 +381,7 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
                     {feedback}
                   </div>
                   <button 
-                    onClick={() => { setFeedback(''); setTranscription(''); }} 
+                    onClick={() => { setFeedback(''); setTranscription(''); setSessionError(null); }} 
                     className="mt-6 w-full py-2 text-[10px] font-bold text-slate-400 uppercase tracking-tighter hover:text-emerald-500 transition-colors border border-dashed border-slate-300 dark:border-slate-700 rounded-lg"
                   >
                     Reset Protocol for New Drill
