@@ -29,15 +29,33 @@ export const BEHAVIORAL_THEMES = [
 ];
 
 export const MENTAL_RULES = {
+  manifesto: [
+    { title: 'The Volume Principle', body: 'The market is a numbers game. You do not control the outcome, only the input volume.' },
+    { title: 'Emotional Isolation', body: 'Feelings are biological noise. They have no bearing on the quality of your SQL or your STAR response.' },
+    { title: 'The Pivot Trap', body: 'Changing your tech stack or strategy mid-mission is a form of procrastination. Stick to the protocol.' }
+  ],
   donts: [
     'No rewriting your narrative daily',
     'No comparing yourself to ideal candidates',
-    'No stack-switching',
-    'No "should I quit" thinking',
-    'No AI during practice (Coding Phase)'
+    'No stack-switching mid-search',
+    'No "should I quit" internal debates',
+    'No AI assistance during active Coding drills'
   ],
   dos: [
-    'You are allowed to feel tired',
-    'You are not allowed to change direction because of feelings'
-  ]
+    'Acknowledge exhaustion as a physical metric',
+    'Execute regardless of perceived motivation',
+    'Trust the 4/8 criteria score over your "hunch"',
+    'Maintain a singular, consistent CV version',
+    'Prioritize maintenance roles over "0-to-1" moonshots'
+  ],
+  emergency: {
+    message: "SYSTEM ALERT: Emotional interference detected. Initiating Emergency Protocol.",
+    steps: [
+      "Stop thinking about the job. Think about the next 5 minutes.",
+      "Close all LinkedIn tabs. They are toxic noise.",
+      "Check your streak. You have come too far to break the chain.",
+      "Commit to one Easy problem. Nothing else matters right now.",
+      "Remember: The mission ends when you are hired. Not when you are tired."
+    ]
+  }
 };
