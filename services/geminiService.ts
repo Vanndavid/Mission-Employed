@@ -6,7 +6,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export async function generateCodingProblem(difficulty: 'easy' | 'medium') {
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'gemini-3-pro-preview',
     contents: `Generate a programming problem for interview practice. 
     Difficulty: ${difficulty}. 
     Topics: Arrays, Strings, Hash Maps, or SQL logic. 
@@ -27,28 +27,27 @@ export async function generateCodingProblem(difficulty: 'easy' | 'medium') {
   return JSON.parse(response.text);
 }
 
-export async function evaluateSolution(problemTitle: string, problemDescription: string, userSolution: string) {
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
-    contents: `You are a rigorous technical interviewer. Evaluate the following coding solution/strategy for the problem "${problemTitle}". 
-    Be unbiased and critical. Do not sugar-coat shortcomings.
-    
-    Problem Description: ${problemDescription}
-    User's Solution: ${userSolution}
-    
-    Structure your feedback exactly like this:
-    ### 📊 Performance Metrics
-    * Logic Correctness: [Score/Status]
-    * Complexity: [Time/Space complexity analysis]
-
-    ### 🔍 Critical Analysis
-    * [Bullet points of edge cases missed or logic flaws]
-    * [Unbiased critique of the approach]
-
-    ### 🛠 Actionable Improvements
-    * [Specific technical steps to optimize or fix]`,
+/**
+ * Creates a stateful chat session for the coding tutor.
+ */
+export function startCodingTutorSession(problemTitle: string, problemDescription: string) {
+  return ai.chats.create({
+    model: 'gemini-3-pro-preview',
+    config: {
+      systemInstruction: `You are a world-class technical interviewer and mentor. 
+      Your goal is to guide the student to solve the problem: "${problemTitle}".
+      Problem Description: ${problemDescription}
+      
+      RULES:
+      1. Do NOT give the full solution immediately.
+      2. If the student is stuck, provide a small hint or ask a Socratic question to guide their thinking.
+      3. Evaluate code for time/space complexity.
+      4. Be rigorous but encouraging.
+      5. Use Markdown for code blocks.
+      6. If the student asks for a hint, provide one incremental step.
+      7. Once they solve it optimally, provide a final "Mission Accomplished" summary.`,
+    },
   });
-  return response.text;
 }
 
 export async function generateBehavioralPrompt(theme: string) {

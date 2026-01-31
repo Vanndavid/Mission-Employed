@@ -1,9 +1,14 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { DailyLog } from '../types';
 import { getRecentDays, calculateStreak, getLocalDateString } from '../utils';
-import { generateCodingProblem, evaluateSolution } from '../services/geminiService';
+import { generateCodingProblem, startCodingTutorSession } from '../services/geminiService';
 import { DAILY_TASKS } from '../constants';
+
+interface Message {
+  role: 'tutor' | 'student';
+  text: string;
+}
 
 interface DashboardProps {
   logs: Record<string, DailyLog>;
@@ -16,17 +21,29 @@ export const Dashboard = ({ logs, onToggleTask }: DashboardProps) => {
 
   const [aiProblem, setAiProblem] = useState<{ title: string, description: string, examples: string[] } | null>(null);
   const [loadingProblem, setLoadingProblem] = useState(false);
-  const [userSolution, setUserSolution] = useState('');
-  const [feedback, setFeedback] = useState('');
-  const [evaluating, setEvaluating] = useState(false);
+  const [userMessage, setUserMessage] = useState('');
+  const [chatHistory, setChatHistory] = useState<Message[]>([]);
+  const [isTutorThinking, setIsTutorThinking] = useState(false);
+  
+  const chatSessionRef = useRef<any>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [chatHistory, isTutorThinking]);
 
   const fetchProblem = async (diff: 'easy' | 'medium') => {
     setLoadingProblem(true);
-    setFeedback('');
-    setUserSolution('');
+    setChatHistory([]);
+    setUserMessage('');
     try {
       const p = await generateCodingProblem(diff);
       setAiProblem(p);
+      // Initialize chat session
+      chatSessionRef.current = startCodingTutorSession(p.title, p.description);
+      setChatHistory([{ role: 'tutor', text: `Hello. I'm your interviewer for today. Let's look at "${p.title}". How would you approach this? Feel free to share your thoughts or initial code.` }]);
     } catch (e) {
       console.error(e);
     } finally {
@@ -34,24 +51,32 @@ export const Dashboard = ({ logs, onToggleTask }: DashboardProps) => {
     }
   };
 
-  const handleSubmitSolution = async () => {
-    if (!aiProblem || !userSolution.trim()) return;
-    setEvaluating(true);
+  const handleSendMessage = async (customMessage?: string) => {
+    const textToSend = customMessage || userMessage;
+    if (!chatSessionRef.current || !textToSend.trim()) return;
+
+    const newStudentMsg: Message = { role: 'student', text: textToSend };
+    setChatHistory(prev => [...prev, newStudentMsg]);
+    setUserMessage('');
+    setIsTutorThinking(true);
+
     try {
-      const result = await evaluateSolution(aiProblem.title, aiProblem.description, userSolution);
-      setFeedback(result);
+      const response = await chatSessionRef.current.sendMessage({ message: textToSend });
+      const tutorText = response.text || "I'm having trouble connecting to the logic core. Please try again.";
+      setChatHistory(prev => [...prev, { role: 'tutor', text: tutorText }]);
     } catch (e) {
       console.error(e);
-      setFeedback("Failed to evaluate. Ensure your API key is valid.");
+      setChatHistory(prev => [...prev, { role: 'tutor', text: "ERROR: Connection to the intelligence core was interrupted. Please check your API key." }]);
     } finally {
-      setEvaluating(false);
+      setIsTutorThinking(false);
     }
   };
 
-  // Ensure dates recalculate if the day changes, but they stay stable across simple renders
+  const requestHint = () => {
+    handleSendMessage("Can you give me a small hint to move forward?");
+  };
+
   const historyDates = useMemo(() => getRecentDays(28).reverse(), [today]);
-  
-  // Recalculate streak whenever logs change
   const streakData = useMemo(() => calculateStreak(logs), [logs]);
 
   return (
@@ -88,10 +113,10 @@ export const Dashboard = ({ logs, onToggleTask }: DashboardProps) => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white dark:bg-slate-800/50 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
-            <div className="flex justify-between items-center mb-6">
+          <div className="bg-white dark:bg-slate-800/50 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col h-[700px]">
+            <div className="flex justify-between items-center mb-6 shrink-0">
               <h3 className="text-xl font-bold flex items-center">
-                <span className="mr-2">🧩</span> Coding Protocol
+                <span className="mr-2">🧩</span> Coding Tutor
               </h3>
               <div className="space-x-2">
                 <button 
@@ -99,84 +124,100 @@ export const Dashboard = ({ logs, onToggleTask }: DashboardProps) => {
                   className="px-3 py-1 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded text-xs font-bold transition-colors text-slate-700 dark:text-slate-200"
                   disabled={loadingProblem}
                 >
-                  Get Easy
+                  New Easy
                 </button>
                 <button 
                   onClick={() => fetchProblem('medium')}
                   className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold transition-colors"
                   disabled={loadingProblem}
                 >
-                  Get Medium
+                  New Medium
                 </button>
               </div>
             </div>
             
             {loadingProblem ? (
-              <div className="h-48 flex items-center justify-center text-slate-400 dark:text-slate-500 animate-pulse">
-                Engaging Intelligence Core...
+              <div className="flex-1 flex items-center justify-center text-slate-400 dark:text-slate-500 animate-pulse">
+                Establishing Mentor Connection...
               </div>
             ) : aiProblem ? (
-              <div className="space-y-6">
-                <div>
-                  <h4 className="text-lg font-bold text-emerald-600 dark:text-emerald-400 underline decoration-emerald-500/30 underline-offset-4">{aiProblem.title}</h4>
-                  <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-lg mono text-sm leading-relaxed text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-slate-800 mt-2 whitespace-pre-wrap">
-                    {aiProblem.description}
-                  </div>
+              <div className="flex-1 flex flex-col min-h-0">
+                <div className="mb-4 p-4 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shrink-0">
+                  <h4 className="font-bold text-emerald-600 dark:text-emerald-400 mb-1">{aiProblem.title}</h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">{aiProblem.description}</p>
                 </div>
 
-                <div className="space-y-2">
-                  <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">Examples:</p>
-                  {aiProblem.examples.map((ex, i) => (
-                    <div key={i} className="text-xs bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-800 mono text-emerald-700 dark:text-emerald-300/70">{ex}</div>
+                <div 
+                  ref={scrollRef}
+                  className="flex-1 overflow-y-auto pr-2 space-y-4 mb-4 no-scrollbar"
+                >
+                  {chatHistory.map((msg, i) => (
+                    <div key={i} className={`flex ${msg.role === 'tutor' ? 'justify-start' : 'justify-end'}`}>
+                      <div className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed ${
+                        msg.role === 'tutor' 
+                          ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none' 
+                          : 'bg-emerald-600 text-white rounded-tr-none shadow-md'
+                      }`}>
+                        <div className="whitespace-pre-wrap font-sans">
+                          {msg.text}
+                        </div>
+                      </div>
+                    </div>
                   ))}
+                  {isTutorThinking && (
+                    <div className="flex justify-start">
+                      <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl rounded-tl-none flex space-x-1 items-center">
+                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-                  <div className="flex justify-between items-center">
-                    <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">Your Solution / Strategy:</p>
-                  </div>
+                <div className="space-y-3 shrink-0">
                   <textarea
-                    className="w-full h-40 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-lg focus:outline-none focus:border-emerald-500 transition-colors text-sm font-mono text-slate-800 dark:text-slate-200"
-                    placeholder="Describe your approach or write code here..."
-                    value={userSolution}
-                    onChange={(e) => setUserSolution(e.target.value)}
+                    className="w-full h-24 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-xl focus:outline-none focus:border-emerald-500 transition-colors text-sm font-mono text-slate-800 dark:text-slate-200 resize-none"
+                    placeholder="Type your code or ask a question..."
+                    value={userMessage}
+                    onChange={(e) => setUserMessage(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && e.metaKey) handleSendMessage();
+                    }}
                   />
-                  <button
-                    onClick={handleSubmitSolution}
-                    disabled={evaluating || !userSolution.trim()}
-                    className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center ${
-                      evaluating || !userSolution.trim()
-                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'
-                      : 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-600/10'
-                    }`}
-                  >
-                    {evaluating ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Evaluating...
-                      </>
-                    ) : 'Submit for Feedback'}
-                  </button>
-                </div>
-
-                {feedback && (
-                  <div className="mt-4 p-5 bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 rounded-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <div className="flex items-center mb-4 border-b border-slate-200 dark:border-slate-700 pb-2">
-                      <span className="text-xl mr-2">🤖</span>
-                      <h5 className="font-bold text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wider">Interviewer Assessment</h5>
-                    </div>
-                    <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap font-sans">
-                      {feedback}
-                    </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={requestHint}
+                      disabled={isTutorThinking || !aiProblem}
+                      className="flex-1 py-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-sm transition-all"
+                    >
+                      💡 Request Hint
+                    </button>
+                    <button
+                      onClick={() => handleSendMessage()}
+                      disabled={isTutorThinking || !userMessage.trim()}
+                      className={`flex-[2] py-3 rounded-xl font-bold transition-all flex items-center justify-center ${
+                        isTutorThinking || !userMessage.trim()
+                        ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'
+                        : 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-600/10'
+                      }`}
+                    >
+                      Send Message
+                    </button>
                   </div>
-                )}
+                  <p className="text-[10px] text-center text-slate-400 font-mono uppercase tracking-tighter">Cmd + Enter to Send</p>
+                </div>
               </div>
             ) : (
-              <div className="h-48 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm italic">
-                Fetch a problem to begin your daily practice session.
+              <div className="flex-1 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 text-sm italic space-y-4">
+                <div className="text-6xl grayscale opacity-20">👨‍🏫</div>
+                <p>The Tutoring Lab is ready. Initialize a mission to begin.</p>
+                <button 
+                  onClick={() => fetchProblem('easy')}
+                  className="bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-600 dark:text-emerald-400 px-6 py-2 rounded-full font-bold transition-all"
+                >
+                  Start New Session
+                </button>
               </div>
             )}
           </div>
@@ -189,7 +230,6 @@ export const Dashboard = ({ logs, onToggleTask }: DashboardProps) => {
               {historyDates.map(date => {
                 const log = logs[date];
                 const isComplete = log && DAILY_TASKS.every(task => log.completions[task.id]);
-                // Construct date properly for display (YYYY-MM-DD to Local Date)
                 const parts = date.split('-');
                 const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
                 const dayLabel = d.toLocaleDateString(undefined, { weekday: 'short' });
