@@ -97,6 +97,30 @@ export async function evaluateSpeech(theme: string, prompt: string, userText: st
   return response.text;
 }
 
+export async function evaluateFullMockInterview(results: { theme: string, prompt: string, response: string }[]) {
+  const sessionText = results.map((r, i) => `
+  [Question ${i+1}: ${r.theme}]
+  Prompt: ${r.prompt}
+  Candidate Response: ${r.response}
+  `).join('\n---\n');
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-pro-preview',
+    contents: `You are a Lead Recruiter at a Tier-1 tech company. You just finished a full behavioral mock interview with a candidate. 
+    Analyze the following session transcript for narrative consistency, confidence, and overall technical/cultural fit.
+    
+    TRANSCRIPT:
+    ${sessionText}
+    
+    Structure your report with:
+    1. **FINAL VERDICT** (Hire / Strong Hire / No Hire)
+    2. **NARRATIVE CONSISTENCY** (Do their stories align? Is their persona consistent?)
+    3. **CRITICAL GAPS** (Where did they falter most?)
+    4. **ELITE ADJUSTMENTS** (What 3 specific things would make them a top 1% candidate?)`,
+  });
+  return response.text;
+}
+
 export async function analyzeJobDescription(jd: string, criteria: Criteria[]) {
   const criteriaText = criteria.map((c, i) => `${i + 1}. [ID: ${c.id}] ${c.label}`).join('\n');
   
