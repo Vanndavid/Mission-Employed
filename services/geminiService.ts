@@ -70,10 +70,57 @@ export async function textToSpeech(text: string) {
   return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
 }
 
-/**
- * High-fidelity Audio Processing:
- * Transcribes and evaluates recorded audio files in one pass for better stability.
- */
+export async function conductInterviewTurn(history: {role: string, text: string}[], audioBase64?: string) {
+  const historyText = history.map(h => `${h.role === 'candidate' ? 'User' : 'Interviewer'}: ${h.text}`).join('\n');
+  
+  const contents: any[] = [];
+  if (audioBase64) {
+    contents.push({
+      inlineData: {
+        mimeType: "audio/webm",
+        data: audioBase64
+      }
+    });
+  }
+
+  contents.push({
+    text: `You are a Senior Recruiter conducting a behavioral interview.
+    ${audioBase64 ? 'First, transcribe the user audio.' : ''}
+    
+    Interview History:
+    ${historyText}
+    
+    LOGIC:
+    1. Assess the latest answer.
+    2. If there is a "big hole" (missing STAR components, vague actions, no clear result), ask a specific follow-up question to probe for that missing detail.
+    3. If the answer is solid, acknowledge briefly and move to a new topic (e.g., leadership, failure, conflict, etc.).
+    
+    RESPONSE FORMAT (JSON):
+    {
+      "transcript": "Accurate text of the candidate's response",
+      "nextPrompt": "The interviewer's next spoken words (brief, conversational, professional)"
+    }`
+  });
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-pro-preview',
+    contents: contents,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          transcript: { type: Type.STRING },
+          nextPrompt: { type: Type.STRING }
+        },
+        required: ["transcript", "nextPrompt"]
+      }
+    }
+  });
+
+  return JSON.parse(response.text);
+}
+
 export async function processAudioResponse(audioBase64: string, theme: string, prompt: string) {
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',

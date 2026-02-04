@@ -13,6 +13,7 @@ export const Sidebar = ({ activeTab, setActiveTab, theme, toggleTheme }: Sidebar
     { id: 'dashboard', label: 'Mission Control', sub: 'Checklist & Coding', icon: '🚀' },
     { id: 'applications', label: 'Pipeline', sub: 'Mechanical Applying', icon: '📁' },
     { id: 'prep', label: 'Training Room', sub: 'Behavioral & Sim', icon: '🧠' },
+    { id: 'mock', label: 'Mock Test', sub: 'Conversational Sim', icon: '👔' },
     { id: 'rules', label: 'The Codex', sub: 'Mental Guidelines', icon: '📜' },
   ];
 

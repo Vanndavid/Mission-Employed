@@ -7,6 +7,7 @@ import { Dashboard } from './components/Dashboard';
 import { Pipeline } from './components/Pipeline';
 import { PrepRoom } from './components/PrepRoom';
 import { TheCodex } from './components/TheCodex';
+import { MockTest } from './components/MockTest';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -146,6 +147,9 @@ export default function App() {
               answers={state.behavioralAnswers} 
               onUpdateAnswer={handleUpdateBehavioral} 
             />
+          )}
+          {activeTab === 'mock' && (
+            <MockTest />
           )}
           {activeTab === 'rules' && (
             <TheCodex />

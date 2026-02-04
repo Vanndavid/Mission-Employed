@@ -48,3 +48,9 @@ export interface TaskDefinition {
   label: string;
   time: string;
 }
+
+export interface InterviewTurn {
+  role: 'interviewer' | 'candidate';
+  text: string;
+  feedback?: string;
+}
