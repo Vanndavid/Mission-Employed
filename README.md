@@ -4,8 +4,14 @@
 
 ---
 
-## 🎯 THE MISSION STATEMENT
-The modern software engineering job market is noisy, biased, and demoralizing. This application operates on a single axiom: **"Execution is the only variable you control."** By quantifying your search into daily "Protocols," you bypass the cognitive load of emotional analysis and maintain the volume required to win.
+## 🤖 GEMINI INTEGRATION SPECS
+
+This application is built on the **Gemini 3 ecosystem**, utilizing specialized models for specific operational needs:
+
+*   **Gemini 3 Pro**: Powers the **Coding Tutor** and **Full Mock Interview Analysis**. Its high reasoning capability allows it to act as a Socratic mentor, providing hints and complexity analysis rather than simple solutions. It also synthesizes narrative consistency across multiple behavioral responses in "Gauntlet Mode."
+*   **Gemini 3 Flash**: Handles the **AI Job Scan** and **Behavioral Drill Evaluation**. Optimized for speed and cost-effective reasoning, it parses complex job descriptions against binary criteria and provides instant, critical feedback on candidate responses.
+*   **Gemini 2.5 Native Audio**: Enables **Real-time, Low-Latency Transcription** in the Training Room. This multimodal integration allows the model to process spoken audio directly, creating a high-fidelity simulation of a live interview.
+*   **Gemini 2.5 TTS**: Delivers **Professional Interviewer Questions** via audio. By using a prebuilt professional voice, we simulate the high-pressure environment of a real technical screen.
 
 ---
 
@@ -47,11 +53,6 @@ The modern software engineering job market is noisy, biased, and demoralizing. T
 ## 💻 TECHNICAL ARCHITECTURE
 
 *   **Logic Core**: React 19 with modern ES modules.
-*   **Intelligence Layer**:
-    *   `gemini-3-pro-preview`: Powering the complex reasoning required for coding tutoring and full mock-interview reports.
-    *   `gemini-3-flash-preview`: Handling high-speed behavioral prompt generation and job description analysis.
-    *   `gemini-2.5-flash-native-audio-preview-12-2025`: Managing low-latency voice-to-text transcription.
-    *   `gemini-2.5-flash-preview-tts`: Delivering professional audio questions for realistic simulations.
 *   **Data Strategy**: Local-first storage using `LocalStorage`. Your data stays in your browser. Use the **Export Data** function in the footer to backup your mission state to a JSON file.
 
 ---

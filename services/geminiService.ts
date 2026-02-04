@@ -27,9 +27,6 @@ export async function generateCodingProblem(difficulty: 'easy' | 'medium') {
   return JSON.parse(response.text);
 }
 
-/**
- * Creates a stateful chat session for the coding tutor.
- */
 export function startCodingTutorSession(problemTitle: string, problemDescription: string) {
   return ai.chats.create({
     model: 'gemini-3-pro-preview',
@@ -44,8 +41,7 @@ export function startCodingTutorSession(problemTitle: string, problemDescription
       3. Evaluate code for time/space complexity.
       4. Be rigorous but encouraging.
       5. Use Markdown for code blocks.
-      6. If the student asks for a hint, provide one incremental step.
-      7. Once they solve it optimally, provide a final "Mission Accomplished" summary.`,
+      6. Once they solve it optimally, provide a final "Mission Accomplished" summary.`,
     },
   });
 }
@@ -74,25 +70,63 @@ export async function textToSpeech(text: string) {
   return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
 }
 
+/**
+ * High-fidelity Audio Processing:
+ * Transcribes and evaluates recorded audio files in one pass for better stability.
+ */
+export async function processAudioResponse(audioBase64: string, theme: string, prompt: string) {
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: [
+      {
+        inlineData: {
+          mimeType: "audio/webm",
+          data: audioBase64
+        }
+      },
+      {
+        text: `You are a Lead Recruiter. 
+        1. Transcribe the user's spoken answer to the behavioral question: "${prompt}" (Theme: ${theme}).
+        2. Provide a critical, professional evaluation of the response.
+        
+        Return the response in this exact format:
+        TRANSCRIPT: [Full accurate transcription]
+        
+        ### 🎯 Execution Summary
+        * [Key takeaways]
+        
+        ### ⚖️ Unbiased Critiques
+        * [Critique lack of STAR, rambling, or missed impact]
+        
+        ### 🚀 Training Directives
+        * [Specific adjustments]`
+      }
+    ]
+  });
+  
+  const text = response.text;
+  const parts = text.split('###');
+  const transcriptMatch = text.match(/TRANSCRIPT:([\s\S]*?)###/);
+  const transcript = transcriptMatch ? transcriptMatch[1].trim() : "Transcription failed.";
+  const feedback = parts.slice(1).map(p => '###' + p).join('\n');
+  
+  return { transcript, feedback };
+}
+
 export async function evaluateSpeech(theme: string, prompt: string, userText: string) {
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `You are a high-stakes executive recruiter. Evaluate the following interview response with zero sugar-coating. Provide a critical, unbiased analysis of the transcription. 
-    
-    Question Asked: ${prompt}
-    User's Response: ${userText}
+    contents: `Evaluate the following interview response. 
+    Question: ${prompt}
+    User Text: ${userText}
     
     Structure your feedback exactly like this:
     ### 🎯 Execution Summary
-    * [Key takeaways of the response]
-    * [Did it actually answer the question?]
-
+    * [takeaways]
     ### ⚖️ Unbiased Critiques
-    * [Identify vagueness, lack of STAR structure, or rambling]
-    * [Identify missed opportunities for impact]
-
+    * [critiques]
     ### 🚀 Training Directives
-    * [Specific adjustments for the next simulation]`,
+    * [adjustments]`,
   });
   return response.text;
 }
@@ -106,42 +140,30 @@ export async function evaluateFullMockInterview(results: { theme: string, prompt
 
   const response = await ai.models.generateContent({
     model: 'gemini-3-pro-preview',
-    contents: `You are a Lead Recruiter at a Tier-1 tech company. You just finished a full behavioral mock interview with a candidate. 
-    Analyze the following session transcript for narrative consistency, confidence, and overall technical/cultural fit.
-    
-    TRANSCRIPT:
+    contents: `Analyze this full behavioral mock interview transcript.
     ${sessionText}
     
     Structure your report with:
-    1. **FINAL VERDICT** (Hire / Strong Hire / No Hire)
-    2. **NARRATIVE CONSISTENCY** (Do their stories align? Is their persona consistent?)
-    3. **CRITICAL GAPS** (Where did they falter most?)
-    4. **ELITE ADJUSTMENTS** (What 3 specific things would make them a top 1% candidate?)`,
+    1. **FINAL VERDICT** (Hire / No Hire)
+    2. **NARRATIVE CONSISTENCY**
+    3. **CRITICAL GAPS**
+    4. **ELITE ADJUSTMENTS**`,
   });
   return response.text;
 }
 
 export async function analyzeJobDescription(jd: string, criteria: Criteria[]) {
   const criteriaText = criteria.map((c, i) => `${i + 1}. [ID: ${c.id}] ${c.label}`).join('\n');
-  
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `Analyze the following job description against these specific evaluation criteria:
-    ${criteriaText}
-
-    Determine which of these criteria are met based on the text provided.
-    
-    Job Description: ${jd}`,
+    contents: `Analyze JD against criteria:\n${criteriaText}\n\nJD: ${jd}`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          criteriaMetIds: { 
-            type: Type.ARRAY, 
-            items: { type: Type.STRING, description: "Return only the IDs of the criteria that are met." } 
-          },
-          reasoning: { type: Type.STRING, description: "Briefly explain why these criteria were or were not met." }
+          criteriaMetIds: { type: Type.ARRAY, items: { type: Type.STRING } },
+          reasoning: { type: Type.STRING }
         },
         required: ["criteriaMetIds", "reasoning"],
       }
