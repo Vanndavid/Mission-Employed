@@ -96,6 +96,66 @@ export async function analyzeJobDescription(jd: string, criteria: Criteria[]) {
   return post<{ criteriaMetIds: string[]; reasoning: string }>('/ai/job/scan', { jd, criteria });
 }
 
+export async function parseJobApplication(text: string) {
+  return post<{
+    company: string;
+    role: string;
+    location?: string;
+    url?: string;
+    notes?: string;
+    jobDescription?: string;
+  }>('/ai/job/parse', { text });
+}
+
+export async function generateCoverLetter(params: {
+  company: string;
+  role: string;
+  jobDescription: string;
+  cv: string;
+  template?: string;
+  portfolioUrl?: string;
+}) {
+  const res = await post<{ text: string }>('/ai/cover-letter/generate', params);
+  return res.text;
+}
+
+export async function createCoverLetterSession(
+  company: string,
+  role: string,
+  jobDescription: string,
+  currentLetter: string
+) {
+  return post<{ sessionId: string }>('/ai/cover-letter/session', {
+    company, role, jobDescription, currentLetter,
+  });
+}
+
+export async function sendCoverLetterChat(sessionId: string, message: string) {
+  const res = await post<{ text: string }>('/ai/cover-letter/chat', { sessionId, message });
+  return res.text;
+}
+
+export async function generateFollowUpEmail(params: {
+  company: string;
+  role: string;
+  contactName?: string;
+  daysSinceApplied: number;
+  notes?: string;
+}) {
+  const res = await post<{ text: string }>('/ai/follow-up/email', params);
+  return res.text;
+}
+
+export async function generateNegotiationScript(params: {
+  company: string;
+  role: string;
+  offer: { base: number; equity: string; benefits: string; startDate: string };
+  marketContext?: string;
+}) {
+  const res = await post<{ text: string }>('/ai/offer/negotiate', params);
+  return res.text;
+}
+
 export async function checkHealth() {
   const res = await fetch(`${API_BASE}/api/health`);
   return res.json();

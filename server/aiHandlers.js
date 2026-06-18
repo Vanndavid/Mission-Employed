@@ -276,3 +276,103 @@ export async function generateMockReport(history, companyContext) {
   });
   return response.text;
 }
+
+export async function parseJobApplication(nlText) {
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.0-flash',
+    contents: `Parse this natural-language job application log into structured fields.
+    Input: "${nlText}"
+
+    Return JSON with: company, role, location (optional), url (optional), notes, jobDescription (if mentioned).`,
+    config: {
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          company: { type: Type.STRING },
+          role: { type: Type.STRING },
+          location: { type: Type.STRING },
+          url: { type: Type.STRING },
+          notes: { type: Type.STRING },
+          jobDescription: { type: Type.STRING },
+        },
+        required: ['company', 'role'],
+      },
+    },
+  });
+  return JSON.parse(response.text);
+}
+
+export async function generateCoverLetter({ company, role, jobDescription, cv, template, portfolioUrl }) {
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.0-flash',
+    contents: `Write a tailored cover letter for:
+    Company: ${company}
+    Role: ${role}
+    Job Description: ${jobDescription}
+    Candidate CV summary: ${cv}
+    Portfolio: ${portfolioUrl || 'N/A'}
+    Template/style notes: ${template || 'Professional, concise, maintenance SWE tone'}
+
+  Keep it under 350 words. No placeholder brackets.`,
+  });
+  return response.text;
+}
+
+export function createCoverLetterSession(company, role, jobDescription, currentLetter) {
+  const sessionId = crypto.randomUUID();
+  const chat = ai.chats.create({
+    model: 'gemini-2.0-flash',
+    config: {
+      systemInstruction: `You help refine cover letters for ${role} at ${company}.
+      Job Description: ${jobDescription}
+      Current letter: ${currentLetter}
+      Make targeted edits based on user feedback. Return the full revised letter.`,
+    },
+  });
+  chatSessions.set(sessionId, chat);
+  return sessionId;
+}
+
+export async function sendCoverLetterChat(sessionId, message) {
+  const chat = chatSessions.get(sessionId);
+  if (!chat) throw new Error('Session not found');
+  const response = await chat.sendMessage({ message });
+  return response.text || '';
+}
+
+export async function generateFollowUpEmail({ company, role, contactName, daysSinceApplied, notes }) {
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.0-flash',
+    contents: `Draft a professional follow-up email for a job application.
+    Company: ${company}
+    Role: ${role}
+    Recruiter/contact: ${contactName || 'Hiring team'}
+    Days since applied: ${daysSinceApplied}
+    Notes: ${notes || 'None'}
+
+    Tone: polite, brief, not desperate. Under 150 words. Include subject line.`,
+  });
+  return response.text;
+}
+
+export async function generateNegotiationScript({ company, role, offer, marketContext }) {
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.0-flash',
+    contents: `Create a professional salary negotiation script for:
+    Company: ${company}
+    Role: ${role}
+    Offer: base $${offer.base}, equity: ${offer.equity}, benefits: ${offer.benefits}, start: ${offer.startDate}
+    Market context: ${marketContext || 'Software engineer, mid-level'}
+
+    Structure:
+    1. Opening (gratitude, enthusiasm)
+    2. Evidence-based ask (cite skills, market data)
+    3. Specific counter (base + equity if applicable)
+    4. Fallback positions
+    5. Closing
+
+    Keep it conversational, not aggressive.`,
+  });
+  return response.text;
+}
