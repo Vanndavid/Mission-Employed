@@ -216,6 +216,7 @@ export default function App() {
                     applications={state.applications}
                     dailyTasks={dailyTasks}
                     huntPersona={state.huntPersona}
+                    codingHistory={state.codingHistory}
                     onToggleTask={handleToggleTask}
                     onCodingComplete={handleCodingComplete}
                   />

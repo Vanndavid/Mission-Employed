@@ -23,7 +23,7 @@ export const Sidebar = ({ theme, toggleTheme }: SidebarProps) => {
     { path: '/analytics', label: 'Hunt Command Center', sub: 'Analytics & Funnel', icon: '📊' },
     { path: '/applications', label: 'Pipeline', sub: 'Mechanical Applying', icon: '📁' },
     { path: '/applications/criteria', label: 'Personas & Criteria', sub: 'Protocol Config', icon: '⚙️' },
-    { path: '/prep', label: 'Training Room', sub: 'Behavioral & Sim', icon: '🧠' },
+    { path: '/prep', label: 'Training Room', sub: 'Behavioral & System Design', icon: '🧠' },
     { path: '/mock', label: 'Mock Test', sub: 'Conversational Sim', icon: '👔' },
     { path: '/rules', label: 'The Codex', sub: 'Mental Guidelines', icon: '📜' },
   ];

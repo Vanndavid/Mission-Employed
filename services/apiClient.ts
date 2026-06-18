@@ -17,7 +17,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 }
 
 export async function generateCodingProblem(difficulty: 'easy' | 'medium' | 'hard') {
-  return post<{ title: string; description: string; examples: string[] }>('/ai/coding/problem', { difficulty });
+  return post<{ title: string; description: string; examples: string[]; topics: string[] }>('/ai/coding/problem', { difficulty });
 }
 
 export async function createCodingSession(problemTitle: string, problemDescription: string) {
@@ -39,11 +39,17 @@ export async function textToSpeech(text: string) {
   return res.audio;
 }
 
-export async function processAudioResponse(audioBase64: string, theme: string, prompt: string) {
+export async function processAudioResponse(
+  audioBase64: string,
+  theme: string,
+  prompt: string,
+  facts: string[] = []
+) {
   return post<{ transcript: string; feedback: string }>('/ai/behavioral/evaluate', {
     audioBase64,
     theme,
     prompt,
+    facts,
   });
 }
 
@@ -57,6 +63,33 @@ export async function conductInterviewTurn(
     audioBase64,
     companyContext,
   });
+}
+
+export async function generateMockReport(
+  history: { role: string; text: string }[],
+  companyContext?: { company: string; role: string; jobDescription: string; facts: string }
+) {
+  const res = await post<{ report: string }>('/ai/mock/report', { history, companyContext });
+  return res.report;
+}
+
+export async function generateSystemDesignPrompt(topic: string) {
+  const res = await post<{ text: string }>('/ai/system-design/prompt', { topic });
+  return res.text;
+}
+
+export async function createSystemDesignSession(topic: string, scenario: string) {
+  return post<{ sessionId: string }>('/ai/system-design/session', { topic, scenario });
+}
+
+export async function sendSystemDesignChat(sessionId: string, message: string) {
+  const res = await post<{ text: string }>('/ai/system-design/chat', { sessionId, message });
+  return res.text;
+}
+
+export async function evaluateSystemDesign(sessionId: string) {
+  const res = await post<{ report: string }>('/ai/system-design/evaluate', { sessionId });
+  return res.report;
 }
 
 export async function analyzeJobDescription(jd: string, criteria: Criteria[]) {
