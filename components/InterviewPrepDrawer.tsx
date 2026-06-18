@@ -13,6 +13,7 @@ interface InterviewPrepDrawerProps {
   onUpdate: (partial: Partial<JobApplication>) => void;
   onAddStage: (stage: Omit<InterviewStage, 'id'>) => void;
   onRemoveStage: (stageId: string) => void;
+  onOpenCoverLetter: () => void;
 }
 
 export const InterviewPrepDrawer = ({
@@ -22,6 +23,7 @@ export const InterviewPrepDrawer = ({
   onUpdate,
   onAddStage,
   onRemoveStage,
+  onOpenCoverLetter,
 }: InterviewPrepDrawerProps) => {
   const navigate = useNavigate();
 
@@ -51,9 +53,14 @@ export const InterviewPrepDrawer = ({
           </section>
 
           <section>
-            <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Cover Letter</h4>
-            <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-800 p-4 rounded-xl">
-              {app.coverLetter || 'No cover letter yet. (Cover letter studio coming in Phase 3.)'}
+            <div className="flex justify-between items-center mb-2">
+              <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400">Cover Letter</h4>
+              <button onClick={onOpenCoverLetter} className="text-xs font-bold text-emerald-600 hover:underline">
+                Open Studio
+              </button>
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-800 p-4 rounded-xl max-h-32 overflow-y-auto">
+              {app.coverLetter || 'No cover letter yet.'}
             </p>
           </section>
 

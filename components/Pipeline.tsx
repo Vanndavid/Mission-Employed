@@ -1,10 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { BehavioralAnswer, HuntPersonaId, InterviewStage, JobApplication, JobStatus, Criteria } from '../types';
-import { analyzeJobDescription } from '../services/apiClient';
+import { analyzeJobDescription, parseJobApplication } from '../services/apiClient';
 import { HUNT_PERSONAS } from '../constants';
 import { InterviewPrepDrawer } from './InterviewPrepDrawer';
+import { CoverLetterStudio } from './CoverLetterStudio';
+import { exportApplicationsCsv, importApplicationsCsv } from '../utils/csv';
 
 interface PipelineProps {
   applications: JobApplication[];
@@ -19,6 +21,10 @@ interface PipelineProps {
   onRemoveInterviewStage: (appId: string, stageId: string) => void;
   onDelete: (id: string) => void;
   onUpdateProtocol: (criteria: Criteria[], target: number) => void;
+  onBulkImport: (apps: Partial<JobApplication>[]) => void;
+  baseCV: string;
+  coverLetterTemplate: string;
+  portfolioUrl: string;
   openConfig?: boolean;
 }
 
@@ -35,6 +41,10 @@ export const Pipeline = ({
   onRemoveInterviewStage,
   onDelete,
   onUpdateProtocol,
+  onBulkImport,
+  baseCV,
+  coverLetterTemplate,
+  portfolioUrl,
   openConfig = false,
 }: PipelineProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -55,6 +65,10 @@ export const Pipeline = ({
     jobDescription: '',
   });
   const [analyzing, setAnalyzing] = useState(false);
+  const [nlText, setNlText] = useState('');
+  const [parsingNl, setParsingNl] = useState(false);
+  const [coverLetterApp, setCoverLetterApp] = useState<JobApplication | null>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
 
   const persona = HUNT_PERSONAS[huntPersona];
 
@@ -127,6 +141,52 @@ export const Pipeline = ({
     setTempCriteria(next);
   };
 
+  const handleNlParse = async () => {
+    if (!nlText.trim()) return;
+    setParsingNl(true);
+    try {
+      const parsed = await parseJobApplication(nlText);
+      setNewApp(prev => ({
+        ...prev,
+        company: parsed.company,
+        role: parsed.role,
+        location: parsed.location ?? '',
+        url: parsed.url ?? '',
+        notes: parsed.notes ?? nlText,
+        jobDescription: parsed.jobDescription ?? parsed.notes ?? nlText,
+      }));
+      setIsAdding(true);
+      setNlText('');
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setParsingNl(false);
+    }
+  };
+
+  const handleExportCsv = () => {
+    const csv = exportApplicationsCsv(applications);
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'applications.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const imported = importApplicationsCsv(reader.result as string);
+      if (imported.length > 0) onBulkImport(imported);
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-end">
@@ -136,7 +196,14 @@ export const Pipeline = ({
             {persona.label} · Apply only to roles meeting {targetScore}/{criteria.length} criteria.
           </p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-wrap gap-2">
+          <button onClick={handleExportCsv} className="px-4 py-2 rounded-xl font-bold text-sm border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-emerald-600">
+            Export CSV
+          </button>
+          <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportCsv} />
+          <button onClick={() => csvInputRef.current?.click()} className="px-4 py-2 rounded-xl font-bold text-sm border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-emerald-600">
+            Import CSV
+          </button>
           <button
             onClick={() => { setIsConfiguring(!isConfiguring); setIsAdding(false); }}
             className={`px-4 py-2 rounded-xl font-bold transition-all border ${
@@ -155,6 +222,27 @@ export const Pipeline = ({
           </button>
         </div>
       </div>
+
+      <section className="bg-slate-50 dark:bg-slate-900 rounded-2xl p-6 border border-dashed border-slate-200 dark:border-slate-700">
+        <h3 className="text-sm font-bold text-slate-600 dark:text-slate-400 mb-2">Natural Language Log</h3>
+        <p className="text-xs text-slate-400 mb-3">e.g. "Applied to Acme Corp for backend role via LinkedIn yesterday"</p>
+        <div className="flex gap-2">
+          <input
+            value={nlText}
+            onChange={e => setNlText(e.target.value)}
+            placeholder="Describe the application in plain English..."
+            className="flex-1 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+            onKeyDown={e => e.key === 'Enter' && handleNlParse()}
+          />
+          <button
+            onClick={handleNlParse}
+            disabled={parsingNl || !nlText.trim()}
+            className="px-6 py-3 bg-slate-800 text-white rounded-xl font-bold text-sm disabled:opacity-50"
+          >
+            {parsingNl ? 'Parsing...' : 'Parse & Add'}
+          </button>
+        </div>
+      </section>
 
       {isConfiguring && (
         <div className="bg-slate-50 dark:bg-slate-900 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl p-8">
@@ -353,6 +441,18 @@ export const Pipeline = ({
           onUpdate={partial => onUpdateApplication(prepApp.id, partial)}
           onAddStage={stage => onAddInterviewStage(prepApp.id, stage)}
           onRemoveStage={stageId => onRemoveInterviewStage(prepApp.id, stageId)}
+          onOpenCoverLetter={() => setCoverLetterApp(prepApp)}
+        />
+      )}
+
+      {coverLetterApp && (
+        <CoverLetterStudio
+          app={coverLetterApp}
+          baseCV={baseCV}
+          coverLetterTemplate={coverLetterTemplate}
+          portfolioUrl={portfolioUrl}
+          onSave={letter => onUpdateApplication(coverLetterApp.id, { coverLetter: letter })}
+          onClose={() => setCoverLetterApp(null)}
         />
       )}
     </div>

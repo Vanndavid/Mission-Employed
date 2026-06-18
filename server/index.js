@@ -15,6 +15,12 @@ import {
   sendSystemDesignChat,
   evaluateSystemDesign,
   generateMockReport,
+  parseJobApplication,
+  generateCoverLetter,
+  createCoverLetterSession,
+  sendCoverLetterChat,
+  generateFollowUpEmail,
+  generateNegotiationScript,
 } from './aiHandlers.js';
 
 const app = express();
@@ -137,6 +143,63 @@ app.post('/ai/system-design/evaluate', async (req, res) => {
   }
 });
 
+app.post('/ai/job/parse', async (req, res) => {
+  try {
+    const { text } = req.body;
+    const result = await parseJobApplication(text);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/ai/cover-letter/generate', async (req, res) => {
+  try {
+    const text = await generateCoverLetter(req.body);
+    res.json({ text });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/ai/cover-letter/session', async (req, res) => {
+  try {
+    const { company, role, jobDescription, currentLetter } = req.body;
+    const sessionId = createCoverLetterSession(company, role, jobDescription, currentLetter);
+    res.json({ sessionId });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/ai/cover-letter/chat', async (req, res) => {
+  try {
+    const { sessionId, message } = req.body;
+    const text = await sendCoverLetterChat(sessionId, message);
+    res.json({ text });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/ai/follow-up/email', async (req, res) => {
+  try {
+    const text = await generateFollowUpEmail(req.body);
+    res.json({ text });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/ai/offer/negotiate', async (req, res) => {
+  try {
+    const text = await generateNegotiationScript(req.body);
+    res.json({ text });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/ai/tts', async (req, res) => {
   try {
     const { text } = req.body;
@@ -156,13 +219,6 @@ app.post('/ai/job/scan', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
-
-const notImplemented = (_req, res) => res.status(501).json({ error: 'Not implemented' });
-app.post('/ai/job/parse', notImplemented);
-app.post('/ai/cover-letter/generate', notImplemented);
-app.post('/ai/cover-letter/chat', notImplemented);
-app.post('/ai/follow-up/email', notImplemented);
-app.post('/ai/offer/negotiate', notImplemented);
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => console.log(`API server on :${PORT}`));

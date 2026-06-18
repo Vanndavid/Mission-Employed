@@ -12,6 +12,10 @@ import { TheCodex } from './components/TheCodex';
 import { MockTest } from './components/MockTest';
 import { Analytics } from './components/Analytics';
 import { PersonaOnboarding } from './components/PersonaOnboarding';
+import { Contacts } from './components/Contacts';
+import { Profile } from './components/Profile';
+import { OfferTools } from './components/OfferTools';
+import { Contact } from './types';
 
 const STORAGE_KEY = 'mission_employed_state';
 const PERSONA_SET_KEY = 'mission_employed_persona_set';
@@ -199,6 +203,37 @@ export default function App() {
     handleSetTaskComplete(today, taskId);
   };
 
+  const handleBulkImport = (apps: Partial<JobApplication>[]) => {
+    for (const newApp of apps) {
+      handleAddApplication(newApp);
+    }
+  };
+
+  const handleUpdateProfile = (partial: Partial<Pick<AppState, 'baseCV' | 'cvFileName' | 'baseCoverLetter' | 'portfolioUrl' | 'coverLetterTemplate'>>) => {
+    setState(prev => ({ ...prev, ...partial }));
+  };
+
+  const handleAddContact = (contact: Omit<Contact, 'id'>) => {
+    setState(prev => ({
+      ...prev,
+      contacts: [{ ...contact, id: crypto.randomUUID() }, ...prev.contacts],
+    }));
+  };
+
+  const handleUpdateContact = (id: string, partial: Partial<Contact>) => {
+    setState(prev => ({
+      ...prev,
+      contacts: prev.contacts.map(c => (c.id === id ? { ...c, ...partial } : c)),
+    }));
+  };
+
+  const handleDeleteContact = (id: string) => {
+    setState(prev => ({
+      ...prev,
+      contacts: prev.contacts.filter(c => c.id !== id),
+    }));
+  };
+
   return (
     <BrowserRouter>
       <div className="min-h-screen text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
@@ -239,6 +274,10 @@ export default function App() {
                     onRemoveInterviewStage={handleRemoveInterviewStage}
                     onDelete={handleDeleteApp}
                     onUpdateProtocol={handleUpdateProtocol}
+                    onBulkImport={handleBulkImport}
+                    baseCV={state.baseCV}
+                    coverLetterTemplate={state.coverLetterTemplate}
+                    portfolioUrl={state.portfolioUrl}
                   />
                 }
               />
@@ -258,7 +297,45 @@ export default function App() {
                     onRemoveInterviewStage={handleRemoveInterviewStage}
                     onDelete={handleDeleteApp}
                     onUpdateProtocol={handleUpdateProtocol}
+                    onBulkImport={handleBulkImport}
+                    baseCV={state.baseCV}
+                    coverLetterTemplate={state.coverLetterTemplate}
+                    portfolioUrl={state.portfolioUrl}
                     openConfig
+                  />
+                }
+              />
+              <Route
+                path="/applications/contacts"
+                element={
+                  <Contacts
+                    contacts={state.contacts}
+                    applications={state.applications}
+                    onAddContact={handleAddContact}
+                    onUpdateContact={handleUpdateContact}
+                    onDeleteContact={handleDeleteContact}
+                  />
+                }
+              />
+              <Route
+                path="/applications/profile"
+                element={
+                  <Profile
+                    baseCV={state.baseCV}
+                    cvFileName={state.cvFileName}
+                    baseCoverLetter={state.baseCoverLetter}
+                    portfolioUrl={state.portfolioUrl}
+                    coverLetterTemplate={state.coverLetterTemplate}
+                    onUpdate={handleUpdateProfile}
+                  />
+                }
+              />
+              <Route
+                path="/applications/offers"
+                element={
+                  <OfferTools
+                    applications={state.applications}
+                    onUpdateApplication={handleUpdateApplication}
                   />
                 }
               />
