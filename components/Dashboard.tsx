@@ -3,6 +3,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CodingHistoryEntry, DailyLog, HuntPersonaId, JobApplication, TaskDefinition } from '../types';
 import { getRecentDays, calculateStreak, getLocalDateString } from '../utils';
+import { computeWeakTopics, inferTopicsFromTitle } from '../utils/codingTopics';
 import { generateCodingProblem, sendCodingChat, createCodingSession } from '../services/apiClient';
 import { HUNT_PERSONAS } from '../constants';
 import { UpcomingInterviews } from './UpcomingInterviews';
@@ -17,6 +18,7 @@ interface DashboardProps {
   applications: JobApplication[];
   dailyTasks: TaskDefinition[];
   huntPersona: HuntPersonaId;
+  codingHistory: CodingHistoryEntry[];
   onToggleTask: (date: string, taskId: string) => void;
   onCodingComplete: (entry: CodingHistoryEntry, taskId: string) => void;
 }
@@ -26,6 +28,7 @@ export const Dashboard = ({
   applications,
   dailyTasks,
   huntPersona,
+  codingHistory,
   onToggleTask,
   onCodingComplete,
 }: DashboardProps) => {
@@ -33,9 +36,9 @@ export const Dashboard = ({
   const today = getLocalDateString();
   const currentLog = logs[today] || { date: today, completions: {} };
 
-  const [aiProblem, setAiProblem] = useState<{ title: string; description: string; examples: string[] } | null>(null);
+  const [aiProblem, setAiProblem] = useState<{ title: string; description: string; examples: string[]; topics?: string[] } | null>(null);
   const [loadingProblem, setLoadingProblem] = useState(false);
-  const [currentDifficulty, setCurrentDifficulty] = useState<'easy' | 'medium'>('easy');
+  const [currentDifficulty, setCurrentDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
   const [userMessage, setUserMessage] = useState('');
   const [chatHistory, setChatHistory] = useState<Message[]>([]);
   const [isTutorThinking, setIsTutorThinking] = useState(false);
@@ -47,12 +50,17 @@ export const Dashboard = ({
 
   const persona = HUNT_PERSONAS[huntPersona];
   const firstIncomplete = dailyTasks.find(t => !currentLog.completions[t.id]);
+  const hasHardTask = dailyTasks.some(t => t.id === 'codingHard');
+  const weakTopics = useMemo(() => computeWeakTopics(codingHistory).slice(0, 5), [codingHistory]);
+
+  const taskIdForDifficulty = (diff: 'easy' | 'medium' | 'hard') =>
+    diff === 'hard' ? 'codingHard' : diff === 'medium' ? 'codingMedium' : 'codingEasy';
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [chatHistory, isTutorThinking]);
 
-  const fetchProblem = async (diff: 'easy' | 'medium') => {
+  const fetchProblem = async (diff: 'easy' | 'medium' | 'hard') => {
     setLoadingProblem(true);
     setChatHistory([]);
     setUserMessage('');
@@ -88,14 +96,15 @@ export const Dashboard = ({
       setChatHistory(prev => [...prev, { role: 'tutor', text: tutorText }]);
 
       if (/mission accomplished/i.test(tutorText) && aiProblem) {
-        const taskId = currentDifficulty === 'easy' ? 'codingEasy' : 'codingMedium';
+        const taskId = taskIdForDifficulty(currentDifficulty);
+        const topics = aiProblem.topics?.length ? aiProblem.topics : inferTopicsFromTitle(aiProblem.title);
         onCodingComplete(
           {
             date: today,
             difficulty: currentDifficulty,
             title: aiProblem.title,
             completed: true,
-            topics: [],
+            topics,
           },
           taskId
         );
@@ -116,7 +125,8 @@ export const Dashboard = ({
     setHighlightedTask(firstIncomplete.id);
     taskRefs.current[firstIncomplete.id]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     if (firstIncomplete.id.startsWith('coding')) {
-      fetchProblem(firstIncomplete.id === 'codingMedium' ? 'medium' : 'easy');
+      const diff = firstIncomplete.id === 'codingHard' ? 'hard' : firstIncomplete.id === 'codingMedium' ? 'medium' : 'easy';
+      fetchProblem(diff);
     } else if (firstIncomplete.id.startsWith('behavioral')) {
       navigate('/prep');
     } else if (firstIncomplete.id === 'simulation') {
@@ -204,6 +214,15 @@ export const Dashboard = ({
                 >
                   New Medium
                 </button>
+                {hasHardTask && (
+                  <button
+                    onClick={() => fetchProblem('hard')}
+                    className="px-3 py-1 bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 text-white rounded text-xs font-bold transition-colors"
+                    disabled={loadingProblem}
+                  >
+                    New Hard
+                  </button>
+                )}
               </div>
             </div>
 
@@ -331,6 +350,45 @@ export const Dashboard = ({
 
         <div className="space-y-6">
           <UpcomingInterviews applications={applications} onSelectApp={id => navigate(`/applications?prep=${id}`)} />
+
+          {weakTopics.length > 0 && (
+            <div className="bg-white dark:bg-slate-800/50 rounded-2xl p-6 border border-amber-300 dark:border-amber-500/30 shadow-sm">
+              <h3 className="text-lg font-bold mb-3 flex items-center">
+                <span className="mr-2">⚠️</span> Weak Topics
+              </h3>
+              <div className="space-y-2">
+                {weakTopics.map(w => (
+                  <div key={w.topic} className="flex justify-between items-center text-sm">
+                    <span className="font-bold text-slate-700 dark:text-slate-200">{w.topic}</span>
+                    <span className="text-amber-600 dark:text-amber-400 font-bold text-xs">
+                      {w.completionRate}% ({w.completed}/{w.attempted})
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {codingHistory.length > 0 && (
+            <div className="bg-white dark:bg-slate-800/50 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+              <h3 className="text-lg font-bold mb-3 flex items-center">
+                <span className="mr-2">📚</span> Coding History
+              </h3>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {codingHistory.slice(0, 10).map((entry, i) => (
+                  <div key={i} className="flex justify-between items-start text-sm border-b border-slate-100 dark:border-slate-800 pb-2">
+                    <div>
+                      <p className="font-bold text-slate-800 dark:text-slate-200">{entry.title}</p>
+                      <p className="text-[10px] text-slate-400 uppercase">{entry.difficulty} · {entry.topics.join(', ') || 'General'}</p>
+                    </div>
+                    <span className={`text-xs font-bold ${entry.completed ? 'text-emerald-600' : 'text-slate-400'}`}>
+                      {entry.completed ? '✓' : '—'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="bg-white dark:bg-slate-800/50 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 flex flex-col shadow-sm">
             <h3 className="text-xl font-bold mb-4 flex items-center">

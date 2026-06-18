@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { conductInterviewTurn, textToSpeech } from '../services/apiClient';
+import { conductInterviewTurn, textToSpeech, generateMockReport } from '../services/apiClient';
 import { decodeAudioPCM, decode } from '../utils';
 import { BehavioralAnswer, InterviewTurn, JobApplication } from '../types';
 
@@ -34,6 +34,8 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isInterviewerSpeaking, setIsInterviewerSpeaking] = useState(false);
+  const [sessionReport, setSessionReport] = useState<string | null>(null);
+  const [generatingReport, setGeneratingReport] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -112,6 +114,28 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
     setIsRecording(false);
   };
 
+  const terminateSession = async () => {
+    if (history.length > 1) {
+      setGeneratingReport(true);
+      try {
+        const report = await generateMockReport(history, companyContext);
+        setSessionReport(report);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setGeneratingReport(false);
+      }
+    }
+    setSessionActive(false);
+    setHistory([]);
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+  };
+
+  const dismissReport = () => setSessionReport(null);
+
   const handleTurn = async (blob: Blob) => {
     setIsProcessing(true);
     try {
@@ -147,7 +171,7 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
         </p>
       </header>
 
-      {!sessionActive ? (
+      {!sessionActive && !sessionReport ? (
         <div className="flex-1 flex flex-col items-center justify-center bg-white dark:bg-slate-900 rounded-[3rem] border-4 border-dashed border-slate-200 dark:border-slate-800 p-10">
           <div className="w-24 h-24 bg-emerald-600 rounded-full flex items-center justify-center text-4xl mb-8">👔</div>
           <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 uppercase italic mb-4">Interview Mode</h3>
@@ -156,6 +180,17 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
             className="px-12 py-5 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-2xl hover:scale-105 transition-all text-lg"
           >
             Begin Session
+          </button>
+        </div>
+      ) : sessionReport ? (
+        <div className="flex-1 bg-slate-900 text-emerald-50 rounded-[3rem] p-10 overflow-y-auto">
+          <h3 className="text-2xl font-black text-emerald-400 uppercase tracking-widest mb-6">Session Debrief</h3>
+          <div className="whitespace-pre-wrap text-sm leading-relaxed">{sessionReport}</div>
+          <button
+            onClick={dismissReport}
+            className="mt-8 w-full py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-widest"
+          >
+            Dismiss Report
           </button>
         </div>
       ) : (
@@ -204,10 +239,11 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
               </button>
             )}
             <button
-              onClick={() => { setSessionActive(false); setHistory([]); }}
+              onClick={terminateSession}
+              disabled={generatingReport}
               className="mt-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-rose-500"
             >
-              TERMINATE SESSION
+              {generatingReport ? 'GENERATING REPORT...' : 'END SESSION & GET REPORT'}
             </button>
           </div>
         </div>

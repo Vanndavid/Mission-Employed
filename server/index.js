@@ -10,6 +10,11 @@ import {
   conductInterviewTurn,
   processAudioResponse,
   analyzeJobDescription,
+  generateSystemDesignPrompt,
+  createSystemDesignSession,
+  sendSystemDesignChat,
+  evaluateSystemDesign,
+  generateMockReport,
 } from './aiHandlers.js';
 
 const app = express();
@@ -64,8 +69,8 @@ app.post('/ai/behavioral/prompt', async (req, res) => {
 
 app.post('/ai/behavioral/evaluate', async (req, res) => {
   try {
-    const { audioBase64, theme, prompt } = req.body;
-    const result = await processAudioResponse(audioBase64, theme, prompt);
+    const { audioBase64, theme, prompt, facts } = req.body;
+    const result = await processAudioResponse(audioBase64, theme, prompt, facts ?? []);
     res.json(result);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -77,6 +82,56 @@ app.post('/ai/mock/turn', async (req, res) => {
     const { history, audioBase64, companyContext } = req.body;
     const result = await conductInterviewTurn(history, audioBase64, companyContext);
     res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/ai/mock/report', async (req, res) => {
+  try {
+    const { history, companyContext } = req.body;
+    const report = await generateMockReport(history, companyContext);
+    res.json({ report });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/ai/system-design/prompt', async (req, res) => {
+  try {
+    const { topic } = req.body;
+    const text = await generateSystemDesignPrompt(topic);
+    res.json({ text });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/ai/system-design/session', async (req, res) => {
+  try {
+    const { topic, scenario } = req.body;
+    const sessionId = createSystemDesignSession(topic, scenario);
+    res.json({ sessionId });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/ai/system-design/chat', async (req, res) => {
+  try {
+    const { sessionId, message } = req.body;
+    const text = await sendSystemDesignChat(sessionId, message);
+    res.json({ text });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/ai/system-design/evaluate', async (req, res) => {
+  try {
+    const { sessionId } = req.body;
+    const report = await evaluateSystemDesign(sessionId);
+    res.json({ report });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -102,12 +157,8 @@ app.post('/ai/job/scan', async (req, res) => {
   }
 });
 
-// Phase 2-3 stubs
 const notImplemented = (_req, res) => res.status(501).json({ error: 'Not implemented' });
 app.post('/ai/job/parse', notImplemented);
-app.post('/ai/mock/report', notImplemented);
-app.post('/ai/system-design/prompt', notImplemented);
-app.post('/ai/system-design/chat', notImplemented);
 app.post('/ai/cover-letter/generate', notImplemented);
 app.post('/ai/cover-letter/chat', notImplemented);
 app.post('/ai/follow-up/email', notImplemented);

@@ -175,6 +175,17 @@ export const MENTAL_RULES = {
   },
 };
 
+export const SYSTEM_DESIGN_TOPICS = [
+  { id: 'url_shortener', label: 'URL Shortener' },
+  { id: 'rate_limiter', label: 'Rate Limiter' },
+  { id: 'chat_system', label: 'Chat System' },
+  { id: 'news_feed', label: 'News Feed' },
+  { id: 'file_storage', label: 'File Storage (Dropbox)' },
+  { id: 'notification_system', label: 'Notification System' },
+  { id: 'search_autocomplete', label: 'Search Autocomplete' },
+  { id: 'payment_system', label: 'Payment System' },
+];
+
 export const INTERVIEW_STAGE_LABELS: Record<string, string> = {
   phone: 'Phone Screen',
   technical: 'Technical',

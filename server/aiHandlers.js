@@ -11,8 +11,8 @@ export async function generateCodingProblem(difficulty) {
     model: 'gemini-2.0-flash',
     contents: `Generate a programming problem for interview practice.
     Difficulty: ${difficulty}.
-    Topics: Arrays, Strings, Hash Maps, or SQL logic.
-    Format: Return as JSON with title, description, and examples.`,
+    Topics: Arrays, Strings, Hash Maps, Trees, Graphs, SQL, or Dynamic Programming as appropriate.
+    Format: Return as JSON with title, description, examples, and topics (array of topic labels).`,
     config: {
       responseMimeType: 'application/json',
       responseSchema: {
@@ -21,8 +21,9 @@ export async function generateCodingProblem(difficulty) {
           title: { type: Type.STRING },
           description: { type: Type.STRING },
           examples: { type: Type.ARRAY, items: { type: Type.STRING } },
+          topics: { type: Type.ARRAY, items: { type: Type.STRING } },
         },
-        required: ['title', 'description', 'examples'],
+        required: ['title', 'description', 'examples', 'topics'],
       },
     },
   });
@@ -126,7 +127,11 @@ export async function conductInterviewTurn(history, audioBase64, companyContext)
   return JSON.parse(response.text);
 }
 
-export async function processAudioResponse(audioBase64, theme, prompt) {
+export async function processAudioResponse(audioBase64, theme, prompt, facts = []) {
+  const factsBlock = facts.length > 0
+    ? `\nCandidate's saved facts for this theme (use to check consistency and specificity):\n${facts.map(f => `- ${f}`).join('\n')}\n`
+    : '';
+
   const response = await ai.models.generateContent({
     model: 'gemini-2.0-flash',
     contents: [
@@ -135,6 +140,8 @@ export async function processAudioResponse(audioBase64, theme, prompt) {
         text: `You are a Lead Recruiter.
         1. Transcribe the user's spoken answer to: "${prompt}" (Theme: ${theme}).
         2. Provide a critical, professional STAR evaluation.
+        3. Cross-reference the answer against the candidate's saved facts. Flag inconsistencies or missed opportunities to cite real examples.
+        ${factsBlock}
 
         Return:
         TRANSCRIPT: [transcription]
@@ -143,7 +150,7 @@ export async function processAudioResponse(audioBase64, theme, prompt) {
         * [takeaways]
 
         ### ⚖️ Unbiased Critiques
-        * [critiques]
+        * [critiques — include fact-consistency check]
 
         ### 🚀 Training Directives
         * [adjustments]`,
@@ -177,4 +184,95 @@ export async function analyzeJobDescription(jd, criteria) {
     },
   });
   return JSON.parse(response.text);
+}
+
+export async function generateSystemDesignPrompt(topic) {
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.0-flash',
+    contents: `You are a senior engineer running a system design interview.
+    Present a realistic design scenario for: "${topic}".
+    Include functional requirements, scale assumptions (users, QPS, data size), and constraints.
+    Keep it to 2-3 paragraphs. Do not provide the solution.`,
+  });
+  return response.text;
+}
+
+export function createSystemDesignSession(topic, scenario) {
+  const sessionId = crypto.randomUUID();
+  const chat = ai.chats.create({
+    model: 'gemini-2.0-flash',
+    config: {
+      systemInstruction: `You are a Socratic system design interviewer for: "${topic}".
+      Scenario: ${scenario}
+
+      RULES:
+      1. Do NOT give away the full architecture.
+      2. Ask probing questions about requirements, scale, tradeoffs, and failure modes.
+      3. Challenge vague answers. Push on bottlenecks, consistency, and data modeling.
+      4. Be concise — 2-4 sentences per response.`,
+    },
+  });
+  chatSessions.set(sessionId, chat);
+  return sessionId;
+}
+
+export async function sendSystemDesignChat(sessionId, message) {
+  const chat = chatSessions.get(sessionId);
+  if (!chat) throw new Error('Session not found');
+  const response = await chat.sendMessage({ message });
+  return response.text || '';
+}
+
+export async function evaluateSystemDesign(sessionId) {
+  const chat = chatSessions.get(sessionId);
+  if (!chat) throw new Error('Session not found');
+  const response = await chat.sendMessage({
+    message: `Provide a final evaluation of the candidate's system design discussion so far.
+    Structure your report as:
+
+    ## Requirements Coverage
+    [score /10 and notes]
+
+    ## Scale & Performance
+    [score /10 and notes]
+
+    ## Tradeoffs & Alternatives
+    [score /10 and notes]
+
+    ## Failure Modes & Reliability
+    [score /10 and notes]
+
+    ## Critical Gaps
+    [bullet list]
+
+    ## Next Study Focus
+    [bullet list]`,
+  });
+  return response.text || '';
+}
+
+export async function generateMockReport(history, companyContext) {
+  const historyText = history
+    .map(h => `${h.role === 'candidate' ? 'Candidate' : 'Interviewer'}: ${h.text}`)
+    .join('\n');
+  const contextBlock = companyContext
+    ? `\nCompany: ${companyContext.company}\nRole: ${companyContext.role}\nJD: ${companyContext.jobDescription}\nFacts: ${companyContext.facts}\n`
+    : '';
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.0-flash',
+    contents: `Analyze this behavioral mock interview transcript and produce a hiring decision report.
+    ${contextBlock}
+
+    Transcript:
+    ${historyText}
+
+    Structure:
+    1. **FINAL VERDICT** (Hire / No Hire / Borderline)
+    2. **NARRATIVE CONSISTENCY** (did answers align with stated facts?)
+    3. **CRITICAL GAPS** (STAR holes, vagueness, missing metrics)
+    4. **STRENGTHS**
+    5. **ELITE ADJUSTMENTS** (specific improvements before real interview)`,
+  });
+  return response.text;
 }
