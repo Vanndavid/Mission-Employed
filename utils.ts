@@ -1,6 +1,5 @@
 
-import { DailyLog } from './types';
-import { DAILY_TASKS } from './constants';
+import { DailyLog, TaskDefinition } from './types';
 import { Blob } from '@google/genai';
 
 /**
@@ -26,7 +25,7 @@ export const getRecentDays = (count: number) => {
   return dates;
 };
 
-export const calculateStreak = (logs: Record<string, DailyLog>) => {
+export const calculateStreak = (logs: Record<string, DailyLog>, tasks: TaskDefinition[]) => {
   const today = getLocalDateString();
   let currentStreak = 0;
   // Look back at the last 100 potential days
@@ -36,7 +35,7 @@ export const calculateStreak = (logs: Record<string, DailyLog>) => {
     const log = logs[date];
     
     // A day is complete if all tasks in the protocol are checked
-    const isComplete = log && DAILY_TASKS.every(task => log.completions[task.id]);
+    const isComplete = log && tasks.every(task => log.completions[task.id]);
     
     if (isComplete) {
       currentStreak++;

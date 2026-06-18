@@ -2,7 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { BehavioralAnswer } from '../types';
 import { BEHAVIORAL_THEMES } from '../constants';
-import { generateBehavioralPrompt, processAudioResponse, textToSpeech, evaluateSpeech } from '../services/geminiService';
+import { generateBehavioralPrompt, processAudioResponse, textToSpeech } from '../services/apiClient';
 import { decodeAudioPCM, decode } from '../utils';
 
 interface PrepRoomProps {
