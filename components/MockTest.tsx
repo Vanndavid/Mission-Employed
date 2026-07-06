@@ -8,9 +8,10 @@ import { BehavioralAnswer, InterviewTurn, JobApplication } from '../types';
 interface MockTestProps {
   applications: JobApplication[];
   behavioralAnswers: BehavioralAnswer[];
+  onSimulationComplete?: () => void;
 }
 
-export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => {
+export const MockTest = ({ applications, behavioralAnswers, onSimulationComplete }: MockTestProps) => {
   const [searchParams] = useSearchParams();
   const appId = searchParams.get('appId');
   const companyApp = useMemo(() => applications.find(a => a.id === appId), [applications, appId]);
@@ -115,11 +116,13 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
   };
 
   const terminateSession = async () => {
-    if (history.length > 1) {
+    const hadMeaningfulSession = history.length > 1;
+    if (hadMeaningfulSession) {
       setGeneratingReport(true);
       try {
         const report = await generateMockReport(history, companyContext);
         setSessionReport(report);
+        onSimulationComplete?.();
       } catch (e) {
         console.error(e);
       } finally {
