@@ -50,6 +50,12 @@ npm run build
 npm run preview
 ```
 
+### GitHub Pages
+
+The app deploys automatically to [vanndavid.github.io/Mission-Employed](https://vanndavid.github.io/Mission-Employed) on push to `main`.
+
+> **Note:** AI features require the Express backend running locally. On GitHub Pages, the UI loads but AI calls will show as offline until you run the server yourself.
+
 ---
 
 ## Core Modules
