@@ -3,6 +3,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CodingHistoryEntry, DailyLog, HuntPersonaId, JobApplication, TaskDefinition } from '../types';
 import { getRecentDays, calculateStreak, getLocalDateString } from '../utils';
+import { countAppsToday } from '../utils/dailyApps';
 import { computeWeakTopics, inferTopicsFromTitle } from '../utils/codingTopics';
 import { generateCodingProblem, sendCodingChat, createCodingSession } from '../services/apiClient';
 import { HUNT_PERSONAS } from '../constants';
@@ -43,6 +44,7 @@ export const Dashboard = ({
   const [chatHistory, setChatHistory] = useState<Message[]>([]);
   const [isTutorThinking, setIsTutorThinking] = useState(false);
   const [highlightedTask, setHighlightedTask] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const sessionIdRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -62,6 +64,7 @@ export const Dashboard = ({
 
   const fetchProblem = async (diff: 'easy' | 'medium' | 'hard') => {
     setLoadingProblem(true);
+    setFetchError(null);
     setChatHistory([]);
     setUserMessage('');
     setCurrentDifficulty(diff);
@@ -78,6 +81,7 @@ export const Dashboard = ({
       ]);
     } catch (e) {
       console.error(e);
+      setFetchError('Could not reach AI server. Start the backend with `npm run server` and check your API key.');
     } finally {
       setLoadingProblem(false);
     }
@@ -131,30 +135,48 @@ export const Dashboard = ({
       navigate('/prep');
     } else if (firstIncomplete.id === 'simulation') {
       navigate('/mock');
+    } else if (firstIncomplete.id === 'portfolio') {
+      navigate('/applications/profile');
     }
     setTimeout(() => setHighlightedTask(null), 3000);
   };
 
   const historyDates = useMemo(() => getRecentDays(28).reverse(), [today]);
   const streakData = useMemo(() => calculateStreak(logs, dailyTasks), [logs, dailyTasks]);
+  const appsToday = useMemo(() => countAppsToday(applications), [applications, today]);
+  const completedToday = dailyTasks.filter(t => currentLog.completions[t.id]).length;
+  const protocolPct = dailyTasks.length > 0 ? Math.round((completedToday / dailyTasks.length) * 100) : 0;
+  const appsMetTarget = appsToday >= persona.appsPerDay;
 
   return (
     <div className="space-y-8">
-      <header className="flex justify-between items-end">
+      <header className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
         <div>
           <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-50">Mission Control</h2>
           <p className="text-slate-500 dark:text-slate-400 mt-2">
             {persona.label} · Target {persona.appsPerDay} apps/day
           </p>
         </div>
-        {firstIncomplete && (
-          <button
-            onClick={continueProtocol}
-            className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black uppercase tracking-widest text-sm shadow-lg shadow-emerald-600/20 transition-all"
-          >
-            Continue Protocol →
-          </button>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className={`px-4 py-2 rounded-xl border text-sm font-bold ${
+            appsMetTarget
+              ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-300 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400'
+              : 'bg-amber-50 dark:bg-amber-500/10 border-amber-300 dark:border-amber-500/30 text-amber-700 dark:text-amber-400'
+          }`}>
+            📁 {appsToday}/{persona.appsPerDay} apps today
+          </div>
+          <div className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-sm font-bold text-slate-600 dark:text-slate-300">
+            Protocol {protocolPct}%
+          </div>
+          {firstIncomplete && (
+            <button
+              onClick={continueProtocol}
+              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black uppercase tracking-widest text-sm shadow-lg shadow-emerald-600/20 transition-all"
+            >
+              Continue Protocol →
+            </button>
+          )}
+        </div>
       </header>
 
       <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${dailyTasks.length > 4 ? 'lg:grid-cols-3' : 'lg:grid-cols-4'}`}>
@@ -226,6 +248,11 @@ export const Dashboard = ({
               </div>
             </div>
 
+            {fetchError && (
+              <div className="mb-4 p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 rounded-lg text-xs text-rose-600 dark:text-rose-400 font-bold">
+                {fetchError}
+              </div>
+            )}
             {loadingProblem ? (
               <div className="flex-1 flex items-center justify-center text-slate-400 dark:text-slate-500 animate-pulse">
                 Establishing Mentor Connection...
@@ -327,8 +354,10 @@ export const Dashboard = ({
                           : 'bg-slate-50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-800'
                       }`}
                     >
-                      <div className="grid grid-cols-2 gap-1 p-1">
-                        {dailyTasks.slice(0, 4).map(task => (
+                      <div className={`grid gap-0.5 p-1 ${
+                        dailyTasks.length <= 4 ? 'grid-cols-2' : dailyTasks.length === 5 ? 'grid-cols-3' : 'grid-cols-3'
+                      }`}>
+                        {dailyTasks.map(task => (
                           <div
                             key={task.id}
                             className={`w-1.5 h-1.5 rounded-full ${
@@ -392,10 +421,10 @@ export const Dashboard = ({
 
           <div className="bg-white dark:bg-slate-800/50 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 flex flex-col shadow-sm">
             <h3 className="text-xl font-bold mb-4 flex items-center">
-              <span className="mr-2">🔥</span> Current Streak
+              <span className="mr-2">📊</span> Today's Progress
             </h3>
-            <div className="flex flex-col items-center justify-center py-8">
-              <div className="relative w-48 h-48">
+            <div className="flex flex-col items-center justify-center py-4">
+              <div className="relative w-40 h-40">
                 <svg viewBox="0 0 200 200" className="w-full h-full transform -rotate-90">
                   <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-slate-100 dark:text-slate-800" />
                   <circle
@@ -406,16 +435,22 @@ export const Dashboard = ({
                     strokeWidth="12"
                     fill="transparent"
                     strokeDasharray="565.48"
-                    strokeDashoffset={565.48 - (Math.min(streakData, 30) / 30) * 565.48}
-                    className="text-emerald-500 transition-all duration-1000 ease-out"
+                    strokeDashoffset={565.48 - (protocolPct / 100) * 565.48}
+                    className="text-emerald-500 transition-all duration-700 ease-out"
                     strokeLinecap="round"
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-5xl font-bold text-slate-900 dark:text-slate-100 tracking-tighter">{streakData}</span>
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold tracking-[0.2em] mt-1">Days</span>
+                  <span className="text-4xl font-bold text-slate-900 dark:text-slate-100 tracking-tighter">{protocolPct}%</span>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold tracking-[0.2em] mt-1">
+                    {completedToday}/{dailyTasks.length} tasks
+                  </span>
                 </div>
               </div>
+            </div>
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-4 mt-2 text-center">
+              <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">Streak</p>
+              <p className="text-2xl font-black text-emerald-600">{streakData} days</p>
             </div>
           </div>
         </div>

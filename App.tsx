@@ -4,7 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppState, HuntPersonaId, InterviewStage, JobApplication, JobStatus, Criteria, CodingHistoryEntry } from './types';
 import { migrateState, createDefaultState } from './utils/migrateState';
 import { getTasksForPersona, HUNT_PERSONAS } from './constants';
-import { Sidebar } from './components/Sidebar';
+import { Sidebar, MobileHeader } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { Pipeline } from './components/Pipeline';
 import { PrepRoom } from './components/PrepRoom';
@@ -15,7 +15,11 @@ import { PersonaOnboarding } from './components/PersonaOnboarding';
 import { Contacts } from './components/Contacts';
 import { Profile } from './components/Profile';
 import { OfferTools } from './components/OfferTools';
+import { DataManagement } from './components/DataManagement';
+import { ToastProvider } from './components/ToastProvider';
 import { Contact } from './types';
+import { getLocalDateString } from './utils';
+import { resolveBehavioralTaskId } from './utils/protocolTasks';
 
 const STORAGE_KEY = 'mission_employed_state';
 const PERSONA_SET_KEY = 'mission_employed_persona_set';
@@ -36,6 +40,8 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(() => {
     return !localStorage.getItem(PERSONA_SET_KEY);
   });
+
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const dailyTasks = useMemo(() => getTasksForPersona(state.huntPersona), [state.huntPersona]);
 
@@ -234,12 +240,64 @@ export default function App() {
     }));
   };
 
+  const handleBehavioralComplete = useCallback(() => {
+    const today = getLocalDateString();
+    setState(prev => {
+      const log = prev.dailyLogs[today];
+      const completions = log?.completions ?? {};
+      const tasks = getTasksForPersona(prev.huntPersona);
+      const taskId = resolveBehavioralTaskId(tasks, completions);
+      if (!taskId || completions[taskId]) return prev;
+      const existingLog = log || { date: today, completions: {} };
+      return {
+        ...prev,
+        dailyLogs: {
+          ...prev.dailyLogs,
+          [today]: {
+            ...existingLog,
+            completions: { ...existingLog.completions, [taskId]: true },
+          },
+        },
+      };
+    });
+  }, []);
+
+  const handleSimulationComplete = useCallback(() => {
+    const today = getLocalDateString();
+    setState(prev => {
+      const existingLog = prev.dailyLogs[today] || { date: today, completions: {} };
+      if (existingLog.completions.simulation) return prev;
+      return {
+        ...prev,
+        dailyLogs: {
+          ...prev.dailyLogs,
+          [today]: {
+            ...existingLog,
+            completions: { ...existingLog.completions, simulation: true },
+          },
+        },
+      };
+    });
+  }, []);
+
+  const handleImportState = (imported: AppState) => {
+    setState(imported);
+  };
+
   return (
+    <ToastProvider>
     <BrowserRouter>
       <div className="min-h-screen text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
-        <Sidebar theme={theme} toggleTheme={toggleTheme} />
+        <Sidebar
+          theme={theme}
+          toggleTheme={toggleTheme}
+          mobileOpen={mobileNavOpen}
+          onMobileClose={() => setMobileNavOpen(false)}
+        />
 
-        <main className="ml-64 flex-1 p-8 min-h-screen">
+        <div className="flex-1 lg:ml-64 min-h-screen flex flex-col">
+          <MobileHeader onMenuOpen={() => setMobileNavOpen(true)} />
+          <main className="flex-1 p-4 sm:p-6 lg:p-8">
           <div className="max-w-6xl mx-auto">
             <Routes>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -339,36 +397,22 @@ export default function App() {
                   />
                 }
               />
-              <Route path="/prep" element={<PrepRoom answers={state.behavioralAnswers} onUpdateAnswer={handleUpdateBehavioral} />} />
+              <Route path="/prep" element={<PrepRoom answers={state.behavioralAnswers} onUpdateAnswer={handleUpdateBehavioral} onBehavioralComplete={handleBehavioralComplete} />} />
               <Route
                 path="/mock"
-                element={<MockTest applications={state.applications} behavioralAnswers={state.behavioralAnswers} />}
+                element={<MockTest applications={state.applications} behavioralAnswers={state.behavioralAnswers} onSimulationComplete={handleSimulationComplete} />}
               />
               <Route path="/rules" element={<TheCodex />} />
             </Routes>
           </div>
-        </main>
+          </main>
+        </div>
 
-        <footer className="fixed bottom-4 right-4 flex space-x-2">
-          <button
-            onClick={() => {
-              const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(state));
-              const anchor = document.createElement('a');
-              anchor.setAttribute('href', dataStr);
-              anchor.setAttribute('download', 'mission_data.json');
-              document.body.appendChild(anchor);
-              anchor.click();
-              anchor.remove();
-            }}
-            className="bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 text-xs font-bold shadow-sm"
-            title="Export State"
-          >
-            Export Data
-          </button>
-        </footer>
+        <DataManagement state={state} onImport={handleImportState} />
 
         {showOnboarding && <PersonaOnboarding onSelect={handleSelectPersona} />}
       </div>
     </BrowserRouter>
+    </ToastProvider>
   );
 }

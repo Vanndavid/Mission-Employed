@@ -357,7 +357,7 @@ export const Pipeline = ({
         </div>
       )}
 
-      <div className="bg-white dark:bg-slate-800/30 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+      <div className="bg-white dark:bg-slate-800/30 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm hidden md:block">
         <table className="w-full text-left">
           <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-xs font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-700">
             <tr>
@@ -431,6 +431,49 @@ export const Pipeline = ({
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="md:hidden space-y-3">
+        {applications.length === 0 ? (
+          <p className="text-center text-slate-400 italic py-8">No missions active. Begin mechanical applying.</p>
+        ) : (
+          applications.map(app => (
+            <div
+              key={app.id}
+              onClick={() => setPrepApp(app)}
+              className="bg-white dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm"
+            >
+              <div className="flex justify-between items-start gap-2">
+                <div>
+                  <p className="font-bold text-slate-800 dark:text-slate-200">{app.company}</p>
+                  <p className="text-sm text-slate-500">{app.role}</p>
+                </div>
+                <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+                  app.criteriaScore >= targetScore ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'
+                }`}>
+                  {app.criteriaScore}
+                </span>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2 items-center" onClick={e => e.stopPropagation()}>
+                <select
+                  value={app.status}
+                  onChange={e => onUpdateStatus(app.id, e.target.value as JobStatus)}
+                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-bold"
+                >
+                  {Object.values(JobStatus).map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+                <span className="text-[10px] text-slate-400">
+                  {new Date(app.dateApplied).toLocaleDateString()}
+                </span>
+                <button onClick={() => onDelete(app.id)} className="ml-auto text-rose-400 text-xs font-bold">
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {prepApp && (

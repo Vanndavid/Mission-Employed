@@ -9,11 +9,12 @@ import { SystemDesign } from './SystemDesign';
 interface PrepRoomProps {
   answers: BehavioralAnswer[];
   onUpdateAnswer: (themeId: string, bullets: string[]) => void;
+  onBehavioralComplete?: () => void;
 }
 
 type PrepTab = 'behavioral' | 'system_design';
 
-export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
+export const PrepRoom = ({ answers, onUpdateAnswer, onBehavioralComplete }: PrepRoomProps) => {
   const [activeTab, setActiveTab] = useState<PrepTab>('behavioral');
   const [activeThemeId, setActiveThemeId] = useState(BEHAVIORAL_THEMES[0].id);
   const [currentPrompt, setCurrentPrompt] = useState('');
@@ -108,6 +109,7 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
         const result = await processAudioResponse(base64Audio, activeTheme.label, currentPrompt, themeFacts);
         setTranscript(result.transcript);
         setFeedback(result.feedback);
+        onBehavioralComplete?.();
         setIsProcessing(false);
       };
     } catch {

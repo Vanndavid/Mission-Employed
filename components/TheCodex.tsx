@@ -8,7 +8,7 @@ export const TheCodex = () => {
 
   if (showEmergency) {
     return (
-      <div className="min-h-[80vh] flex flex-col items-center justify-center animate-in zoom-in duration-500">
+      <div className="min-h-[80vh] flex flex-col items-center justify-center transition-all duration-500 scale-100">
         <div className="max-w-2xl w-full bg-slate-900 border-4 border-rose-600 p-12 rounded-3xl shadow-[0_0_50px_rgba(225,29,72,0.3)] text-center space-y-8">
           <div className="w-20 h-20 bg-rose-600 text-white rounded-full flex items-center justify-center text-4xl mx-auto animate-pulse">
             ⚠️
