@@ -126,7 +126,7 @@ React 19 + Vite 6 + TypeScript
 └── server/         Express + Gemini handlers
 ```
 
-Local-first. No auth. No database. Your data stays in your browser until you export it.
+Local-first. No auth. No database. No cloud deployment. Your data stays in your browser until you export it.
 
 ---
 
