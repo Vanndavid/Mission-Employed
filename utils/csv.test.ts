@@ -15,6 +15,7 @@ const sampleApp: JobApplication = {
   notes: 'Good fit',
   jobDescription: 'JD text',
   coverLetter: 'Dear hiring manager',
+  tailoredCV: 'Tailored CV text',
   interviewStages: [],
   nextAction: '',
   nextActionDue: '',

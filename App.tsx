@@ -118,6 +118,7 @@ export default function App() {
       notes: newApp.notes || '',
       jobDescription: newApp.jobDescription ?? newApp.notes ?? '',
       coverLetter: newApp.coverLetter ?? '',
+      tailoredCV: newApp.tailoredCV ?? '',
       interviewStages: newApp.interviewStages ?? [],
       nextAction: newApp.nextAction ?? '',
       nextActionDue: newApp.nextActionDue ?? '',
@@ -215,7 +216,7 @@ export default function App() {
     }
   };
 
-  const handleUpdateProfile = (partial: Partial<Pick<AppState, 'baseCV' | 'cvFileName' | 'baseCoverLetter' | 'portfolioUrl' | 'coverLetterTemplate'>>) => {
+  const handleUpdateProfile = (partial: Partial<Pick<AppState, 'baseCV' | 'cvFileName' | 'baseCoverLetter' | 'portfolioUrl' | 'coverLetterTemplate' | 'cvTemplate'>>) => {
     setState(prev => ({ ...prev, ...partial }));
   };
 
@@ -335,6 +336,7 @@ export default function App() {
                     onBulkImport={handleBulkImport}
                     baseCV={state.baseCV}
                     coverLetterTemplate={state.coverLetterTemplate}
+                    cvTemplate={state.cvTemplate}
                     portfolioUrl={state.portfolioUrl}
                   />
                 }
@@ -358,6 +360,7 @@ export default function App() {
                     onBulkImport={handleBulkImport}
                     baseCV={state.baseCV}
                     coverLetterTemplate={state.coverLetterTemplate}
+                    cvTemplate={state.cvTemplate}
                     portfolioUrl={state.portfolioUrl}
                     openConfig
                   />
@@ -384,6 +387,7 @@ export default function App() {
                     baseCoverLetter={state.baseCoverLetter}
                     portfolioUrl={state.portfolioUrl}
                     coverLetterTemplate={state.coverLetterTemplate}
+                    cvTemplate={state.cvTemplate}
                     onUpdate={handleUpdateProfile}
                   />
                 }

@@ -19,6 +19,9 @@ import {
   generateCoverLetter,
   createCoverLetterSession,
   sendCoverLetterChat,
+  generateTailoredCV,
+  createCVSession,
+  sendCVChat,
   generateFollowUpEmail,
   generateNegotiationScript,
 } from './aiHandlers.js';
@@ -176,6 +179,35 @@ app.post('/ai/cover-letter/chat', async (req, res) => {
   try {
     const { sessionId, message } = req.body;
     const text = await sendCoverLetterChat(sessionId, message);
+    res.json({ text });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/ai/cv/generate', async (req, res) => {
+  try {
+    const text = await generateTailoredCV(req.body);
+    res.json({ text });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/ai/cv/session', async (req, res) => {
+  try {
+    const { company, role, jobDescription, currentCV } = req.body;
+    const sessionId = createCVSession(company, role, jobDescription, currentCV);
+    res.json({ sessionId });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/ai/cv/chat', async (req, res) => {
+  try {
+    const { sessionId, message } = req.body;
+    const text = await sendCVChat(sessionId, message);
     res.json({ text });
   } catch (e) {
     res.status(500).json({ error: e.message });
