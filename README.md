@@ -2,6 +2,8 @@
 
 A local-first job hunt execution system for software engineers who treat the search as a mechanical process, not an emotional one. Daily protocols, AI-powered prep, pipeline CRM, and cold analytics — all in one dashboard.
 
+**Designed for local use** — run on your machine with `npm run dev` + the Express AI server. No cloud hosting required.
+
 **Brand:** ONE PARTNER · **Codename:** Mission: Employed
 
 ---
@@ -41,7 +43,7 @@ Terminal 2 — Frontend:
 npm run dev
 ```
 
-Open `http://localhost:5173`. The sidebar shows **AI online** when the backend is reachable.
+Open `http://localhost:3000`. The sidebar shows **AI online** when the backend is reachable.
 
 ### 4. Production build
 
@@ -124,7 +126,7 @@ React 19 + Vite 6 + TypeScript
 └── server/         Express + Gemini handlers
 ```
 
-Local-first. No auth. No database. Your data stays in your browser until you export it.
+Local-first. No auth. No database. No cloud deployment. Your data stays in your browser until you export it.
 
 ---
 
