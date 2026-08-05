@@ -135,6 +135,34 @@ export async function sendCoverLetterChat(sessionId: string, message: string) {
   return res.text;
 }
 
+export async function generateTailoredCV(params: {
+  company: string;
+  role: string;
+  jobDescription: string;
+  cv: string;
+  template?: string;
+  portfolioUrl?: string;
+}) {
+  const res = await post<{ text: string }>('/ai/cv/generate', params);
+  return res.text;
+}
+
+export async function createCVSession(
+  company: string,
+  role: string,
+  jobDescription: string,
+  currentCV: string
+) {
+  return post<{ sessionId: string }>('/ai/cv/session', {
+    company, role, jobDescription, currentCV,
+  });
+}
+
+export async function sendCVChat(sessionId: string, message: string) {
+  const res = await post<{ text: string }>('/ai/cv/chat', { sessionId, message });
+  return res.text;
+}
+
 export async function generateFollowUpEmail(params: {
   company: string;
   role: string;

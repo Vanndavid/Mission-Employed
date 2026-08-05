@@ -6,6 +6,7 @@ import { analyzeJobDescription, parseJobApplication } from '../services/apiClien
 import { HUNT_PERSONAS } from '../constants';
 import { InterviewPrepDrawer } from './InterviewPrepDrawer';
 import { CoverLetterStudio } from './CoverLetterStudio';
+import { CVStudio } from './CVStudio';
 import { exportApplicationsCsv, importApplicationsCsv } from '../utils/csv';
 
 interface PipelineProps {
@@ -24,6 +25,7 @@ interface PipelineProps {
   onBulkImport: (apps: Partial<JobApplication>[]) => void;
   baseCV: string;
   coverLetterTemplate: string;
+  cvTemplate: string;
   portfolioUrl: string;
   openConfig?: boolean;
 }
@@ -44,6 +46,7 @@ export const Pipeline = ({
   onBulkImport,
   baseCV,
   coverLetterTemplate,
+  cvTemplate,
   portfolioUrl,
   openConfig = false,
 }: PipelineProps) => {
@@ -68,6 +71,7 @@ export const Pipeline = ({
   const [nlText, setNlText] = useState('');
   const [parsingNl, setParsingNl] = useState(false);
   const [coverLetterApp, setCoverLetterApp] = useState<JobApplication | null>(null);
+  const [cvApp, setCvApp] = useState<JobApplication | null>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
 
   const persona = HUNT_PERSONAS[huntPersona];
@@ -485,6 +489,18 @@ export const Pipeline = ({
           onAddStage={stage => onAddInterviewStage(prepApp.id, stage)}
           onRemoveStage={stageId => onRemoveInterviewStage(prepApp.id, stageId)}
           onOpenCoverLetter={() => setCoverLetterApp(prepApp)}
+          onOpenCV={() => setCvApp(prepApp)}
+        />
+      )}
+
+      {cvApp && (
+        <CVStudio
+          app={cvApp}
+          baseCV={baseCV}
+          cvTemplate={cvTemplate}
+          portfolioUrl={portfolioUrl}
+          onSave={cv => onUpdateApplication(cvApp.id, { tailoredCV: cv })}
+          onClose={() => setCvApp(null)}
         />
       )}
 

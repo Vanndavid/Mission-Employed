@@ -2,7 +2,7 @@
 import { AppState, HuntPersonaId, JobApplication } from '../types';
 import { BEHAVIORAL_THEMES, HUNT_PERSONAS, PHASE2_CRITERIA } from '../constants';
 
-export const CURRENT_SCHEMA = 2;
+export const CURRENT_SCHEMA = 3;
 
 function migrateApplication(app: Partial<JobApplication>): JobApplication {
   return {
@@ -18,6 +18,7 @@ function migrateApplication(app: Partial<JobApplication>): JobApplication {
     notes: app.notes ?? '',
     jobDescription: app.jobDescription ?? app.notes ?? '',
     coverLetter: app.coverLetter ?? '',
+    tailoredCV: app.tailoredCV ?? '',
     interviewStages: app.interviewStages ?? [],
     nextAction: app.nextAction ?? '',
     nextActionDue: app.nextActionDue ?? '',
@@ -44,6 +45,7 @@ export function createDefaultState(): AppState {
     baseCoverLetter: '',
     portfolioUrl: '',
     coverLetterTemplate: '',
+    cvTemplate: '',
     huntPersona: 'maintenance_swe',
     codingHistory: [],
     contacts: [],
@@ -71,6 +73,7 @@ export function migrateState(raw: unknown): AppState {
   if (!parsed.cvFileName) parsed.cvFileName = '';
   if (!parsed.portfolioUrl) parsed.portfolioUrl = '';
   if (!parsed.coverLetterTemplate) parsed.coverLetterTemplate = '';
+  if (!parsed.cvTemplate) parsed.cvTemplate = '';
 
   parsed.applications = (parsed.applications ?? []).map(migrateApplication);
   parsed.schemaVersion = CURRENT_SCHEMA;

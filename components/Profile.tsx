@@ -7,12 +7,14 @@ interface ProfileProps {
   baseCoverLetter: string;
   portfolioUrl: string;
   coverLetterTemplate: string;
+  cvTemplate: string;
   onUpdate: (partial: {
     baseCV?: string;
     cvFileName?: string;
     baseCoverLetter?: string;
     portfolioUrl?: string;
     coverLetterTemplate?: string;
+    cvTemplate?: string;
   }) => void;
 }
 
@@ -22,6 +24,7 @@ export const Profile = ({
   baseCoverLetter,
   portfolioUrl,
   coverLetterTemplate,
+  cvTemplate,
   onUpdate,
 }: ProfileProps) => {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -46,7 +49,7 @@ export const Profile = ({
     <div className="space-y-8">
       <header>
         <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-50">CV & Profile</h2>
-        <p className="text-slate-500 mt-2">Frozen CV. One version. Stop tweaking.</p>
+        <p className="text-slate-500 mt-2">Base CV plus tailoring instructions for per-application CV Studio.</p>
       </header>
 
       <section className="bg-white dark:bg-slate-800/50 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 space-y-4">
@@ -75,6 +78,17 @@ export const Profile = ({
           onChange={e => onUpdate({ portfolioUrl: e.target.value })}
           placeholder="https://github.com/you or portfolio site"
           className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm"
+        />
+      </section>
+
+      <section className="bg-white dark:bg-slate-800/50 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 space-y-4">
+        <h3 className="font-bold">CV Tailoring Instructions</h3>
+        <p className="text-xs text-slate-400">Style and rules used by CV Studio when tailoring your base CV per application.</p>
+        <textarea
+          value={cvTemplate}
+          onChange={e => onUpdate({ cvTemplate: e.target.value })}
+          placeholder="e.g. One page max. Emphasize backend/SQL experience. Reorder bullets to match JD keywords. Never invent roles or dates."
+          className="w-full h-32 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm resize-none"
         />
       </section>
 

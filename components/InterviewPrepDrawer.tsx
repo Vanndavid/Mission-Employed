@@ -14,6 +14,7 @@ interface InterviewPrepDrawerProps {
   onAddStage: (stage: Omit<InterviewStage, 'id'>) => void;
   onRemoveStage: (stageId: string) => void;
   onOpenCoverLetter: () => void;
+  onOpenCV: () => void;
 }
 
 export const InterviewPrepDrawer = ({
@@ -24,6 +25,7 @@ export const InterviewPrepDrawer = ({
   onAddStage,
   onRemoveStage,
   onOpenCoverLetter,
+  onOpenCV,
 }: InterviewPrepDrawerProps) => {
   const navigate = useNavigate();
 
@@ -49,6 +51,18 @@ export const InterviewPrepDrawer = ({
             <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Job Description Recap</h4>
             <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap max-h-40 overflow-y-auto bg-slate-50 dark:bg-slate-800 p-4 rounded-xl">
               {app.jobDescription || app.notes || 'No job description saved.'}
+            </p>
+          </section>
+
+          <section>
+            <div className="flex justify-between items-center mb-2">
+              <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400">Tailored CV</h4>
+              <button onClick={onOpenCV} className="text-xs font-bold text-emerald-600 hover:underline">
+                Open Studio
+              </button>
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-800 p-4 rounded-xl max-h-32 overflow-y-auto font-mono text-xs">
+              {app.tailoredCV || 'No tailored CV yet.'}
             </p>
           </section>
 

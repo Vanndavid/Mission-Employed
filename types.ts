@@ -63,6 +63,7 @@ export interface JobApplication {
   notes: string;
   jobDescription: string;
   coverLetter: string;
+  tailoredCV: string;
   interviewStages: InterviewStage[];
   nextAction: string;
   nextActionDue: string;
@@ -116,6 +117,7 @@ export interface AppState {
   baseCoverLetter: string;
   portfolioUrl: string;
   coverLetterTemplate: string;
+  cvTemplate: string;
   huntPersona: HuntPersonaId;
   codingHistory: CodingHistoryEntry[];
   contacts: Contact[];

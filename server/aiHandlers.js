@@ -341,6 +341,45 @@ export async function sendCoverLetterChat(sessionId, message) {
   return response.text || '';
 }
 
+export async function generateTailoredCV({ company, role, jobDescription, cv, template, portfolioUrl }) {
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.0-flash',
+    contents: `Tailor this candidate's CV for a specific job application.
+
+    Company: ${company}
+    Role: ${role}
+    Job Description: ${jobDescription}
+    Base CV: ${cv}
+    Portfolio: ${portfolioUrl || 'N/A'}
+    Tailoring instructions: ${template || 'Reorder and emphasize relevant experience. Match keywords from the JD. Keep all facts truthful — do not invent experience. One page, ATS-friendly plain text.'}
+
+    Return the full tailored CV as plain text. No placeholder brackets. Preserve contact details from the base CV.`,
+  });
+  return response.text;
+}
+
+export function createCVSession(company, role, jobDescription, currentCV) {
+  const sessionId = crypto.randomUUID();
+  const chat = ai.chats.create({
+    model: 'gemini-2.0-flash',
+    config: {
+      systemInstruction: `You help refine tailored CVs for ${role} at ${company}.
+      Job Description: ${jobDescription}
+      Current CV: ${currentCV}
+      Make targeted edits based on user feedback. Return the full revised CV. Never fabricate experience.`,
+    },
+  });
+  chatSessions.set(sessionId, chat);
+  return sessionId;
+}
+
+export async function sendCVChat(sessionId, message) {
+  const chat = chatSessions.get(sessionId);
+  if (!chat) throw new Error('Session not found');
+  const response = await chat.sendMessage({ message });
+  return response.text || '';
+}
+
 export async function generateFollowUpEmail({ company, role, contactName, daysSinceApplied, notes }) {
   const response = await ai.models.generateContent({
     model: 'gemini-2.0-flash',

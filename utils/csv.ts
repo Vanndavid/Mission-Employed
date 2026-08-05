@@ -2,7 +2,7 @@ import { JobApplication, JobStatus } from '../types';
 
 const HEADERS = [
   'company', 'role', 'location', 'url', 'status', 'dateApplied',
-  'criteriaScore', 'criteriaMet', 'notes', 'jobDescription', 'coverLetter',
+  'criteriaScore', 'criteriaMet', 'notes', 'jobDescription', 'coverLetter', 'tailoredCV',
 ] as const;
 
 function escapeCsv(value: string): string {
@@ -55,6 +55,7 @@ export function exportApplicationsCsv(applications: JobApplication[]): string {
       escapeCsv(app.notes),
       escapeCsv(app.jobDescription),
       escapeCsv(app.coverLetter),
+      escapeCsv(app.tailoredCV ?? ''),
     ].join(','));
   }
   return rows.join('\n');
@@ -89,6 +90,7 @@ export function importApplicationsCsv(csv: string): Partial<JobApplication>[] {
       notes: row.notes || '',
       jobDescription: row.jobdescription || row.jobDescription || row.notes || '',
       coverLetter: row.coverletter || row.coverLetter || '',
+      tailoredCV: row.tailoredcv || row.tailoredCV || '',
     });
   }
   return apps;
