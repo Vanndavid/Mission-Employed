@@ -6,6 +6,7 @@ import {
   createCVSession,
   sendCVChat,
 } from '../services/apiClient';
+import { A4Preview, EditPreviewToggle } from './A4Preview';
 
 interface CVStudioProps {
   app: JobApplication;
@@ -27,6 +28,7 @@ export const CVStudio = ({
   const [cv, setCv] = useState(app.tailoredCV || '');
   const [chatInput, setChatInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<'edit' | 'preview'>(app.tailoredCV ? 'preview' : 'edit');
   const sessionIdRef = useRef<string | null>(null);
 
   const handleGenerate = async () => {
@@ -45,6 +47,7 @@ export const CVStudio = ({
         portfolioUrl,
       });
       setCv(text);
+      setMode('preview');
       const { sessionId } = await createCVSession(
         app.company,
         app.role,
@@ -66,6 +69,7 @@ export const CVStudio = ({
       const revised = await sendCVChat(sessionIdRef.current, chatInput);
       setCv(revised);
       setChatInput('');
+      setMode('preview');
     } catch (e) {
       console.error(e);
     } finally {
@@ -76,12 +80,15 @@ export const CVStudio = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
       <div className="max-w-3xl w-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl max-h-[90vh] flex flex-col">
-        <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex justify-between items-start">
+        <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex justify-between items-start gap-4">
           <div>
             <h3 className="text-xl font-black">CV Studio</h3>
             <p className="text-sm text-slate-500">{app.company} — {app.role}</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-2xl">&times;</button>
+          <div className="flex items-center gap-3">
+            <EditPreviewToggle mode={mode} onChange={setMode} />
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -99,12 +106,20 @@ export const CVStudio = ({
             </p>
           )}
 
-          <textarea
-            value={cv}
-            onChange={e => setCv(e.target.value)}
-            className="w-full h-64 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-mono resize-none"
-            placeholder="Tailored CV will appear here..."
-          />
+          {mode === 'edit' ? (
+            <textarea
+              value={cv}
+              onChange={e => setCv(e.target.value)}
+              className="w-full h-64 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-mono resize-none"
+              placeholder="Tailored CV will appear here..."
+            />
+          ) : (
+            <A4Preview
+              content={cv}
+              emptyLabel="Generate or paste a CV, then switch to A4 Preview."
+              documentTitle={`CV — ${app.company} — ${app.role}`}
+            />
+          )}
 
           {cv && (
             <div className="flex gap-2">

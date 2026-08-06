@@ -6,6 +6,7 @@ import {
   createCoverLetterSession,
   sendCoverLetterChat,
 } from '../services/apiClient';
+import { A4Preview, EditPreviewToggle } from './A4Preview';
 
 interface CoverLetterStudioProps {
   app: JobApplication;
@@ -27,6 +28,7 @@ export const CoverLetterStudio = ({
   const [letter, setLetter] = useState(app.coverLetter || '');
   const [chatInput, setChatInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<'edit' | 'preview'>(app.coverLetter ? 'preview' : 'edit');
   const sessionIdRef = useRef<string | null>(null);
 
   const handleGenerate = async () => {
@@ -41,6 +43,7 @@ export const CoverLetterStudio = ({
         portfolioUrl,
       });
       setLetter(text);
+      setMode('preview');
       const { sessionId } = await createCoverLetterSession(
         app.company,
         app.role,
@@ -62,6 +65,7 @@ export const CoverLetterStudio = ({
       const revised = await sendCoverLetterChat(sessionIdRef.current, chatInput);
       setLetter(revised);
       setChatInput('');
+      setMode('preview');
     } catch (e) {
       console.error(e);
     } finally {
@@ -72,12 +76,15 @@ export const CoverLetterStudio = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
       <div className="max-w-3xl w-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl max-h-[90vh] flex flex-col">
-        <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex justify-between items-start">
+        <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex justify-between items-start gap-4">
           <div>
             <h3 className="text-xl font-black">Cover Letter Studio</h3>
             <p className="text-sm text-slate-500">{app.company} — {app.role}</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-2xl">&times;</button>
+          <div className="flex items-center gap-3">
+            <EditPreviewToggle mode={mode} onChange={setMode} />
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -89,12 +96,20 @@ export const CoverLetterStudio = ({
             {loading ? 'Generating...' : 'Generate Tailored Cover Letter'}
           </button>
 
-          <textarea
-            value={letter}
-            onChange={e => setLetter(e.target.value)}
-            className="w-full h-64 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm resize-none"
-            placeholder="Cover letter will appear here..."
-          />
+          {mode === 'edit' ? (
+            <textarea
+              value={letter}
+              onChange={e => setLetter(e.target.value)}
+              className="w-full h-64 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm resize-none"
+              placeholder="Cover letter will appear here..."
+            />
+          ) : (
+            <A4Preview
+              content={letter}
+              emptyLabel="Generate or paste a letter, then switch to A4 Preview."
+              documentTitle={`Cover Letter — ${app.company} — ${app.role}`}
+            />
+          )}
 
           {letter && (
             <div className="flex gap-2">
