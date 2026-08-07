@@ -1,17 +1,36 @@
 
 import { Criteria } from '../types';
+import { getStoredToken } from './authClient';
 
 const API_BASE = '';
 
 async function post<T>(path: string, body: unknown): Promise<T> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const token = getStoredToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+
   const res = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(err || `Request failed: ${res.status}`);
+    let message = `Request failed: ${res.status}`;
+    let code: string | undefined;
+    const raw = await res.text();
+    if (raw) {
+      try {
+        const data = JSON.parse(raw);
+        message = data.error || data.message || message;
+        code = data.code;
+      } catch {
+        message = raw;
+      }
+    }
+    const err = new Error(message) as Error & { code?: string; status?: number };
+    err.status = res.status;
+    err.code = code;
+    throw err;
   }
   return res.json();
 }

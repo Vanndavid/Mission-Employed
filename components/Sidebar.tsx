@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { MENTAL_RULES } from '../constants';
 import { EmergencyModal } from './EmergencyModal';
 import { checkHealth } from '../services/apiClient';
+import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
   theme: 'light' | 'dark';
@@ -13,6 +13,7 @@ interface SidebarProps {
 }
 
 export const Sidebar = ({ theme, toggleTheme, mobileOpen, onMobileClose }: SidebarProps) => {
+  const { user, isPremium, isAdmin, logout } = useAuth();
   const [showEmergency, setShowEmergency] = useState(false);
   const [showDosDonts, setShowDosDonts] = useState(false);
   const [aiStatus, setAiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
@@ -39,9 +40,14 @@ export const Sidebar = ({ theme, toggleTheme, mobileOpen, onMobileClose }: Sideb
     { path: '/applications/profile', label: 'CV & Profile', sub: 'Frozen Documents', icon: '📄', end: false },
     { path: '/applications/offers', label: 'Offer Tools', sub: 'Compare & Negotiate', icon: '💰', end: false },
     { path: '/prep', label: 'Training Room', sub: 'Behavioral & System Design', icon: '🧠', end: true },
-    { path: '/mock', label: 'Mock Test', sub: 'Conversational Sim', icon: '👔', end: true },
+    { path: '/mock', label: 'Mock Test', sub: isPremium ? 'Conversational Sim' : 'Premium unlock', icon: '👔', end: true },
     { path: '/rules', label: 'The Codex', sub: 'Mental Guidelines', icon: '📜', end: true },
+    { path: '/account', label: 'Account', sub: isPremium ? 'Premium plan' : 'Free plan', icon: '👤', end: true },
   ];
+
+  if (isAdmin) {
+    tabs.push({ path: '/account/admin', label: 'Admin', sub: 'Unlock plans', icon: '🔑', end: true });
+  }
 
   const navContent = (
     <>
@@ -59,7 +65,21 @@ export const Sidebar = ({ theme, toggleTheme, mobileOpen, onMobileClose }: Sideb
           <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
             AI {aiStatus === 'checking' ? 'checking...' : aiStatus}
           </span>
+          <span
+            className={`ml-auto text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
+              isPremium
+                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                : 'bg-slate-200/80 dark:bg-slate-800 text-slate-500'
+            }`}
+          >
+            {isPremium ? 'Premium' : 'Free'}
+          </span>
         </div>
+        {user && (
+          <p className="mt-2 text-[10px] text-slate-400 truncate" title={user.email}>
+            {user.email}
+          </p>
+        )}
       </div>
 
       <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
@@ -101,6 +121,15 @@ export const Sidebar = ({ theme, toggleTheme, mobileOpen, onMobileClose }: Sideb
         >
           <span>{theme === 'light' ? 'Dark Mode' : 'Light Mode'}</span>
           <span>{theme === 'light' ? '🌙' : '☀️'}</span>
+        </button>
+        <button
+          onClick={() => {
+            onMobileClose();
+            logout();
+          }}
+          className="w-full px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+        >
+          Log out
         </button>
       </div>
 
