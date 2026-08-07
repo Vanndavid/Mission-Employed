@@ -32,8 +32,12 @@ export default function App() {
   });
 
   const [state, setState] = useState<AppState>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return migrateState(JSON.parse(saved));
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) return migrateState(JSON.parse(saved));
+    } catch {
+      localStorage.removeItem(STORAGE_KEY);
+    }
     return createDefaultState();
   });
 
@@ -285,9 +289,11 @@ export default function App() {
     setState(imported);
   };
 
+  const routerBasename = import.meta.env.BASE_URL.replace(/\/$/, '') || undefined;
+
   return (
     <ToastProvider>
-    <BrowserRouter>
+    <BrowserRouter basename={routerBasename}>
       <div className="min-h-screen text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
         <Sidebar
           theme={theme}
