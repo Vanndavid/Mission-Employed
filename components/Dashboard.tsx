@@ -8,6 +8,8 @@ import { computeWeakTopics, inferTopicsFromTitle } from '../utils/codingTopics';
 import { generateCodingProblem, sendCodingChat, createCodingSession } from '../services/apiClient';
 import { HUNT_PERSONAS } from '../constants';
 import { UpcomingInterviews } from './UpcomingInterviews';
+import { useAuth } from '../contexts/AuthContext';
+import { PremiumGate } from './PremiumGate';
 
 interface Message {
   role: 'tutor' | 'student';
@@ -34,6 +36,7 @@ export const Dashboard = ({
   onCodingComplete,
 }: DashboardProps) => {
   const navigate = useNavigate();
+  const { isPremium } = useAuth();
   const today = getLocalDateString();
   const currentLog = logs[today] || { date: today, completions: {} };
 
@@ -221,6 +224,7 @@ export const Dashboard = ({
               <h3 className="text-xl font-bold flex items-center">
                 <span className="mr-2">🧩</span> Coding Tutor
               </h3>
+              {isPremium && (
               <div className="space-x-2">
                 <button
                   onClick={() => fetchProblem('easy')}
@@ -246,92 +250,101 @@ export const Dashboard = ({
                   </button>
                 )}
               </div>
+              )}
             </div>
 
-            {fetchError && (
-              <div className="mb-4 p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 rounded-lg text-xs text-rose-600 dark:text-rose-400 font-bold">
-                {fetchError}
-              </div>
-            )}
-            {loadingProblem ? (
-              <div className="flex-1 flex items-center justify-center text-slate-400 dark:text-slate-500 animate-pulse">
-                Establishing Mentor Connection...
-              </div>
-            ) : aiProblem ? (
-              <div className="flex-1 flex flex-col min-h-0">
-                <div className="mb-4 p-4 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shrink-0">
-                  <h4 className="font-bold text-emerald-600 dark:text-emerald-400 mb-1">{aiProblem.title}</h4>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">{aiProblem.description}</p>
-                </div>
-
-                <div ref={scrollRef} className="flex-1 overflow-y-auto pr-2 space-y-4 mb-4 no-scrollbar">
-                  {chatHistory.map((msg, i) => (
-                    <div key={i} className={`flex ${msg.role === 'tutor' ? 'justify-start' : 'justify-end'}`}>
-                      <div
-                        className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed ${
-                          msg.role === 'tutor'
-                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none'
-                            : 'bg-emerald-600 text-white rounded-tr-none shadow-md'
-                        }`}
-                      >
-                        <div className="whitespace-pre-wrap font-sans">{msg.text}</div>
-                      </div>
-                    </div>
-                  ))}
-                  {isTutorThinking && (
-                    <div className="flex justify-start">
-                      <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl rounded-tl-none flex space-x-1 items-center">
-                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-3 shrink-0">
-                  <textarea
-                    className="w-full h-24 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-xl focus:outline-none focus:border-emerald-500 transition-colors text-sm font-mono text-slate-800 dark:text-slate-200 resize-none"
-                    placeholder="Type your code or ask a question..."
-                    value={userMessage}
-                    onChange={e => setUserMessage(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && e.metaKey) handleSendMessage();
-                    }}
-                  />
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleSendMessage('Can you give me a small hint to move forward?')}
-                      disabled={isTutorThinking || !aiProblem}
-                      className="flex-1 py-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-sm transition-all"
-                    >
-                      💡 Request Hint
-                    </button>
-                    <button
-                      onClick={() => handleSendMessage()}
-                      disabled={isTutorThinking || !userMessage.trim()}
-                      className={`flex-[2] py-3 rounded-xl font-bold transition-all flex items-center justify-center ${
-                        isTutorThinking || !userMessage.trim()
-                          ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'
-                          : 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-600/10'
-                      }`}
-                    >
-                      Send Message
-                    </button>
-                  </div>
-                </div>
+            {!isPremium ? (
+              <div className="flex-1 flex items-center">
+                <PremiumGate title="AI coding tutor (Premium)" />
               </div>
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 text-sm italic space-y-4">
-                <div className="text-6xl grayscale opacity-20">👨‍🏫</div>
-                <p>The Tutoring Lab is ready. Initialize a mission to begin.</p>
-                <button
-                  onClick={() => fetchProblem('easy')}
-                  className="bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-600 dark:text-emerald-400 px-6 py-2 rounded-full font-bold transition-all"
-                >
-                  Start New Session
-                </button>
-              </div>
+              <>
+                {fetchError && (
+                  <div className="mb-4 p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 rounded-lg text-xs text-rose-600 dark:text-rose-400 font-bold">
+                    {fetchError}
+                  </div>
+                )}
+                {loadingProblem ? (
+                  <div className="flex-1 flex items-center justify-center text-slate-400 dark:text-slate-500 animate-pulse">
+                    Establishing Mentor Connection...
+                  </div>
+                ) : aiProblem ? (
+                  <div className="flex-1 flex flex-col min-h-0">
+                    <div className="mb-4 p-4 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shrink-0">
+                      <h4 className="font-bold text-emerald-600 dark:text-emerald-400 mb-1">{aiProblem.title}</h4>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">{aiProblem.description}</p>
+                    </div>
+
+                    <div ref={scrollRef} className="flex-1 overflow-y-auto pr-2 space-y-4 mb-4 no-scrollbar">
+                      {chatHistory.map((msg, i) => (
+                        <div key={i} className={`flex ${msg.role === 'tutor' ? 'justify-start' : 'justify-end'}`}>
+                          <div
+                            className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed ${
+                              msg.role === 'tutor'
+                                ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none'
+                                : 'bg-emerald-600 text-white rounded-tr-none shadow-md'
+                            }`}
+                          >
+                            <div className="whitespace-pre-wrap font-sans">{msg.text}</div>
+                          </div>
+                        </div>
+                      ))}
+                      {isTutorThinking && (
+                        <div className="flex justify-start">
+                          <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl rounded-tl-none flex space-x-1 items-center">
+                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-3 shrink-0">
+                      <textarea
+                        className="w-full h-24 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-xl focus:outline-none focus:border-emerald-500 transition-colors text-sm font-mono text-slate-800 dark:text-slate-200 resize-none"
+                        placeholder="Type your code or ask a question..."
+                        value={userMessage}
+                        onChange={e => setUserMessage(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && e.metaKey) handleSendMessage();
+                        }}
+                      />
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleSendMessage('Can you give me a small hint to move forward?')}
+                          disabled={isTutorThinking || !aiProblem}
+                          className="flex-1 py-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-sm transition-all"
+                        >
+                          💡 Request Hint
+                        </button>
+                        <button
+                          onClick={() => handleSendMessage()}
+                          disabled={isTutorThinking || !userMessage.trim()}
+                          className={`flex-[2] py-3 rounded-xl font-bold transition-all flex items-center justify-center ${
+                            isTutorThinking || !userMessage.trim()
+                              ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'
+                              : 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-600/10'
+                          }`}
+                        >
+                          Send Message
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 text-sm italic space-y-4">
+                    <div className="text-6xl grayscale opacity-20">👨‍🏫</div>
+                    <p>The Tutoring Lab is ready. Initialize a mission to begin.</p>
+                    <button
+                      onClick={() => fetchProblem('easy')}
+                      className="bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-600 dark:text-emerald-400 px-6 py-2 rounded-full font-bold transition-all"
+                    >
+                      Start New Session
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
 

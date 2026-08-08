@@ -17,6 +17,11 @@ import { Profile } from './components/Profile';
 import { OfferTools } from './components/OfferTools';
 import { DataManagement } from './components/DataManagement';
 import { ToastProvider } from './components/ToastProvider';
+import { AuthScreen } from './components/AuthScreen';
+import { AccountPage } from './components/AccountPage';
+import { AdminUsersPage } from './components/AdminUsersPage';
+import { PremiumGate } from './components/PremiumGate';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Contact } from './types';
 import { getLocalDateString } from './utils';
 import { resolveBehavioralTaskId } from './utils/protocolTasks';
@@ -24,7 +29,8 @@ import { resolveBehavioralTaskId } from './utils/protocolTasks';
 const STORAGE_KEY = 'mission_employed_state';
 const PERSONA_SET_KEY = 'mission_employed_persona_set';
 
-export default function App() {
+function AppShell() {
+  const { user, loading: authLoading } = useAuth();
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('theme');
     if (saved) return saved as 'light' | 'dark';
@@ -291,8 +297,19 @@ export default function App() {
 
   const routerBasename = import.meta.env.BASE_URL.replace(/\/$/, '') || undefined;
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 text-slate-500 text-sm font-bold uppercase tracking-widest">
+        Loading account…
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthScreen />;
+  }
+
   return (
-    <ToastProvider>
     <BrowserRouter basename={routerBasename}>
       <div className="min-h-screen text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
         <Sidebar
@@ -410,9 +427,15 @@ export default function App() {
               <Route path="/prep" element={<PrepRoom answers={state.behavioralAnswers} onUpdateAnswer={handleUpdateBehavioral} onBehavioralComplete={handleBehavioralComplete} />} />
               <Route
                 path="/mock"
-                element={<MockTest applications={state.applications} behavioralAnswers={state.behavioralAnswers} onSimulationComplete={handleSimulationComplete} />}
+                element={
+                  <PremiumGate title="Mock interview (Premium)">
+                    <MockTest applications={state.applications} behavioralAnswers={state.behavioralAnswers} onSimulationComplete={handleSimulationComplete} />
+                  </PremiumGate>
+                }
               />
               <Route path="/rules" element={<TheCodex />} />
+              <Route path="/account" element={<AccountPage />} />
+              <Route path="/account/admin" element={<AdminUsersPage />} />
             </Routes>
           </div>
           </main>
@@ -423,6 +446,15 @@ export default function App() {
         {showOnboarding && <PersonaOnboarding onSelect={handleSelectPersona} />}
       </div>
     </BrowserRouter>
+  );
+}
+
+export default function App() {
+  return (
+    <ToastProvider>
+      <AuthProvider>
+        <AppShell />
+      </AuthProvider>
     </ToastProvider>
   );
 }

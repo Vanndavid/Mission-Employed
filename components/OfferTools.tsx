@@ -2,6 +2,8 @@
 import React, { useState, useMemo } from 'react';
 import { JobApplication, JobStatus, OfferDetails } from '../types';
 import { generateNegotiationScript } from '../services/apiClient';
+import { useAuth } from '../contexts/AuthContext';
+import { PremiumGate } from './PremiumGate';
 
 interface OfferToolsProps {
   applications: JobApplication[];
@@ -16,6 +18,7 @@ const emptyOffer = (): OfferDetails => ({
 });
 
 export const OfferTools = ({ applications, onUpdateApplication }: OfferToolsProps) => {
+  const { isPremium } = useAuth();
   const offers = useMemo(
     () => applications.filter(a => a.status === JobStatus.OFFER || a.offer),
     [applications]
@@ -141,21 +144,29 @@ export const OfferTools = ({ applications, onUpdateApplication }: OfferToolsProp
                   </div>
 
                   <div className="flex gap-3 items-end">
-                    <div className="flex-1">
-                      <label className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">Market Context</label>
-                      <input
-                        value={marketContext}
-                        onChange={e => setMarketContext(e.target.value)}
-                        className="w-full mt-1 p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm"
-                      />
-                    </div>
-                    <button
-                      onClick={() => handleNegotiate(app)}
-                      disabled={loadingScript === app.id || !o.base}
-                      className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm disabled:opacity-50"
-                    >
-                      {loadingScript === app.id ? 'Generating...' : 'AI Negotiation Script'}
-                    </button>
+                    {isPremium ? (
+                      <>
+                        <div className="flex-1">
+                          <label className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">Market Context</label>
+                          <input
+                            value={marketContext}
+                            onChange={e => setMarketContext(e.target.value)}
+                            className="w-full mt-1 p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm"
+                          />
+                        </div>
+                        <button
+                          onClick={() => handleNegotiate(app)}
+                          disabled={loadingScript === app.id || !o.base}
+                          className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm disabled:opacity-50"
+                        >
+                          {loadingScript === app.id ? 'Generating...' : 'AI Negotiation Script'}
+                        </button>
+                      </>
+                    ) : (
+                      <div className="w-full">
+                        <PremiumGate title="AI negotiation scripts (Premium)" />
+                      </div>
+                    )}
                   </div>
 
                   {negotiationScript[app.id] && (

@@ -5,6 +5,8 @@ import { BEHAVIORAL_THEMES } from '../constants';
 import { generateBehavioralPrompt, processAudioResponse, textToSpeech } from '../services/apiClient';
 import { decodeAudioPCM, decode } from '../utils';
 import { SystemDesign } from './SystemDesign';
+import { PremiumGate } from './PremiumGate';
+import { useAuth } from '../contexts/AuthContext';
 
 interface PrepRoomProps {
   answers: BehavioralAnswer[];
@@ -15,6 +17,7 @@ interface PrepRoomProps {
 type PrepTab = 'behavioral' | 'system_design';
 
 export const PrepRoom = ({ answers, onUpdateAnswer, onBehavioralComplete }: PrepRoomProps) => {
+  const { isPremium } = useAuth();
   const [activeTab, setActiveTab] = useState<PrepTab>('behavioral');
   const [activeThemeId, setActiveThemeId] = useState(BEHAVIORAL_THEMES[0].id);
   const [currentPrompt, setCurrentPrompt] = useState('');
@@ -154,7 +157,7 @@ export const PrepRoom = ({ answers, onUpdateAnswer, onBehavioralComplete }: Prep
       </div>
 
       {activeTab === 'system_design' ? (
-        <SystemDesign />
+        isPremium ? <SystemDesign /> : <PremiumGate title="System design drills (Premium)" />
       ) : (
         <>
           <div className="flex flex-wrap justify-center gap-2">
@@ -201,6 +204,7 @@ export const PrepRoom = ({ answers, onUpdateAnswer, onBehavioralComplete }: Prep
             </div>
           </section>
 
+          {isPremium ? (
           <section className="bg-slate-100 dark:bg-slate-950 p-12 rounded-[3rem] border-4 border-dashed border-slate-200 dark:border-slate-800 text-center space-y-10 min-h-[500px] flex flex-col items-center justify-center">
             {!currentPrompt && !isProcessing && (
               <button onClick={handleFetchChallenge} className="px-12 py-6 bg-emerald-600 text-white rounded-3xl font-black uppercase tracking-widest shadow-2xl hover:scale-105 transition-all text-xl">
@@ -251,6 +255,9 @@ export const PrepRoom = ({ answers, onUpdateAnswer, onBehavioralComplete }: Prep
               </div>
             )}
           </section>
+          ) : (
+            <PremiumGate title="Behavioral AI coach (Premium)" />
+          )}
         </>
       )}
     </div>

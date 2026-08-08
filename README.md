@@ -24,7 +24,10 @@ cd server && npm install && cd ..
 
 ```bash
 cp .env.example server/.env
-# Edit server/.env and set GEMINI_API_KEY
+# Edit server/.env and set:
+#   GEMINI_API_KEY
+#   AUTH_SECRET (long random string)
+#   ADMIN_EMAIL / ADMIN_PASSWORD (bootstrap admin account)
 ```
 
 ### 3. Run development
@@ -41,7 +44,7 @@ Terminal 2 — Frontend:
 npm run dev
 ```
 
-Open `http://localhost:5173`. The sidebar shows **AI online** when the backend is reachable.
+Open `http://localhost:5173` (or the Vite port shown). Sign up for a **Free** account, or log in with the bootstrap admin. The sidebar shows **AI online** when the backend is reachable.
 
 ### 4. Production build
 
@@ -49,6 +52,20 @@ Open `http://localhost:5173`. The sidebar shows **AI online** when the backend i
 npm run build
 npm run preview
 ```
+
+---
+
+## Accounts & Premium
+
+| Plan | Access |
+|------|--------|
+| **Free** | Full hunt system (pipeline, protocol, contacts, analytics, docs). AI coaching locked. |
+| **Premium** | Unlocks all `/ai/*` coaching (coding tutor, mock interview, job scan, letters, etc.). |
+| **Admin** | Always Premium. Can open **Admin → Manage plans** and set any user to Free/Premium. |
+
+New signups are Free. Payment is not wired yet — an admin flips plan status. Users are stored in `server/data/users.json` (gitignored). Hunt data remains in browser `localStorage`.
+
+Auth endpoints: `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`, `GET /api/admin/users`, `PATCH /api/admin/users/:id/plan`.
 
 ---
 
@@ -124,7 +141,7 @@ React 19 + Vite 6 + TypeScript
 └── server/         Express + Gemini handlers
 ```
 
-Local-first. No auth. No database. Your data stays in your browser until you export it.
+Local-first hunt data in the browser. Accounts (Free / Premium) live on the Express server; admins unlock Premium until payments are added.
 
 ---
 
