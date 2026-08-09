@@ -24,10 +24,10 @@ export function AuthScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-8">
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-8 backdrop-blur">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-emerald-600 dark:text-emerald-500 tracking-tight">
+          <h1 className="text-2xl font-bold text-brand-600 dark:text-brand-500 tracking-tight">
             ONE PARTNER
           </h1>
           <p className="text-xs text-slate-500 uppercase tracking-widest font-semibold mt-1">
@@ -44,7 +44,7 @@ export function AuthScreen() {
             onClick={() => setMode('login')}
             className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest ${
               mode === 'login'
-                ? 'bg-emerald-600 text-white'
+                ? 'bg-brand-600 text-white'
                 : 'bg-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
             }`}
           >
@@ -55,7 +55,7 @@ export function AuthScreen() {
             onClick={() => setMode('register')}
             className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest ${
               mode === 'register'
-                ? 'bg-emerald-600 text-white'
+                ? 'bg-brand-600 text-white'
                 : 'bg-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
             }`}
           >
@@ -97,7 +97,7 @@ export function AuthScreen() {
           <button
             type="submit"
             disabled={busy}
-            className="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white text-sm font-bold uppercase tracking-widest"
+            className="w-full py-2.5 rounded-lg bg-brand-600 hover:bg-brand-500 disabled:opacity-60 text-white text-sm font-bold uppercase tracking-widest"
           >
             {busy ? 'Please wait…' : mode === 'login' ? 'Log in' : 'Create free account'}
           </button>

@@ -87,7 +87,7 @@ export const SystemDesign = () => {
             onClick={() => { setTopicId(t.id); setSessionId(null); setMessages([]); setEvaluation(''); }}
             className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border-2 transition-all ${
               topicId === t.id
-                ? 'bg-emerald-600 text-white border-emerald-600'
+                ? 'bg-brand-600 text-white border-brand-600'
                 : 'bg-white dark:bg-slate-800 text-slate-400 border-slate-200'
             }`}
           >
@@ -101,7 +101,7 @@ export const SystemDesign = () => {
           <button
             onClick={startSession}
             disabled={loading}
-            className="px-12 py-6 bg-emerald-600 text-white rounded-3xl font-black uppercase tracking-widest shadow-2xl hover:scale-105 transition-all"
+            className="px-12 py-6 bg-brand-600 text-white rounded-3xl font-black uppercase tracking-widest shadow-2xl hover:scale-105 transition-all"
           >
             {loading ? 'Loading...' : `Start ${topic.label} Session`}
           </button>
@@ -109,7 +109,7 @@ export const SystemDesign = () => {
       ) : (
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-700 flex flex-col h-[600px]">
           <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-            <h3 className="font-black text-emerald-600 uppercase tracking-widest text-sm">{topic.label}</h3>
+            <h3 className="font-black text-brand-600 uppercase tracking-widest text-sm">{topic.label}</h3>
             {prompt && <p className="text-xs text-slate-500 mt-1 line-clamp-2">{prompt}</p>}
           </div>
 
@@ -119,7 +119,7 @@ export const SystemDesign = () => {
                 <div className={`max-w-[85%] p-4 rounded-2xl text-sm ${
                   m.role === 'mentor'
                     ? 'bg-slate-100 dark:bg-slate-800 rounded-tl-none'
-                    : 'bg-emerald-600 text-white rounded-tr-none'
+                    : 'bg-brand-600 text-white rounded-tr-none'
                 }`}>
                   <div className="whitespace-pre-wrap">{m.text}</div>
                 </div>
@@ -131,8 +131,8 @@ export const SystemDesign = () => {
           </div>
 
           {evaluation && (
-            <div className="mx-4 mb-4 p-4 bg-slate-900 text-emerald-50 rounded-xl text-sm whitespace-pre-wrap max-h-48 overflow-y-auto">
-              <h4 className="text-xs font-black text-emerald-400 uppercase tracking-widest mb-2">Design Evaluation</h4>
+            <div className="mx-4 mb-4 p-4 bg-slate-900 text-brand-50 rounded-xl text-sm whitespace-pre-wrap max-h-48 overflow-y-auto">
+              <h4 className="text-xs font-black text-brand-400 uppercase tracking-widest mb-2">Design Evaluation</h4>
               {evaluation}
             </div>
           )}
@@ -149,7 +149,7 @@ export const SystemDesign = () => {
               <button
                 onClick={() => handleSend()}
                 disabled={loading || !userInput.trim()}
-                className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm disabled:opacity-50"
+                className="flex-1 py-3 bg-brand-600 text-white rounded-xl font-bold text-sm disabled:opacity-50"
               >
                 Send
               </button>

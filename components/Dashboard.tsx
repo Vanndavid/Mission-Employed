@@ -163,7 +163,7 @@ export const Dashboard = ({
         <div className="flex flex-wrap items-center gap-3">
           <div className={`px-4 py-2 rounded-xl border text-sm font-bold ${
             appsMetTarget
-              ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-300 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400'
+              ? 'bg-brand-50 dark:bg-brand-500/10 border-brand-300 dark:border-brand-500/30 text-brand-700 dark:text-brand-400'
               : 'bg-amber-50 dark:bg-amber-500/10 border-amber-300 dark:border-amber-500/30 text-amber-700 dark:text-amber-400'
           }`}>
             📁 {appsToday}/{persona.appsPerDay} apps today
@@ -174,7 +174,7 @@ export const Dashboard = ({
           {firstIncomplete && (
             <button
               onClick={continueProtocol}
-              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black uppercase tracking-widest text-sm shadow-lg shadow-emerald-600/20 transition-all"
+              className="px-6 py-3 bg-brand-600 hover:bg-brand-500 text-white rounded-xl font-black uppercase tracking-widest text-sm shadow-lg shadow-brand-600/20 transition-all"
             >
               Continue Protocol →
             </button>
@@ -192,17 +192,17 @@ export const Dashboard = ({
               ref={el => { taskRefs.current[task.id] = el; }}
               onClick={() => onToggleTask(today, task.id)}
               className={`p-6 rounded-2xl border-2 cursor-pointer transition-all ${
-                isHighlighted ? 'ring-4 ring-emerald-400 ring-offset-2' : ''
+                isHighlighted ? 'ring-4 ring-brand-400 ring-offset-2' : ''
               } ${
                 isDone
-                  ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500/50 shadow-lg shadow-emerald-500/5'
+                  ? 'bg-brand-50 dark:bg-brand-500/10 border-brand-500/50 shadow-lg shadow-brand-500/5'
                   : 'bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-500 shadow-sm'
               }`}
             >
               <div className="flex justify-between items-start mb-4">
                 <span
                   className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                    isDone ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 dark:border-slate-600'
+                    isDone ? 'bg-brand-500 border-brand-500' : 'border-slate-300 dark:border-slate-600'
                   }`}
                 >
                   {isDone && <span className="text-white text-xs">✓</span>}
@@ -235,7 +235,7 @@ export const Dashboard = ({
                 </button>
                 <button
                   onClick={() => fetchProblem('medium')}
-                  className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold transition-colors"
+                  className="px-3 py-1 bg-brand-600 hover:bg-brand-500 text-white rounded text-xs font-bold transition-colors"
                   disabled={loadingProblem}
                 >
                   New Medium
@@ -271,7 +271,7 @@ export const Dashboard = ({
                 ) : aiProblem ? (
                   <div className="flex-1 flex flex-col min-h-0">
                     <div className="mb-4 p-4 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shrink-0">
-                      <h4 className="font-bold text-emerald-600 dark:text-emerald-400 mb-1">{aiProblem.title}</h4>
+                      <h4 className="font-bold text-brand-600 dark:text-brand-400 mb-1">{aiProblem.title}</h4>
                       <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">{aiProblem.description}</p>
                     </div>
 
@@ -282,7 +282,7 @@ export const Dashboard = ({
                             className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed ${
                               msg.role === 'tutor'
                                 ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none'
-                                : 'bg-emerald-600 text-white rounded-tr-none shadow-md'
+                                : 'bg-brand-600 text-white rounded-tr-none shadow-md'
                             }`}
                           >
                             <div className="whitespace-pre-wrap font-sans">{msg.text}</div>
@@ -292,9 +292,9 @@ export const Dashboard = ({
                       {isTutorThinking && (
                         <div className="flex justify-start">
                           <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl rounded-tl-none flex space-x-1 items-center">
-                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                            <div className="w-1.5 h-1.5 bg-brand-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                            <div className="w-1.5 h-1.5 bg-brand-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                            <div className="w-1.5 h-1.5 bg-brand-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                           </div>
                         </div>
                       )}
@@ -302,7 +302,7 @@ export const Dashboard = ({
 
                     <div className="space-y-3 shrink-0">
                       <textarea
-                        className="w-full h-24 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-xl focus:outline-none focus:border-emerald-500 transition-colors text-sm font-mono text-slate-800 dark:text-slate-200 resize-none"
+                        className="w-full h-24 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-xl focus:outline-none focus:border-brand-500 transition-colors text-sm font-mono text-slate-800 dark:text-slate-200 resize-none"
                         placeholder="Type your code or ask a question..."
                         value={userMessage}
                         onChange={e => setUserMessage(e.target.value)}
@@ -324,7 +324,7 @@ export const Dashboard = ({
                           className={`flex-[2] py-3 rounded-xl font-bold transition-all flex items-center justify-center ${
                             isTutorThinking || !userMessage.trim()
                               ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'
-                              : 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-600/10'
+                              : 'bg-brand-600 text-white hover:bg-brand-500 shadow-lg shadow-brand-600/10'
                           }`}
                         >
                           Send Message
@@ -338,7 +338,7 @@ export const Dashboard = ({
                     <p>The Tutoring Lab is ready. Initialize a mission to begin.</p>
                     <button
                       onClick={() => fetchProblem('easy')}
-                      className="bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-600 dark:text-emerald-400 px-6 py-2 rounded-full font-bold transition-all"
+                      className="bg-brand-600/10 hover:bg-brand-600/20 text-brand-600 dark:text-brand-400 px-6 py-2 rounded-full font-bold transition-all"
                     >
                       Start New Session
                     </button>
@@ -363,7 +363,7 @@ export const Dashboard = ({
                     <div
                       className={`aspect-square rounded-lg border flex flex-col items-center justify-center transition-all ${
                         isComplete
-                          ? 'bg-emerald-100 dark:bg-emerald-500/20 border-emerald-300 dark:border-emerald-500/40'
+                          ? 'bg-brand-100 dark:bg-brand-500/20 border-brand-300 dark:border-brand-500/40'
                           : 'bg-slate-50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-800'
                       }`}
                     >
@@ -374,7 +374,7 @@ export const Dashboard = ({
                           <div
                             key={task.id}
                             className={`w-1.5 h-1.5 rounded-full ${
-                              log?.completions[task.id] ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'
+                              log?.completions[task.id] ? 'bg-brand-500' : 'bg-slate-300 dark:bg-slate-700'
                             }`}
                           />
                         ))}
@@ -423,7 +423,7 @@ export const Dashboard = ({
                       <p className="font-bold text-slate-800 dark:text-slate-200">{entry.title}</p>
                       <p className="text-[10px] text-slate-400 uppercase">{entry.difficulty} · {entry.topics.join(', ') || 'General'}</p>
                     </div>
-                    <span className={`text-xs font-bold ${entry.completed ? 'text-emerald-600' : 'text-slate-400'}`}>
+                    <span className={`text-xs font-bold ${entry.completed ? 'text-brand-600' : 'text-slate-400'}`}>
                       {entry.completed ? '✓' : '—'}
                     </span>
                   </div>
@@ -449,7 +449,7 @@ export const Dashboard = ({
                     fill="transparent"
                     strokeDasharray="565.48"
                     strokeDashoffset={565.48 - (protocolPct / 100) * 565.48}
-                    className="text-emerald-500 transition-all duration-700 ease-out"
+                    className="text-brand-500 transition-all duration-700 ease-out"
                     strokeLinecap="round"
                   />
                 </svg>
@@ -463,7 +463,7 @@ export const Dashboard = ({
             </div>
             <div className="border-t border-slate-100 dark:border-slate-800 pt-4 mt-2 text-center">
               <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">Streak</p>
-              <p className="text-2xl font-black text-emerald-600">{streakData} days</p>
+              <p className="text-2xl font-black text-brand-600">{streakData} days</p>
             </div>
           </div>
         </div>

@@ -1,27 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { MENTAL_RULES } from '../constants';
 import { EmergencyModal } from './EmergencyModal';
 import { checkHealth } from '../services/apiClient';
 import { useAuth } from '../contexts/AuthContext';
+import {
+  ColorMode,
+  ThemePalette,
+  THEME_PALETTE_IDS,
+  THEME_PALETTES,
+} from '../themes';
 
 interface SidebarProps {
-  theme: 'light' | 'dark';
-  toggleTheme: () => void;
+  mode: ColorMode;
+  palette: ThemePalette;
+  onModeChange: (mode: ColorMode) => void;
+  onPaletteChange: (palette: ThemePalette) => void;
   mobileOpen: boolean;
   onMobileClose: () => void;
 }
 
-export const Sidebar = ({ theme, toggleTheme, mobileOpen, onMobileClose }: SidebarProps) => {
+export const Sidebar = ({
+  mode,
+  palette,
+  onModeChange,
+  onPaletteChange,
+  mobileOpen,
+  onMobileClose,
+}: SidebarProps) => {
   const { user, isPremium, isAdmin, logout } = useAuth();
   const [showEmergency, setShowEmergency] = useState(false);
-  const [showDosDonts, setShowDosDonts] = useState(false);
   const [aiStatus, setAiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
-
-  const dayOfYear = Math.floor(
-    (Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24)
-  );
-  const manifestoRule = MENTAL_RULES.manifesto[dayOfYear % MENTAL_RULES.manifesto.length];
 
   useEffect(() => {
     let cancelled = false;
@@ -52,14 +60,14 @@ export const Sidebar = ({ theme, toggleTheme, mobileOpen, onMobileClose }: Sideb
   const navContent = (
     <>
       <div className="p-6">
-        <h1 className="text-xl font-bold text-emerald-600 dark:text-emerald-500 tracking-tight">ONE PARTNER</h1>
+        <h1 className="text-xl font-bold text-brand-600 dark:text-brand-500 tracking-tight">ONE PARTNER</h1>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-widest font-semibold">
           Mission: Employed
         </p>
         <div className="mt-3 flex items-center gap-2">
           <span
             className={`w-2 h-2 rounded-full ${
-              aiStatus === 'online' ? 'bg-emerald-500' : aiStatus === 'offline' ? 'bg-rose-500' : 'bg-amber-400 animate-pulse'
+              aiStatus === 'online' ? 'bg-brand-500' : aiStatus === 'offline' ? 'bg-rose-500' : 'bg-amber-400 animate-pulse'
             }`}
           />
           <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
@@ -68,7 +76,7 @@ export const Sidebar = ({ theme, toggleTheme, mobileOpen, onMobileClose }: Sideb
           <span
             className={`ml-auto text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
               isPremium
-                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                ? 'bg-brand-500/15 text-brand-600 dark:text-brand-400'
                 : 'bg-slate-200/80 dark:bg-slate-800 text-slate-500'
             }`}
           >
@@ -92,7 +100,7 @@ export const Sidebar = ({ theme, toggleTheme, mobileOpen, onMobileClose }: Sideb
             className={({ isActive }) =>
               `w-full flex flex-col items-start px-4 py-3 rounded-lg transition-colors border ${
                 isActive
-                  ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20 shadow-sm'
+                  ? 'bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 border-brand-200 dark:border-brand-500/20 shadow-sm'
                   : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 border-transparent'
               }`
             }
@@ -108,20 +116,71 @@ export const Sidebar = ({ theme, toggleTheme, mobileOpen, onMobileClose }: Sideb
         ))}
       </nav>
 
-      <div className="px-4 py-2 space-y-2">
+      <div className="px-4 py-2 space-y-3">
         <button
           onClick={() => setShowEmergency(true)}
           className="w-full py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-lg border border-rose-500/30 text-xs font-black uppercase tracking-widest transition-all"
         >
           🆘 Emergency Protocol
         </button>
-        <button
-          onClick={toggleTheme}
-          className="w-full flex items-center justify-between px-4 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all"
-        >
-          <span>{theme === 'light' ? 'Dark Mode' : 'Light Mode'}</span>
-          <span>{theme === 'light' ? '🌙' : '☀️'}</span>
-        </button>
+
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-900/60 p-3 space-y-3">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Theme</p>
+            <div className="grid grid-cols-4 gap-2">
+              {THEME_PALETTE_IDS.map(id => {
+                const cfg = THEME_PALETTES[id];
+                const selected = palette === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    title={`${cfg.label} — ${cfg.description}`}
+                    onClick={() => onPaletteChange(id)}
+                    className={`flex flex-col items-center gap-1 rounded-lg p-1.5 border transition-all ${
+                      selected
+                        ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10'
+                        : 'border-transparent hover:border-slate-200 dark:hover:border-slate-600'
+                    }`}
+                  >
+                    <span
+                      className="w-6 h-6 rounded-full border border-black/10 shadow-sm"
+                      style={{ backgroundColor: cfg.swatch }}
+                    />
+                    <span className="text-[9px] font-bold uppercase tracking-wide text-slate-500">
+                      {cfg.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="flex rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
+            <button
+              type="button"
+              onClick={() => onModeChange('light')}
+              className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-widest ${
+                mode === 'light'
+                  ? 'bg-brand-600 text-white'
+                  : 'bg-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
+              }`}
+            >
+              Light
+            </button>
+            <button
+              type="button"
+              onClick={() => onModeChange('dark')}
+              className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-widest ${
+                mode === 'dark'
+                  ? 'bg-brand-600 text-white'
+                  : 'bg-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
+              }`}
+            >
+              Dark
+            </button>
+          </div>
+        </div>
+
         <button
           onClick={() => {
             onMobileClose();
@@ -131,30 +190,6 @@ export const Sidebar = ({ theme, toggleTheme, mobileOpen, onMobileClose }: Sideb
         >
           Log out
         </button>
-      </div>
-
-      <div className="p-4 bg-slate-50 dark:bg-slate-800/50 m-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
-        <div>
-          <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Today's Rule</h3>
-          <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{manifestoRule.title}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{manifestoRule.body}</p>
-        </div>
-        <button
-          onClick={() => setShowDosDonts(!showDosDonts)}
-          className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400"
-        >
-          {showDosDonts ? 'Hide' : 'Show'} Dos / Don'ts
-        </button>
-        {showDosDonts && (
-          <div className="space-y-2 text-[10px]">
-            {MENTAL_RULES.dos.slice(0, 3).map((d, i) => (
-              <p key={i} className="text-emerald-700 dark:text-emerald-400">✓ {d}</p>
-            ))}
-            {MENTAL_RULES.donts.slice(0, 2).map((d, i) => (
-              <p key={i} className="text-rose-600 dark:text-rose-400">✗ {d}</p>
-            ))}
-          </div>
-        )}
       </div>
     </>
   );
@@ -170,7 +205,7 @@ export const Sidebar = ({ theme, toggleTheme, mobileOpen, onMobileClose }: Sideb
       )}
 
       <div
-        className={`w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col h-screen fixed left-0 top-0 z-50 transition-transform duration-200 lg:translate-x-0 ${
+        className={`w-64 bg-white/90 dark:bg-slate-900/95 backdrop-blur border-r border-slate-200 dark:border-slate-800 flex flex-col h-screen fixed left-0 top-0 z-50 transition-transform duration-200 lg:translate-x-0 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -198,7 +233,7 @@ export const MobileHeader = ({
       </svg>
     </button>
     <div className="text-center">
-      <p className="text-sm font-bold text-emerald-600">ONE PARTNER</p>
+      <p className="text-sm font-bold text-brand-600">ONE PARTNER</p>
       <p className="text-[9px] uppercase tracking-widest text-slate-400">Mission: Employed</p>
     </div>
     <div className="w-10" />

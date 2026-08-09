@@ -37,7 +37,7 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
               t.type === 'error'
                 ? 'bg-rose-600 text-white'
                 : t.type === 'success'
-                  ? 'bg-emerald-600 text-white'
+                  ? 'bg-brand-600 text-white'
                   : 'bg-slate-800 text-white'
             }`}
           >

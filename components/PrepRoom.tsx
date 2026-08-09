@@ -147,7 +147,7 @@ export const PrepRoom = ({ answers, onUpdateAnswer, onBehavioralComplete }: Prep
             onClick={() => setActiveTab(id)}
             className={`px-8 py-3 rounded-xl font-black uppercase tracking-widest text-sm border-2 transition-all ${
               activeTab === id
-                ? 'bg-emerald-600 text-white border-emerald-600'
+                ? 'bg-brand-600 text-white border-brand-600'
                 : 'bg-white dark:bg-slate-800 text-slate-400 border-slate-200'
             }`}
           >
@@ -166,7 +166,7 @@ export const PrepRoom = ({ answers, onUpdateAnswer, onBehavioralComplete }: Prep
                 key={theme.id}
                 onClick={() => { setActiveThemeId(theme.id); reset(); }}
                 className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border-2 ${
-                  activeThemeId === theme.id ? 'bg-emerald-600 text-white border-emerald-600 shadow-xl scale-105' : 'bg-white dark:bg-slate-800 text-slate-400 border-slate-200'
+                  activeThemeId === theme.id ? 'bg-brand-600 text-white border-brand-600 shadow-xl scale-105' : 'bg-white dark:bg-slate-800 text-slate-400 border-slate-200'
                 }`}
               >
                 {theme.label}
@@ -175,7 +175,7 @@ export const PrepRoom = ({ answers, onUpdateAnswer, onBehavioralComplete }: Prep
           </div>
 
           <section className="bg-white dark:bg-slate-900 p-8 rounded-[2rem] border border-slate-200 shadow-sm">
-            <h3 className="text-xs font-black text-emerald-600 uppercase tracking-[0.2em] mb-6">
+            <h3 className="text-xs font-black text-brand-600 uppercase tracking-[0.2em] mb-6">
               Fact Database: {activeTheme.label}
               {themeFacts.length > 0 && (
                 <span className="ml-2 text-slate-400">({themeFacts.length} facts → sent to AI evaluator)</span>
@@ -197,7 +197,7 @@ export const PrepRoom = ({ answers, onUpdateAnswer, onBehavioralComplete }: Prep
               ))}
               <button
                 onClick={() => onUpdateAnswer(activeThemeId, [...activeAnswer.bullets, ''])}
-                className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-1 hover:underline"
+                className="text-[10px] font-black text-brand-600 uppercase tracking-widest ml-1 hover:underline"
               >
                 + Add Fact Entry
               </button>
@@ -207,20 +207,20 @@ export const PrepRoom = ({ answers, onUpdateAnswer, onBehavioralComplete }: Prep
           {isPremium ? (
           <section className="bg-slate-100 dark:bg-slate-950 p-12 rounded-[3rem] border-4 border-dashed border-slate-200 dark:border-slate-800 text-center space-y-10 min-h-[500px] flex flex-col items-center justify-center">
             {!currentPrompt && !isProcessing && (
-              <button onClick={handleFetchChallenge} className="px-12 py-6 bg-emerald-600 text-white rounded-3xl font-black uppercase tracking-widest shadow-2xl hover:scale-105 transition-all text-xl">
+              <button onClick={handleFetchChallenge} className="px-12 py-6 bg-brand-600 text-white rounded-3xl font-black uppercase tracking-widest shadow-2xl hover:scale-105 transition-all text-xl">
                 Generate Challenge Question
               </button>
             )}
             {isProcessing && (
               <div className="flex flex-col items-center space-y-6">
-                <div className="w-16 h-16 border-8 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-                <p className="text-xl font-black text-emerald-600 uppercase italic">AI Recruiter is Processing...</p>
+                <div className="w-16 h-16 border-8 border-brand-500 border-t-transparent rounded-full animate-spin" />
+                <p className="text-xl font-black text-brand-600 uppercase italic">AI Recruiter is Processing...</p>
               </div>
             )}
             {currentPrompt && !isProcessing && !feedback && (
               <div className="w-full space-y-12">
-                <div className="bg-white dark:bg-slate-900 p-10 rounded-3xl border border-emerald-500/20 shadow-xl max-w-2xl mx-auto">
-                  <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest block mb-4">Interviewer Input:</span>
+                <div className="bg-white dark:bg-slate-900 p-10 rounded-3xl border border-brand-500/20 shadow-xl max-w-2xl mx-auto">
+                  <span className="text-[10px] font-black text-brand-500 uppercase tracking-widest block mb-4">Interviewer Input:</span>
                   <p className="text-2xl font-bold text-slate-800 dark:text-slate-100 italic leading-snug">"{currentPrompt}"</p>
                 </div>
                 <div className="flex flex-col items-center space-y-6">
@@ -229,7 +229,7 @@ export const PrepRoom = ({ answers, onUpdateAnswer, onBehavioralComplete }: Prep
                       DONE (STOP RECORDING)
                     </button>
                   ) : (
-                    <button onClick={startRecording} disabled={isSpeaking} className={`w-72 py-8 rounded-[2rem] font-black uppercase text-xl ${isSpeaking ? 'bg-slate-200 text-slate-400' : 'bg-emerald-600 text-white hover:bg-emerald-500'}`}>
+                    <button onClick={startRecording} disabled={isSpeaking} className={`w-72 py-8 rounded-[2rem] font-black uppercase text-xl ${isSpeaking ? 'bg-slate-200 text-slate-400' : 'bg-brand-600 text-white hover:bg-brand-500'}`}>
                       {isSpeaking ? 'LISTENING...' : 'RECORD ANSWER'}
                     </button>
                   )}
@@ -244,8 +244,8 @@ export const PrepRoom = ({ answers, onUpdateAnswer, onBehavioralComplete }: Prep
                     <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b pb-2 mb-4">Your Transcription</h4>
                     <p className="text-slate-700 dark:text-slate-300 italic text-sm whitespace-pre-wrap">{transcript || 'No audio detected.'}</p>
                   </div>
-                  <div className="bg-emerald-900 text-emerald-50 p-8 rounded-3xl shadow-2xl">
-                    <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest border-b border-emerald-800 pb-2 mb-4">Executive Assessment</h4>
+                  <div className="bg-brand-900 text-brand-50 p-8 rounded-3xl shadow-2xl">
+                    <h4 className="text-[10px] font-black text-brand-400 uppercase tracking-widest border-b border-brand-800 pb-2 mb-4">Executive Assessment</h4>
                     <div className="text-sm whitespace-pre-wrap">{feedback}</div>
                   </div>
                 </div>

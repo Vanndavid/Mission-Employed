@@ -176,22 +176,22 @@ export const MockTest = ({ applications, behavioralAnswers, onSimulationComplete
 
       {!sessionActive && !sessionReport ? (
         <div className="flex-1 flex flex-col items-center justify-center bg-white dark:bg-slate-900 rounded-[3rem] border-4 border-dashed border-slate-200 dark:border-slate-800 p-10">
-          <div className="w-24 h-24 bg-emerald-600 rounded-full flex items-center justify-center text-4xl mb-8">👔</div>
+          <div className="w-24 h-24 bg-brand-600 rounded-full flex items-center justify-center text-4xl mb-8">👔</div>
           <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 uppercase italic mb-4">Interview Mode</h3>
           <button
             onClick={startInterview}
-            className="px-12 py-5 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-2xl hover:scale-105 transition-all text-lg"
+            className="px-12 py-5 bg-brand-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-2xl hover:scale-105 transition-all text-lg"
           >
             Begin Session
           </button>
         </div>
       ) : sessionReport ? (
-        <div className="flex-1 bg-slate-900 text-emerald-50 rounded-[3rem] p-10 overflow-y-auto">
-          <h3 className="text-2xl font-black text-emerald-400 uppercase tracking-widest mb-6">Session Debrief</h3>
+        <div className="flex-1 bg-slate-900 text-brand-50 rounded-[3rem] p-10 overflow-y-auto">
+          <h3 className="text-2xl font-black text-brand-400 uppercase tracking-widest mb-6">Session Debrief</h3>
           <div className="whitespace-pre-wrap text-sm leading-relaxed">{sessionReport}</div>
           <button
             onClick={dismissReport}
-            className="mt-8 w-full py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-widest"
+            className="mt-8 w-full py-4 bg-brand-600 text-white rounded-2xl font-black uppercase tracking-widest"
           >
             Dismiss Report
           </button>
@@ -207,7 +207,7 @@ export const MockTest = ({ applications, behavioralAnswers, onSimulationComplete
                 <div className={`p-6 rounded-3xl max-w-[80%] text-sm leading-relaxed ${
                   turn.role === 'interviewer'
                     ? 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-tl-none'
-                    : 'bg-emerald-600 text-white rounded-tr-none'
+                    : 'bg-brand-600 text-white rounded-tr-none'
                 }`}>
                   {turn.text}
                 </div>
@@ -216,9 +216,9 @@ export const MockTest = ({ applications, behavioralAnswers, onSimulationComplete
             {isProcessing && (
               <div className="flex items-start">
                 <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl rounded-tl-none flex space-x-2 border border-slate-200 dark:border-slate-800">
-                  <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" />
-                  <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <div className="w-2 h-2 bg-brand-500 rounded-full animate-bounce" />
+                  <div className="w-2 h-2 bg-brand-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <div className="w-2 h-2 bg-brand-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                 </div>
               </div>
             )}
@@ -235,7 +235,7 @@ export const MockTest = ({ applications, behavioralAnswers, onSimulationComplete
                 className={`w-full max-w-sm py-6 rounded-2xl font-black uppercase ${
                   isInterviewerSpeaking || isProcessing
                     ? 'bg-slate-100 text-slate-300'
-                    : 'bg-emerald-600 text-white hover:bg-emerald-500'
+                    : 'bg-brand-600 text-white hover:bg-brand-500'
                 }`}
               >
                 {isInterviewerSpeaking ? 'INTERVIEWER SPEAKING...' : isProcessing ? 'PROCESSING...' : 'RECORD YOUR ANSWER'}

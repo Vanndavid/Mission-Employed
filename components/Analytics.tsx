@@ -45,9 +45,9 @@ export const Analytics = ({ state }: AnalyticsProps) => {
           <div className="flex items-end gap-2 h-32">
             {snapshot.appsPerWeek.map(w => (
               <div key={w.week} className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-xs font-bold text-emerald-600">{w.count}</span>
+                <span className="text-xs font-bold text-brand-600">{w.count}</span>
                 <div
-                  className="w-full bg-emerald-500 rounded-t transition-all"
+                  className="w-full bg-brand-500 rounded-t transition-all"
                   style={{ height: `${(w.count / maxWeekCount) * 100}%`, minHeight: w.count > 0 ? '8px' : '2px' }}
                 />
                 <span className="text-[9px] text-slate-400 truncate w-full text-center">
@@ -73,7 +73,7 @@ export const Analytics = ({ state }: AnalyticsProps) => {
               <p className="text-2xl font-black text-slate-800 dark:text-slate-100">{count}</p>
               <p className="text-xs text-slate-400 uppercase tracking-widest mt-1">{label}</p>
               {snapshot.funnel.total > 0 && (
-                <p className="text-[10px] text-emerald-600 mt-1">
+                <p className="text-[10px] text-brand-600 mt-1">
                   {Math.round((count / snapshot.funnel.total) * 100)}%
                 </p>
               )}
@@ -139,7 +139,7 @@ export const Analytics = ({ state }: AnalyticsProps) => {
 
       {snapshot.projectedPace.weeksToTarget !== null && (
         <section className="bg-slate-900 text-white rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-emerald-400 mb-2">Projected Pace</h3>
+          <h3 className="text-lg font-bold text-brand-400 mb-2">Projected Pace</h3>
           <p className="text-slate-300 text-sm">
             At {snapshot.projectedPace.appsPerWeek} apps/week, you reach 50 applications in approximately{' '}
             <span className="font-bold text-white">{snapshot.projectedPace.weeksToTarget} weeks</span>.
@@ -167,7 +167,7 @@ function RateRow({ label, value }: { label: string; value: number }) {
         <span className="font-bold">{value}%</span>
       </div>
       <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${value}%` }} />
+        <div className="h-full bg-brand-500 rounded-full" style={{ width: `${value}%` }} />
       </div>
     </div>
   );
@@ -175,7 +175,7 @@ function RateRow({ label, value }: { label: string; value: number }) {
 
 function StatusBadge({ status }: { status: JobStatus }) {
   const colors: Record<string, string> = {
-    [JobStatus.APPLIED]: 'text-emerald-600',
+    [JobStatus.APPLIED]: 'text-brand-600',
     [JobStatus.INTERVIEWING]: 'text-amber-600',
     [JobStatus.OFFER]: 'text-sky-600',
     [JobStatus.REJECTED]: 'text-slate-500',
