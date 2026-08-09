@@ -27,7 +27,7 @@ export function PremiumGate({
       </ul>
       <NavLink
         to="/account"
-        className="inline-block mt-5 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold uppercase tracking-widest"
+        className="inline-block mt-5 px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold uppercase tracking-widest"
       >
         View account plan
       </NavLink>

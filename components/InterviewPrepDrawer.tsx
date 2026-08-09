@@ -57,7 +57,7 @@ export const InterviewPrepDrawer = ({
           <section>
             <div className="flex justify-between items-center mb-2">
               <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400">Tailored CV</h4>
-              <button onClick={onOpenCV} className="text-xs font-bold text-emerald-600 hover:underline">
+              <button onClick={onOpenCV} className="text-xs font-bold text-brand-600 hover:underline">
                 Open Studio
               </button>
             </div>
@@ -69,7 +69,7 @@ export const InterviewPrepDrawer = ({
           <section>
             <div className="flex justify-between items-center mb-2">
               <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400">Cover Letter</h4>
-              <button onClick={onOpenCoverLetter} className="text-xs font-bold text-emerald-600 hover:underline">
+              <button onClick={onOpenCoverLetter} className="text-xs font-bold text-brand-600 hover:underline">
                 Open Studio
               </button>
             </div>
@@ -87,7 +87,7 @@ export const InterviewPrepDrawer = ({
                 if (bullets.length === 0) return null;
                 return (
                   <div key={a.themeId} className="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl">
-                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{theme?.label}</p>
+                    <p className="text-xs font-bold text-brand-600 dark:text-brand-400">{theme?.label}</p>
                     <ul className="text-xs text-slate-600 dark:text-slate-300 mt-1 list-disc ml-4">
                       {bullets.map((b, i) => <li key={i}>{b}</li>)}
                     </ul>
@@ -178,7 +178,7 @@ export const InterviewPrepDrawer = ({
               navigate(`/mock?appId=${app.id}`);
               onClose();
             }}
-            className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black uppercase tracking-widest transition-all"
+            className="w-full py-4 bg-brand-600 hover:bg-brand-500 text-white rounded-xl font-black uppercase tracking-widest transition-all"
           >
             Mock for {app.company}
           </button>

@@ -42,7 +42,7 @@ export const TheCodex = () => {
           The Protocol Codex
         </h2>
         <p className="text-slate-500 dark:text-slate-400 max-w-2xl mx-auto text-lg leading-relaxed">
-          The job search is not a career choice. It is a <span className="text-emerald-600 dark:text-emerald-400 font-bold uppercase">military-grade mechanical operation</span> designed to result in one outcome: Employment.
+          The job search is not a career choice. It is a <span className="text-brand-600 dark:text-brand-400 font-bold uppercase">military-grade mechanical operation</span> designed to result in one outcome: Employment.
         </p>
       </header>
 
@@ -50,7 +50,7 @@ export const TheCodex = () => {
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {MENTAL_RULES.manifesto.map((item, i) => (
           <div key={i} className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4 text-slate-100 dark:text-slate-800 font-mono text-6xl font-black -z-0 group-hover:text-emerald-500/10 transition-colors">
+            <div className="absolute top-0 right-0 p-4 text-slate-100 dark:text-slate-800 font-mono text-6xl font-black -z-0 group-hover:text-brand-500/10 transition-colors">
               0{i+1}
             </div>
             <div className="relative z-10 space-y-4">
@@ -79,14 +79,14 @@ export const TheCodex = () => {
         </section>
 
         <section className="space-y-8">
-          <div className="flex items-center space-x-4 border-b-2 border-emerald-500/20 pb-4">
+          <div className="flex items-center space-x-4 border-b-2 border-brand-500/20 pb-4">
             <span className="text-3xl">✅</span>
-            <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-500 uppercase italic tracking-tighter">Discipline Directives</h3>
+            <h3 className="text-2xl font-black text-brand-600 dark:text-brand-500 uppercase italic tracking-tighter">Discipline Directives</h3>
           </div>
           <ul className="space-y-4">
             {MENTAL_RULES.dos.map((rule, i) => (
-              <li key={i} className="flex items-center space-x-4 bg-white dark:bg-slate-900/40 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-emerald-500/30 transition-all">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <li key={i} className="flex items-center space-x-4 bg-white dark:bg-slate-900/40 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-brand-500/30 transition-all">
+                <span className="w-2 h-2 rounded-full bg-brand-500" />
                 <span className="text-slate-700 dark:text-slate-300 font-bold text-sm tracking-tight">{rule}</span>
               </li>
             ))}
@@ -96,27 +96,27 @@ export const TheCodex = () => {
 
       {/* Phase 2 Deep Dive */}
       <section className="bg-slate-900 text-white rounded-[3rem] p-12 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 blur-[100px] rounded-full -mr-32 -mt-32" />
+        <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500/10 blur-[100px] rounded-full -mr-32 -mt-32" />
         <div className="relative z-10">
-          <h3 className="text-3xl font-black mb-10 text-emerald-400 uppercase italic tracking-tighter">Phase 2: The Mechanical Grind</h3>
+          <h3 className="text-3xl font-black mb-10 text-brand-400 uppercase italic tracking-tighter">Phase 2: The Mechanical Grind</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             <div className="space-y-2">
-              <h4 className="text-emerald-500/60 font-mono text-xs font-bold uppercase tracking-widest">Daily Quota</h4>
+              <h4 className="text-brand-500/60 font-mono text-xs font-bold uppercase tracking-widest">Daily Quota</h4>
               <p className="text-2xl font-black tracking-tight">2 Applications</p>
               <p className="text-slate-400 text-xs">Consistent, non-negotiable volume.</p>
             </div>
             <div className="space-y-2">
-              <h4 className="text-emerald-500/60 font-mono text-xs font-bold uppercase tracking-widest">Documentation</h4>
+              <h4 className="text-brand-500/60 font-mono text-xs font-bold uppercase tracking-widest">Documentation</h4>
               <p className="text-2xl font-black tracking-tight">Frozen CV</p>
               <p className="text-slate-400 text-xs">Stop tweaking. Start sending.</p>
             </div>
             <div className="space-y-2">
-              <h4 className="text-emerald-500/60 font-mono text-xs font-bold uppercase tracking-widest">Target Score</h4>
+              <h4 className="text-brand-500/60 font-mono text-xs font-bold uppercase tracking-widest">Target Score</h4>
               <p className="text-2xl font-black tracking-tight">4/8 Minimum</p>
               <p className="text-slate-400 text-xs">Strict mechanical filtering only.</p>
             </div>
             <div className="space-y-2">
-              <h4 className="text-emerald-500/60 font-mono text-xs font-bold uppercase tracking-widest">Mental State</h4>
+              <h4 className="text-brand-500/60 font-mono text-xs font-bold uppercase tracking-widest">Mental State</h4>
               <p className="text-2xl font-black tracking-tight">Cold Silence</p>
               <p className="text-slate-400 text-xs">Zero post-application analysis.</p>
             </div>
@@ -137,8 +137,8 @@ export const TheCodex = () => {
           disabled={committed}
           className={`px-10 py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-xl ${
             committed 
-            ? 'bg-emerald-500 text-white cursor-default scale-95 opacity-50' 
-            : 'bg-emerald-600 text-white hover:bg-emerald-500 hover:scale-105 active:scale-95'
+            ? 'bg-brand-500 text-white cursor-default scale-95 opacity-50' 
+            : 'bg-brand-600 text-white hover:bg-brand-500 hover:scale-105 active:scale-95'
           }`}
         >
           {committed ? '✔️ Committed for Today' : '🛡️ Commit to Protocol'}

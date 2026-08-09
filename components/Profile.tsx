@@ -62,7 +62,7 @@ export const Profile = ({
             </button>
           </div>
         </div>
-        {cvFileName && <p className="text-xs text-emerald-600 font-bold">File: {cvFileName}</p>}
+        {cvFileName && <p className="text-xs text-brand-600 font-bold">File: {cvFileName}</p>}
         <textarea
           value={baseCV}
           onChange={e => onUpdate({ baseCV: e.target.value })}

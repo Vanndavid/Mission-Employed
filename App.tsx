@@ -25,17 +25,21 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Contact } from './types';
 import { getLocalDateString } from './utils';
 import { resolveBehavioralTaskId } from './utils/protocolTasks';
+import {
+  applyTheme,
+  ColorMode,
+  loadStoredMode,
+  loadStoredPalette,
+  ThemePalette,
+} from './themes';
 
 const STORAGE_KEY = 'mission_employed_state';
 const PERSONA_SET_KEY = 'mission_employed_persona_set';
 
 function AppShell() {
   const { user, loading: authLoading } = useAuth();
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    const saved = localStorage.getItem('theme');
-    if (saved) return saved as 'light' | 'dark';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  });
+  const [mode, setMode] = useState<ColorMode>(() => loadStoredMode());
+  const [palette, setPalette] = useState<ThemePalette>(() => loadStoredPalette());
 
   const [state, setState] = useState<AppState>(() => {
     try {
@@ -60,11 +64,10 @@ function AppShell() {
   }, [state]);
 
   useEffect(() => {
-    localStorage.setItem('theme', theme);
-    document.documentElement.classList.toggle('dark', theme === 'dark');
-  }, [theme]);
-
-  const toggleTheme = () => setTheme(t => (t === 'light' ? 'dark' : 'light'));
+    localStorage.setItem('theme', mode);
+    localStorage.setItem('theme_palette', palette);
+    applyTheme(palette, mode);
+  }, [mode, palette]);
 
   const handleSelectPersona = (personaId: HuntPersonaId) => {
     const persona = HUNT_PERSONAS[personaId];
@@ -313,8 +316,10 @@ function AppShell() {
     <BrowserRouter basename={routerBasename}>
       <div className="min-h-screen text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
         <Sidebar
-          theme={theme}
-          toggleTheme={toggleTheme}
+          mode={mode}
+          palette={palette}
+          onModeChange={setMode}
+          onPaletteChange={setPalette}
           mobileOpen={mobileNavOpen}
           onMobileClose={() => setMobileNavOpen(false)}
         />

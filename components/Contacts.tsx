@@ -117,7 +117,7 @@ export const Contacts = ({
             ))}
           </select>
         </div>
-        <button onClick={handleAdd} className="px-6 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm">
+        <button onClick={handleAdd} className="px-6 py-2 bg-brand-600 text-white rounded-lg font-bold text-sm">
           Add Contact
         </button>
       </section>
@@ -144,7 +144,7 @@ export const Contacts = ({
                   <input
                     value={c.email}
                     onChange={e => onUpdateContact(c.id, { email: e.target.value })}
-                    className="bg-transparent border-b border-transparent hover:border-slate-300 focus:border-emerald-500 outline-none w-full"
+                    className="bg-transparent border-b border-transparent hover:border-slate-300 focus:border-brand-500 outline-none w-full"
                   />
                 </td>
                 <td className="px-6 py-4 text-slate-500">

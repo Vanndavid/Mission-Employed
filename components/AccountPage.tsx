@@ -32,7 +32,7 @@ export function AccountPage() {
             <span
               className={
                 isPremium
-                  ? 'text-emerald-600 dark:text-emerald-400'
+                  ? 'text-brand-600 dark:text-brand-400'
                   : 'text-slate-700 dark:text-slate-200'
               }
             >
@@ -47,7 +47,7 @@ export function AccountPage() {
           <button
             type="button"
             onClick={() => void refreshUser()}
-            className="mt-3 text-[10px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400"
+            className="mt-3 text-[10px] font-bold uppercase tracking-widest text-brand-600 dark:text-brand-400"
           >
             Refresh plan status
           </button>
@@ -60,7 +60,7 @@ export function AccountPage() {
           {PREMIUM_FEATURES.map(feature => (
             <li
               key={feature}
-              className={`text-sm ${isPremium ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-500'}`}
+              className={`text-sm ${isPremium ? 'text-brand-700 dark:text-brand-400' : 'text-slate-500'}`}
             >
               {isPremium ? '✓' : '○'} {feature}
             </li>
@@ -72,7 +72,7 @@ export function AccountPage() {
         {isAdmin && (
           <NavLink
             to="/account/admin"
-            className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold uppercase tracking-widest"
+            className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold uppercase tracking-widest"
           >
             Admin · Manage plans
           </NavLink>

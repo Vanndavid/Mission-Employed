@@ -74,7 +74,7 @@ export function AdminUsersPage() {
                     <span
                       className={
                         user.plan === 'premium'
-                          ? 'text-emerald-600 dark:text-emerald-400 font-semibold'
+                          ? 'text-brand-600 dark:text-brand-400 font-semibold'
                           : 'text-slate-600 dark:text-slate-300'
                       }
                     >
@@ -98,7 +98,7 @@ export function AdminUsersPage() {
                           type="button"
                           disabled={busyId === user.id || user.plan === 'premium'}
                           onClick={() => void changePlan(user.id, 'premium')}
-                          className="px-2 py-1 rounded bg-emerald-600 text-white text-[10px] font-bold uppercase tracking-widest disabled:opacity-40"
+                          className="px-2 py-1 rounded bg-brand-600 text-white text-[10px] font-bold uppercase tracking-widest disabled:opacity-40"
                         >
                           Premium
                         </button>

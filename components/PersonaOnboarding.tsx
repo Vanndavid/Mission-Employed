@@ -26,14 +26,14 @@ export const PersonaOnboarding = ({ onSelect }: PersonaOnboardingProps) => {
               <button
                 key={id}
                 onClick={() => onSelect(id)}
-                className="text-left p-6 rounded-2xl border-2 border-slate-200 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 transition-all group"
+                className="text-left p-6 rounded-2xl border-2 border-slate-200 dark:border-slate-700 hover:border-brand-500 dark:hover:border-brand-500 transition-all group"
               >
-                <h3 className="font-black text-lg text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
+                <h3 className="font-black text-lg text-slate-800 dark:text-slate-100 group-hover:text-brand-600 dark:group-hover:text-brand-400">
                   {persona.label}
                 </h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">{persona.description}</p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="text-[10px] font-bold uppercase tracking-widest bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 px-2 py-1 rounded">
+                  <span className="text-[10px] font-bold uppercase tracking-widest bg-brand-100 dark:bg-brand-500/20 text-brand-700 dark:text-brand-400 px-2 py-1 rounded">
                     {persona.targetScore}/{persona.criteria.length} target
                   </span>
                   <span className="text-[10px] font-bold uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-1 rounded">

@@ -44,7 +44,7 @@ export const UpcomingInterviews = ({ applications, onSelectApp }: UpcomingInterv
                 className={`w-full text-left p-4 rounded-xl border transition-all ${
                   isSoon
                     ? 'border-amber-400 bg-amber-50 dark:bg-amber-500/10'
-                    : 'border-slate-200 dark:border-slate-700 hover:border-emerald-500/50'
+                    : 'border-slate-200 dark:border-slate-700 hover:border-brand-500/50'
                 }`}
               >
                 <div className="flex justify-between items-start">
@@ -53,7 +53,7 @@ export const UpcomingInterviews = ({ applications, onSelectApp }: UpcomingInterv
                     <p className="text-sm text-slate-500">{INTERVIEW_STAGE_LABELS[stage.type] ?? stage.type}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                    <p className="text-sm font-bold text-brand-600 dark:text-brand-400">
                       {d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
                     </p>
                     <p className="text-xs text-slate-400">

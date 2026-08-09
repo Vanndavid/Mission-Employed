@@ -91,7 +91,7 @@ export const CoverLetterStudio = ({
           <button
             onClick={handleGenerate}
             disabled={loading}
-            className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm disabled:opacity-50"
+            className="w-full py-3 bg-brand-600 text-white rounded-xl font-bold text-sm disabled:opacity-50"
           >
             {loading ? 'Generating...' : 'Generate Tailored Cover Letter'}
           </button>
@@ -134,7 +134,7 @@ export const CoverLetterStudio = ({
           <button
             onClick={() => { onSave(letter); onClose(); }}
             disabled={!letter.trim()}
-            className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-black uppercase tracking-widest text-sm disabled:opacity-50"
+            className="flex-1 py-3 bg-brand-600 text-white rounded-xl font-black uppercase tracking-widest text-sm disabled:opacity-50"
           >
             Save to Application
           </button>

@@ -170,7 +170,7 @@ export const OfferTools = ({ applications, onUpdateApplication }: OfferToolsProp
                   </div>
 
                   {negotiationScript[app.id] && (
-                    <pre className="p-4 bg-slate-900 text-emerald-50 rounded-xl text-sm whitespace-pre-wrap">
+                    <pre className="p-4 bg-slate-900 text-brand-50 rounded-xl text-sm whitespace-pre-wrap">
                       {negotiationScript[app.id]}
                     </pre>
                   )}

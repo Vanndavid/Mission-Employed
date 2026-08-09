@@ -73,7 +73,7 @@ export const InterviewStageEditor = ({ stages, onAdd, onRemove }: InterviewStage
         <button
           onClick={handleAdd}
           disabled={!scheduledAt}
-          className="py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold disabled:opacity-50"
+          className="py-2 bg-brand-600 text-white rounded-lg text-sm font-bold disabled:opacity-50"
         >
           Add Stage
         </button>

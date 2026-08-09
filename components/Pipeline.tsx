@@ -201,11 +201,11 @@ export const Pipeline = ({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button onClick={handleExportCsv} className="px-4 py-2 rounded-xl font-bold text-sm border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-emerald-600">
+          <button onClick={handleExportCsv} className="px-4 py-2 rounded-xl font-bold text-sm border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-brand-600">
             Export CSV
           </button>
           <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportCsv} />
-          <button onClick={() => csvInputRef.current?.click()} className="px-4 py-2 rounded-xl font-bold text-sm border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-emerald-600">
+          <button onClick={() => csvInputRef.current?.click()} className="px-4 py-2 rounded-xl font-bold text-sm border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-brand-600">
             Import CSV
           </button>
           <button
@@ -213,14 +213,14 @@ export const Pipeline = ({
             className={`px-4 py-2 rounded-xl font-bold transition-all border ${
               isConfiguring
                 ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-slate-300 dark:border-slate-600'
-                : 'text-slate-500 hover:text-emerald-600 border-slate-200 dark:border-slate-700'
+                : 'text-slate-500 hover:text-brand-600 border-slate-200 dark:border-slate-700'
             }`}
           >
             ⚙️ Protocol Settings
           </button>
           <button
             onClick={() => { setIsAdding(!isAdding); setIsConfiguring(false); }}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-xl font-bold transition-all shadow-lg shadow-emerald-600/20"
+            className="bg-brand-600 hover:bg-brand-500 text-white px-6 py-2 rounded-xl font-bold transition-all shadow-lg shadow-brand-600/20"
           >
             {isAdding ? 'Cancel' : 'Add Application'}
           </button>
@@ -262,7 +262,7 @@ export const Pipeline = ({
                 max={tempCriteria.length}
                 value={tempTarget}
                 onChange={e => setTempTarget(parseInt(e.target.value))}
-                className="w-16 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-lg font-black text-center text-emerald-600 dark:text-emerald-400"
+                className="w-16 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-lg font-black text-center text-brand-600 dark:text-brand-400"
               />
             </div>
           </div>
@@ -273,14 +273,14 @@ export const Pipeline = ({
                 <input
                   value={c.label}
                   onChange={e => updateCriteriaLabel(i, e.target.value)}
-                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-xl text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-slate-800 dark:text-slate-100"
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-xl text-sm font-medium focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-slate-800 dark:text-slate-100"
                 />
               </div>
             ))}
           </div>
           <button
             onClick={handleSaveProtocol}
-            className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-emerald-500 transition-all shadow-xl shadow-emerald-600/10"
+            className="w-full py-4 bg-brand-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-brand-500 transition-all shadow-xl shadow-brand-600/10"
           >
             Lock-in New Protocol
           </button>
@@ -330,10 +330,10 @@ export const Pipeline = ({
                 {criteria.map(c => (
                   <label
                     key={c.id}
-                    className="flex items-center p-3 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 cursor-pointer hover:border-emerald-500/50"
+                    className="flex items-center p-3 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 cursor-pointer hover:border-brand-500/50"
                   >
                     <input type="checkbox" className="hidden" checked={newApp.criteriaMet?.includes(c.id)} onChange={() => toggleCriteria(c.id)} />
-                    <div className={`w-5 h-5 rounded border-2 mr-3 flex items-center justify-center ${newApp.criteriaMet?.includes(c.id) ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 dark:border-slate-600'}`}>
+                    <div className={`w-5 h-5 rounded border-2 mr-3 flex items-center justify-center ${newApp.criteriaMet?.includes(c.id) ? 'bg-brand-500 border-brand-500' : 'border-slate-300 dark:border-slate-600'}`}>
                       {newApp.criteriaMet?.includes(c.id) && <span className="text-white text-xs">✓</span>}
                     </div>
                     <span className="text-sm text-slate-600 dark:text-slate-300">{c.label}</span>
@@ -341,7 +341,7 @@ export const Pipeline = ({
                 ))}
               </div>
               <div className="pt-4 flex items-center justify-between">
-                <span className={`text-xl font-bold ${(newApp.criteriaMet?.length ?? 0) >= targetScore ? 'text-emerald-600' : 'text-rose-500'}`}>
+                <span className={`text-xl font-bold ${(newApp.criteriaMet?.length ?? 0) >= targetScore ? 'text-brand-600' : 'text-rose-500'}`}>
                   Score: {newApp.criteriaMet?.length}/{criteria.length}
                 </span>
                 <button
@@ -349,7 +349,7 @@ export const Pipeline = ({
                   onClick={handleSubmit}
                   className={`px-8 py-3 rounded-xl font-bold ${
                     (newApp.criteriaMet?.length ?? 0) >= targetScore
-                      ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+                      ? 'bg-brand-600 text-white hover:bg-brand-500'
                       : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'
                   }`}
                 >
@@ -416,7 +416,7 @@ export const Pipeline = ({
                     )}
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`w-8 h-8 rounded-full inline-flex items-center justify-center font-bold text-xs ${app.criteriaScore >= targetScore ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                    <span className={`w-8 h-8 rounded-full inline-flex items-center justify-center font-bold text-xs ${app.criteriaScore >= targetScore ? 'bg-brand-100 text-brand-600' : 'bg-slate-100 text-slate-500'}`}>
                       {app.criteriaScore}
                     </span>
                   </td>
@@ -453,7 +453,7 @@ export const Pipeline = ({
                   <p className="text-sm text-slate-500">{app.role}</p>
                 </div>
                 <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
-                  app.criteriaScore >= targetScore ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'
+                  app.criteriaScore >= targetScore ? 'bg-brand-100 text-brand-600' : 'bg-slate-100 text-slate-500'
                 }`}>
                   {app.criteriaScore}
                 </span>
