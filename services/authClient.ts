@@ -1,4 +1,5 @@
 import { AuthUser, AccountPlan } from '../types/auth';
+import { AdminTalentRow, TalentMeResponse, TalentMetrics } from '../types/talent';
 
 const TOKEN_KEY = 'mission_employed_token';
 
@@ -72,4 +73,26 @@ export async function setUserPlan(userId: string, plan: AccountPlan) {
     method: 'PATCH',
     body: JSON.stringify({ plan }),
   });
+}
+
+export async function putTalentSnapshot(metrics: TalentMetrics) {
+  return authFetch<TalentMeResponse>('/api/talent/snapshot', {
+    method: 'PUT',
+    body: JSON.stringify({ metrics }),
+  });
+}
+
+export async function fetchTalentMe() {
+  return authFetch<TalentMeResponse>('/api/talent/me');
+}
+
+export async function setTalentVisibility(visibleToCompanies: boolean) {
+  return authFetch<TalentMeResponse>('/api/talent/visibility', {
+    method: 'PATCH',
+    body: JSON.stringify({ visibleToCompanies }),
+  });
+}
+
+export async function listAdminTalent() {
+  return authFetch<{ talents: AdminTalentRow[] }>('/api/admin/talent');
 }

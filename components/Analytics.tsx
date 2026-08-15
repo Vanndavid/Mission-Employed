@@ -1,5 +1,6 @@
 
 import React, { useMemo } from 'react';
+import { NavLink } from 'react-router-dom';
 import { AppState, TaskDefinition } from '../types';
 import { buildAnalyticsSnapshot } from '../utils/analytics';
 import { calculateStreak } from '../utils';
@@ -27,7 +28,12 @@ export const Analytics = ({ state }: AnalyticsProps) => {
     <div className="space-y-8">
       <header>
         <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-50">Hunt Command Center</h2>
-        <p className="text-slate-500 dark:text-slate-400 mt-2">Cold metrics. No narrative. Just progress.</p>
+        <p className="text-slate-500 dark:text-slate-400 mt-2">
+          Cold metrics. No narrative. Just progress.{' '}
+          <NavLink to="/talent" className="text-brand-600 dark:text-brand-400 font-semibold">
+            See your talent rank
+          </NavLink>
+        </p>
       </header>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

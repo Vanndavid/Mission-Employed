@@ -13,7 +13,7 @@ export function AccountPage() {
       <div>
         <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Account</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Plan controls which AI coaching features are unlocked.
+          Plan controls which AI coaching features are unlocked. Talent rank is separate — it scores how you hunt.
         </p>
       </div>
 
@@ -69,13 +69,27 @@ export function AccountPage() {
       </div>
 
       <div className="flex flex-wrap gap-3">
+        <NavLink
+          to="/talent"
+          className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold uppercase tracking-widest"
+        >
+          Talent rank
+        </NavLink>
         {isAdmin && (
-          <NavLink
-            to="/account/admin"
-            className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold uppercase tracking-widest"
-          >
-            Admin · Manage plans
-          </NavLink>
+          <>
+            <NavLink
+              to="/account/admin"
+              className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              Admin · Manage plans
+            </NavLink>
+            <NavLink
+              to="/account/admin/talent"
+              className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              Admin · Talent roster
+            </NavLink>
+          </>
         )}
         <button
           type="button"

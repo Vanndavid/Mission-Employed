@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { NavLink, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { AuthUser, AccountPlan } from '../types/auth';
 import { listAdminUsers, setUserPlan } from '../services/authClient';
@@ -48,7 +48,10 @@ export function AdminUsersPage() {
       <div>
         <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Admin · Plans</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Unlock Premium for any account. Payment integration can replace this later.
+          Unlock Premium for any account. Payment integration can replace this later.{' '}
+          <NavLink to="/account/admin/talent" className="text-brand-600 dark:text-brand-400 font-semibold">
+            Talent roster
+          </NavLink>
         </p>
       </div>
 

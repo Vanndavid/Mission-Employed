@@ -34,6 +34,13 @@ import {
   requirePremium,
 } from './auth.js';
 import { listUsers, publicUser, updateUserPlan } from './usersStore.js';
+import {
+  getTalentMe,
+  listAdminTalent,
+  publicSnapshot,
+  setTalentVisibility,
+  upsertTalentSnapshot,
+} from './talentStore.js';
 
 loadEnvFile();
 
@@ -82,6 +89,32 @@ app.patch('/api/admin/users/:id/plan', requireAuth, requireAdmin, (req, res) => 
   } catch (e) {
     res.status(e.status || 500).json({ error: e.message });
   }
+});
+
+app.put('/api/talent/snapshot', requireAuth, (req, res) => {
+  try {
+    const snapshot = upsertTalentSnapshot(req.user.id, req.body?.metrics ?? req.body);
+    res.json({ ...getTalentMe(req.user.id), snapshot: publicSnapshot(snapshot) });
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
+app.get('/api/talent/me', requireAuth, (req, res) => {
+  res.json(getTalentMe(req.user.id));
+});
+
+app.patch('/api/talent/visibility', requireAuth, (req, res) => {
+  try {
+    const snapshot = setTalentVisibility(req.user.id, req.body?.visibleToCompanies);
+    res.json({ ...getTalentMe(req.user.id), snapshot: publicSnapshot(snapshot) });
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
+app.get('/api/admin/talent', requireAuth, requireAdmin, (_req, res) => {
+  res.json({ talents: listAdminTalent() });
 });
 
 function asyncHandler(fn) {

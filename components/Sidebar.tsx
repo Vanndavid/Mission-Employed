@@ -42,6 +42,7 @@ export const Sidebar = ({
   const tabs = [
     { path: '/dashboard', label: 'Mission Control', sub: 'Checklist & Coding', icon: '🚀', end: true },
     { path: '/analytics', label: 'Hunt Command Center', sub: 'Analytics & Funnel', icon: '📊', end: true },
+    { path: '/talent', label: 'Talent Rank', sub: 'Score & placement', icon: '🏆', end: true },
     { path: '/applications', label: 'Pipeline', sub: 'Mechanical Applying', icon: '📁', end: true },
     { path: '/applications/criteria', label: 'Personas & Criteria', sub: 'Protocol Config', icon: '⚙️', end: false },
     { path: '/applications/contacts', label: 'Contacts', sub: 'CRM & Follow-ups', icon: '📇', end: false },
@@ -55,6 +56,7 @@ export const Sidebar = ({
 
   if (isAdmin) {
     tabs.push({ path: '/account/admin', label: 'Admin', sub: 'Unlock plans', icon: '🔑', end: true });
+    tabs.push({ path: '/account/admin/talent', label: 'Talent roster', sub: 'Ranked hunters', icon: '🎯', end: true });
   }
 
   const navContent = (
