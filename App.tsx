@@ -20,6 +20,9 @@ import { ToastProvider } from './components/ToastProvider';
 import { AuthScreen } from './components/AuthScreen';
 import { AccountPage } from './components/AccountPage';
 import { AdminUsersPage } from './components/AdminUsersPage';
+import { AdminTalentPage } from './components/AdminTalentPage';
+import { TalentRankPage } from './components/TalentRankPage';
+import { useTalentSync } from './hooks/useTalentSync';
 import { PremiumGate } from './components/PremiumGate';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Contact } from './types';
@@ -58,6 +61,7 @@ function AppShell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const dailyTasks = useMemo(() => getTasksForPersona(state.huntPersona), [state.huntPersona]);
+  const { metrics: talentMetrics, status: talentSyncStatus } = useTalentSync(state);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -346,6 +350,10 @@ function AppShell() {
               />
               <Route path="/analytics" element={<Analytics state={state} />} />
               <Route
+                path="/talent"
+                element={<TalentRankPage metrics={talentMetrics} syncStatus={talentSyncStatus} />}
+              />
+              <Route
                 path="/applications"
                 element={
                   <Pipeline
@@ -441,6 +449,7 @@ function AppShell() {
               <Route path="/rules" element={<TheCodex />} />
               <Route path="/account" element={<AccountPage />} />
               <Route path="/account/admin" element={<AdminUsersPage />} />
+              <Route path="/account/admin/talent" element={<AdminTalentPage />} />
             </Routes>
           </div>
           </main>
