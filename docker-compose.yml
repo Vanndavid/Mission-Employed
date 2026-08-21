@@ -1,0 +1,31 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: mission_employed_api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      PORT: 3001
+      # The accounts and talent stores are JSON files, so they live on a volume
+      # rather than inside the container layer.
+      USERS_FILE: /data/users.json
+      TALENT_FILE: /data/talent.json
+    volumes:
+      - api_data:/data
+
+  nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mission_employed_nginx
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "8090:80"
+
+volumes:
+  api_data:
