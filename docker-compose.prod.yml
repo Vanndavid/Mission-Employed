@@ -9,6 +9,9 @@ services:
       - default
     labels:
       - "traefik.enable=true"
+      # The container sits on both this project's default network and web;
+      # without this Traefik may pick the unreachable one and return 504.
+      - "traefik.docker.network=web"
       - "traefik.http.routers.mission-employed.rule=Host(`mission-employed.vanndavidteng.com`)"
       - "traefik.http.routers.mission-employed.entrypoints=web,websecure"
       - "traefik.http.routers.mission-employed.tls=true"
