@@ -7,6 +7,7 @@ import {
   isPremium,
   normalizeEmail,
   setUserRole,
+  setUserPassword,
 } from './usersStore.js';
 
 const TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
@@ -136,17 +137,36 @@ export function optionalAuth(req, _res, next) {
   next();
 }
 
+/**
+ * Reconcile the admin account with ADMIN_EMAIL / ADMIN_PASSWORD on every boot.
+ * The env vars are the source of truth: an existing account gets its role and
+ * password brought back in line, so changing .env and restarting always works.
+ * Returns { user, action } so the caller can log which branch ran — a silent
+ * no-op here is indistinguishable from a wrong password at the login endpoint.
+ */
 export function ensureBootstrapAdmin() {
   const email = process.env.ADMIN_EMAIL;
   const password = process.env.ADMIN_PASSWORD;
-  if (!email || !password) return null;
+  if (!email || !password) return { user: null, action: 'skipped: ADMIN_EMAIL/ADMIN_PASSWORD not set' };
+
   const existing = findUserByEmail(email);
   if (existing) {
+    const changes = [];
     if (existing.role !== 'admin') {
-      return publicUser(setUserRole(existing.id, 'admin'));
+      setUserRole(existing.id, 'admin');
+      changes.push('role');
     }
-    return publicUser(existing);
+    if (!verifyPassword(password, existing.salt, existing.passwordHash)) {
+      const { salt, passwordHash } = hashPassword(password);
+      setUserPassword(existing.id, { salt, passwordHash });
+      changes.push('password');
+    }
+    return {
+      user: publicUser(findUserById(existing.id)),
+      action: changes.length ? `updated ${changes.join(' + ')}` : 'already up to date',
+    };
   }
+
   const { salt, passwordHash } = hashPassword(password);
   const user = createUser({
     email,
@@ -155,5 +175,5 @@ export function ensureBootstrapAdmin() {
     role: 'admin',
     plan: 'premium',
   });
-  return publicUser(user);
+  return { user: publicUser(user), action: 'created' };
 }

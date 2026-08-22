@@ -113,6 +113,20 @@ export function setUserRole(userId, role) {
   return user;
 }
 
+export function setUserPassword(userId, { salt, passwordHash }) {
+  const store = readStore();
+  const user = store.users.find(u => u.id === userId);
+  if (!user) {
+    const err = new Error('User not found');
+    err.status = 404;
+    throw err;
+  }
+  user.salt = salt;
+  user.passwordHash = passwordHash;
+  writeStore(store);
+  return user;
+}
+
 export function publicUser(user) {
   if (!user) return null;
   return {
