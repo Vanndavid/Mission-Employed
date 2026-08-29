@@ -140,9 +140,13 @@ Report the real output. Then tick the 2.2 box in TASKS.md with a one-line note.
 Do not commit.
 ```
 
-### 2.3 AI endpoints
+### 2.3 AI endpoints ✅
 
-- [ ] Not started
+- [x] Done — 12 routes behind `auth:sanctum` + `premium`, every surviving
+  prompt and schema ported verbatim into `App\Services\Ai`, chat sessions in
+  `ai_sessions`/`ai_messages` replayed through `GeminiClient::chat()` with a
+  40-message window, and 41 feature tests that assert the prompt and schema
+  sent, not just the status code.
 
 ```
 Task 2.3 from TASKS.md: port the AI endpoints from Express to Laravel.
@@ -585,9 +589,12 @@ Things found in the Express code that are **not** being reproduced as-is.
 - **Chat history grows quadratically.** Every turn resends the whole transcript,
   so a long session gets expensive. Not urgent; worth a cap or a summarization
   step eventually.
-- **TTS returns raw PCM** at `audio/L16;rate=24000`, not a playable file. Whether
-  the server or the client adds the WAV header is still undecided — task 2.3 or
-  3.4 should settle it and record the answer here.
+- **TTS is wrapped server-side.** Gemini returns raw headerless PCM at
+  `audio/L16;rate=24000`. Task 2.3 settled the open question: `PcmWavEncoder`
+  prepends the 44-byte RIFF header in the API, so `POST /api/ai/tts` answers
+  `{ audio, mimeType: 'audio/wav', sampleRate: 24000 }` and task 3.4 can hand
+  `audio` straight to an `<audio src="data:audio/wav;base64,…">` with no
+  decoder on the client.
 
 ## Seeder credentials
 
