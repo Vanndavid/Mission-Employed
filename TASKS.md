@@ -87,9 +87,12 @@ Report the real output. Then tick the 2.1 box in TASKS.md with a one-line note
 of what you built. Do not commit.
 ```
 
-### 2.2 Tracker API
+### 2.2 Tracker API ✅
 
-- [ ] Not started
+- [x] Done — applications CRUD with the status event log written in one place,
+  nested interview stages, profile, coding history and behavioral answers. All
+  `auth:sanctum`, and someone else's record is a 404 rather than a 403. 40
+  feature tests.
 
 ```
 Task 2.2 from TASKS.md: build the job application tracker endpoints.
