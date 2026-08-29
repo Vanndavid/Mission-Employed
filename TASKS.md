@@ -42,9 +42,12 @@ resolved against the shell's working directory instead of the config file.*
 
 Three independent tasks. All need Wave 1.
 
-### 2.1 Auth and admin endpoints
+### 2.1 Auth and admin endpoints ✅
 
-- [ ] Not started
+- [x] Done — register/login/logout/me on Sanctum, admin user list and plan
+  switch, `premium` and `admin` middleware, 24 feature tests. Fixed a 500 on
+  registration: `User::create()` left `role` and `plan` null on the in-memory
+  model because those defaults live only in the database.
 
 ```
 Task 2.1 from TASKS.md: build the auth and admin endpoints.

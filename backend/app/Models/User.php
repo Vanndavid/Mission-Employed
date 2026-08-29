@@ -28,6 +28,20 @@ class User extends Authenticatable
      *
      * @var list<string>
      */
+    /**
+     * The users table defaults role and plan, but a database default does not
+     * reach the in-memory model until it is refreshed -- so a freshly created
+     * User had null for both, and UserResource reading $this->role->value blew
+     * up on registration. Declaring them here keeps a new instance consistent
+     * with a stored one, and keeps isPremium() honest before the first save.
+     *
+     * @var array<string, string>
+     */
+    protected $attributes = [
+        'role' => AccountRole::User->value,
+        'plan' => AccountPlan::Free->value,
+    ];
+
     protected $fillable = [
         'name',
         'email',
