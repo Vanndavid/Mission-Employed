@@ -1,6 +1,5 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -17,7 +16,7 @@ use Illuminate\Support\Facades\Route;
 // Unauthenticated smoke test — used by the frontend and by deploy checks.
 Route::get('/health', fn () => response()->json(['status' => 'ok']));
 
-// Placeholder proving the sanctum guard resolves; replaced by
-// GET /api/auth/me when the auth controllers land.
-Route::get('/user', fn (Request $request) => $request->user())
-    ->middleware('auth:sanctum');
+// Split by feature so parallel work does not collide in one file.
+require __DIR__.'/api/auth.php';
+require __DIR__.'/api/tracker.php';
+require __DIR__.'/api/ai.php';

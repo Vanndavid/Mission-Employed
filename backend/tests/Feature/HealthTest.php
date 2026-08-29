@@ -20,6 +20,6 @@ class HealthTest extends TestCase
 
     public function test_protected_api_routes_reject_requests_without_a_bearer_token(): void
     {
-        $this->getJson('/api/user')->assertUnauthorized();
+        $this->getJson('/api/auth/me')->assertUnauthorized();
     }
 }
