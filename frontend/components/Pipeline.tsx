@@ -12,11 +12,11 @@ interface PipelineProps {
   applications: JobApplication[];
   behavioralAnswers: BehavioralAnswer[];
   onAdd: (app: Partial<JobApplication>) => void;
-  onUpdateStatus: (id: string, s: JobStatus) => void;
-  onUpdateApplication: (id: string, partial: Partial<JobApplication>) => void;
-  onAddInterviewStage: (appId: string, stage: Omit<InterviewStage, 'id'>) => void;
-  onRemoveInterviewStage: (appId: string, stageId: string) => void;
-  onDelete: (id: string) => void;
+  onUpdateStatus: (id: number, s: JobStatus) => void;
+  onUpdateApplication: (id: number, partial: Partial<JobApplication>) => void;
+  onAddInterviewStage: (appId: number, stage: Omit<InterviewStage, 'id'>) => void;
+  onRemoveInterviewStage: (appId: number, stageId: number) => void;
+  onDelete: (id: number) => void;
   onBulkImport: (apps: Partial<JobApplication>[]) => void;
   baseCV: string;
   coverLetterTemplate: string;
@@ -60,7 +60,7 @@ export const Pipeline = ({
 
   useEffect(() => {
     if (prepAppId) {
-      const app = applications.find(a => a.id === prepAppId);
+      const app = applications.find(a => a.id === Number(prepAppId));
       if (app) setPrepApp(app);
     }
   }, [prepAppId, applications]);

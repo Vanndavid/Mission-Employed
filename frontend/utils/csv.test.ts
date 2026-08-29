@@ -3,7 +3,7 @@ import { exportApplicationsCsv, importApplicationsCsv } from './csv';
 import { JobApplication, JobStatus } from '../types';
 
 const sampleApp: JobApplication = {
-  id: '1',
+  id: 1,
   company: 'Acme Corp',
   role: 'Backend Engineer',
   location: 'Sydney',

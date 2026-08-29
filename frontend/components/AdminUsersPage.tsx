@@ -10,7 +10,7 @@ export function AdminUsersPage() {
   const { toast } = useToast();
   const [users, setUsers] = useState<AuthUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<number | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -30,7 +30,7 @@ export function AdminUsersPage() {
 
   if (!isAdmin) return <Navigate to="/account" replace />;
 
-  const changePlan = async (userId: string, plan: AccountPlan) => {
+  const changePlan = async (userId: number, plan: AccountPlan) => {
     setBusyId(userId);
     try {
       const res = await setUserPlan(userId, plan);

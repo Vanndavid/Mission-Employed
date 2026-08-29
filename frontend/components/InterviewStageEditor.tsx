@@ -10,7 +10,7 @@ const STAGE_TYPES: InterviewStageType[] = [
 interface InterviewStageEditorProps {
   stages: InterviewStage[];
   onAdd: (stage: Omit<InterviewStage, 'id'>) => void;
-  onRemove: (stageId: string) => void;
+  onRemove: (stageId: number) => void;
 }
 
 export const InterviewStageEditor = ({ stages, onAdd, onRemove }: InterviewStageEditorProps) => {

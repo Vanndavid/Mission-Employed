@@ -2,7 +2,7 @@ export type AccountPlan = 'free' | 'premium';
 export type AccountRole = 'user' | 'admin';
 
 export interface AuthUser {
-  id: string;
+  id: number;
   email: string;
   role: AccountRole;
   plan: AccountPlan;

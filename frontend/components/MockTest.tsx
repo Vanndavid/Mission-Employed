@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { conductInterviewTurn, textToSpeech, generateMockReport } from '../services/apiClient';
+import { conductMockTurn, createMockSession, generateMockReport, textToSpeech } from '../services/apiClient';
 import { decodeAudioPCM, decode } from '../utils';
 import { BehavioralAnswer, InterviewTurn, JobApplication } from '../types';
 
@@ -13,7 +13,7 @@ interface MockTestProps {
 export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => {
   const [searchParams] = useSearchParams();
   const appId = searchParams.get('appId');
-  const companyApp = useMemo(() => applications.find(a => a.id === appId), [applications, appId]);
+  const companyApp = useMemo(() => applications.find(a => a.id === Number(appId)), [applications, appId]);
 
   const companyContext = useMemo(() => {
     if (!companyApp) return undefined;
@@ -30,6 +30,9 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
   }, [companyApp, behavioralAnswers]);
 
   const [sessionActive, setSessionActive] = useState(false);
+  // The interview now lives in ai_sessions rather than in this component, so
+  // every turn is addressed by its server id.
+  const [sessionId, setSessionId] = useState<number | null>(null);
   const [history, setHistory] = useState<InterviewTurn[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -76,13 +79,20 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
     setIsProcessing(true);
     setHistory([]);
     try {
-      const initialPrompt = companyApp
+      const session = await createMockSession(companyContext);
+      setSessionId(session.id);
+
+      // An opening turn with no audio and no typed answer asks the model for
+      // the first question, and stores it on the session.
+      const { nextPrompt } = await conductMockTurn(session.id);
+      const initialPrompt = nextPrompt || (companyApp
         ? `Hello. Thank you for interviewing for the ${companyApp.role} position at ${companyApp.company}. To start, could you tell me about a time you dealt with a significant technical challenge relevant to this role?`
-        : 'Hello. Thank you for joining us today. To start off, could you tell me about a time you had to deal with a significant technical challenge in a professional setting?';
+        : 'Hello. Thank you for joining us today. To start off, could you tell me about a time you had to deal with a significant technical challenge in a professional setting?');
       setHistory([{ role: 'interviewer', text: initialPrompt }]);
       await speak(initialPrompt);
     } catch (e) {
       console.error(e);
+      setSessionActive(false);
     } finally {
       setIsProcessing(false);
     }
@@ -115,11 +125,11 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
   };
 
   const terminateSession = async () => {
-    const hadMeaningfulSession = history.length > 1;
+    const hadMeaningfulSession = history.length > 1 && sessionId !== null;
     if (hadMeaningfulSession) {
       setGeneratingReport(true);
       try {
-        const report = await generateMockReport(history, companyContext);
+        const report = await generateMockReport(sessionId);
         setSessionReport(report);
       } catch (e) {
         console.error(e);
@@ -128,6 +138,7 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
       }
     }
     setSessionActive(false);
+    setSessionId(null);
     setHistory([]);
     if (audioContextRef.current) {
       audioContextRef.current.close();
@@ -138,13 +149,14 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
   const dismissReport = () => setSessionReport(null);
 
   const handleTurn = async (blob: Blob) => {
+    if (sessionId === null) return;
     setIsProcessing(true);
     try {
       const reader = new FileReader();
       reader.readAsDataURL(blob);
       reader.onloadend = async () => {
         const base64Audio = (reader.result as string).split(',')[1];
-        const result = await conductInterviewTurn(history, base64Audio, companyContext);
+        const result = await conductMockTurn(sessionId, { audioBase64: base64Audio });
         setHistory(prev => [
           ...prev,
           { role: 'candidate', text: result.transcript },

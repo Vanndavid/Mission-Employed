@@ -214,7 +214,11 @@ Needs Wave 2. **3.1 must land before the other four**, which can then run togeth
 
 ### 3.1 Replace the data layer
 
-- [ ] Not started
+- [x] Done — the `localStorage` state blob and `migrateState` are gone; four
+  providers under `frontend/contexts/` load from the API on mount, expose
+  `loading`/`error`/`saving` and write through, and `App.tsx` owns no domain
+  state. `services/http.ts` is the one place errors and the `data` envelope are
+  handled.
 
 ```
 Task 3.1 from TASKS.md: replace the frontend data layer with the Laravel API.
@@ -252,6 +256,101 @@ Then actually run it: ./dev.sh, register a user, confirm the application list
 loads from the API and survives a hard refresh. Report what you saw.
 Tick the 3.1 box in TASKS.md with a one-line note. Do not commit.
 ```
+
+#### Contract notes for 3.2–3.5
+
+Read this before starting any of the other Wave 3 tasks. Everything below is
+what actually changed; anything not listed kept its old shape on purpose.
+
+**Where the data lives now**
+
+`frontend/contexts/DataProvider.tsx` mounts four providers inside the
+signed-in branch of `App.tsx`, so each one loads with a token in hand and the
+whole tree is torn down on logout. Use the hooks rather than `fetch`:
+
+| Hook | Gives you |
+| --- | --- |
+| `useApplications()` | `applications`, `addApplication`, `updateApplication`, `updateStatus`, `deleteApplication`, `addInterviewStage`, `removeInterviewStage`, `importApplications` |
+| `useProfile()` | `profile`, `updateProfile` |
+| `useCodingHistory()` | `codingHistory`, `addAttempt` |
+| `useBehavioralAnswers()` | `answers`, `updateAnswer` |
+
+All four also expose `loading`, `error`, `saving` and `reload`. `App.tsx` reads
+them and passes the same props the screens already took, so a screen can keep
+its props or switch to the hook directly — both work.
+
+**Prop shapes that changed, and where**
+
+1. **`JobApplication.id` and `InterviewStage.id` are `number`, not `string`.**
+   Client-side id generation is gone; a new record is whatever the API
+   answered with. Already updated: `Pipeline` (five handler prop types, and the
+   `?prep=` lookup now goes through `Number()`), `InterviewPrepDrawer`
+   (`onRemoveStage`), `InterviewStageEditor` (`onRemove`), `UpcomingInterviews`
+   (`onSelectApp`), and the `utils/csv.test.ts` fixture.
+2. **`AuthUser.id` is `number`** (`types/auth.ts`). `AdminUsersPage` follows:
+   `busyId` state and `changePlan`'s first argument. Owned by 3.5.
+3. **`AppState` is deleted** from `types.ts`, replaced by `UserProfile` with the
+   same six fields. `Profile`'s own props did not change.
+4. **`CodingHistoryEntry` gained an optional `id?: number`**, plus a
+   `NewCodingAttempt` alias for one that has no row yet. `Dashboard`'s
+   `onCodingComplete` prop is unchanged.
+5. **New `ApplicationInput`** — `Partial<Omit<JobApplication, 'id' |
+   'interviewStages' | 'statusHistory'>>` — is what the write helpers take.
+
+**Service functions that changed**
+
+- `createCodingSession()` now returns `{ session, sessionId }` instead of
+  `{ sessionId }`. `Dashboard` compiles unchanged; `session.messages` is there
+  so 3.3 can resume a tutor conversation after a refresh instead of starting
+  blank.
+- `sendCodingChat(sessionId, message)` keeps its signature and posts to the
+  unified `/api/ai/sessions/{id}/messages`. `sendSessionMessage()` returns the
+  whole `{ text, message, reply }` if you want the stored rows.
+- **Mock interviews are session-based.** `conductInterviewTurn(history, …)` and
+  `generateMockReport(history, …)` are gone; the replacements are
+  `createMockSession(context)`, `conductMockTurn(sessionId, { audioBase64 } |
+  { answer })` and `generateMockReport(sessionId)`. `MockTest.tsx` was edited
+  the minimum needed to compile and run: it holds a `sessionId`, opens a
+  session on start, and takes its opening question from the model's first turn
+  (falling back to the old canned line). **3.4 still has to persist the session
+  id so a mid-interview refresh resumes** — that is the whole point of the move.
+- `textToSpeech(text)` still resolves to a base64 string, but the server now
+  prepends the RIFF header, so it is a complete WAV file. Play it as
+  `data:audio/wav;base64,…`. **`PrepRoom` and `MockTest` still push it through
+  `decodeAudioPCM`, which will now misread the 44-byte header as samples — 3.4
+  must fix both.** `TTS_MIME_TYPE` and `synthesizeSpeech()` are exported for it.
+- `parseJobApplication()` drops `null` and `''` fields, so
+  `parsed.notes ?? nlText` still reaches its fallback.
+- `createCoverLetterSession()` / `createCVSession()` **throw** a 501
+  `not_implemented` `ApiError`: the refine-chat routes were never ported.
+  `sendCoverLetterChat` / `sendCVChat` already point at the shared turn
+  endpoint and work the moment a session exists. 3.2 either hides the Refine
+  box in both studios or the two create routes get added on the server —
+  `AiSession::KINDS` already carries `cover_letter` and `cv`.
+- `checkHealth()` moved to `authClient` and is re-exported from `apiClient`;
+  `Sidebar` is unchanged.
+
+**Errors — one place, do not reinvent per screen**
+
+`services/http.ts` throws `ApiError` with `status`, `code` and `errors`, plus
+`isUnauthorized`, `isPremiumRequired`, `isAdminRequired`, `isAiUnavailable`,
+`isNotFound`, `isValidation`, `firstFieldError()`, and a free `errorMessage(e,
+fallback)`. A 401 from anywhere calls the handler `AuthContext` registers,
+which drops the token and signs the user out — no screen has to notice.
+
+**Gotchas**
+
+- Blank date inputs: `toApplicationPayload` sends `null`, never `''`.
+- Behavioral bullets: blanks are stripped before sending, and an all-blank
+  theme is **not sent at all**. See Open questions — clearing a theme is
+  currently impossible.
+- Field edits are debounced 400ms and coalesced per record, so the prep drawer
+  is one PATCH instead of one per keystroke. `saving` covers it, and pending
+  writes flush on unmount.
+- Nothing gates on `loading` yet, so `Pipeline` flashes its empty state during
+  the first load. 3.2 should gate on `useApplications().loading`.
+- `PremiumGate` still reads `useAuth().isPremium`. A 403 from the API is
+  `err.isPremiumRequired` — that is what 3.5 should route to the upgrade prompt.
 
 ### 3.2 Tracker screens
 
@@ -586,6 +685,26 @@ Things found in the Express code that are **not** being reproduced as-is.
   log. Keeping them in sync is a controller concern.
 - **`behavioral_answers` is per-user global**, not per-application, matching how
   PrepRoom and MockTest read it.
+- **A behavioral theme cannot be cleared.** `PUT /api/behavioral-answers/{theme}`
+  validates `bullets` as `required|array` and each element as `string`, so an
+  empty list is rejected and `['']` arrives as `[null]` (global
+  `ConvertEmptyStringsToNull`) and is rejected too. The client therefore skips
+  the save when every bullet is blank, and the old answer survives a refresh.
+  Fixing it is a backend change: `present` instead of `required`, plus a
+  nullable element rule or a DELETE route.
+- **`@types/react` is not installed**, so every import from `react` and
+  `react-dom` is an implicit `any` and `strict` is off in `tsconfig.json`. That
+  means `npx tsc --noEmit` checks far less inside components than it looks like
+  it does — hook state, props and event handlers are all unchecked. Adding the
+  types would be a one-line dependency change but would surface errors across
+  most components at once, so it belongs in 4.3 rather than in the middle of a
+  wave. Until then, do not read a clean `tsc` as proof a component is sound.
+- **The cover letter and CV refine-chat sessions have no create route.** They
+  were not in the port list for 2.3. `AiSession::KINDS` already carries
+  `cover_letter` and `cv` and the unified turn endpoint serves any non-mock
+  kind, so it is one controller action away if 3.2 wants the Refine box back.
+  Until then `createCoverLetterSession` / `createCVSession` throw a client-side
+  501 rather than posting at a 404.
 - **Chat history grows quadratically.** Every turn resends the whole transcript,
   so a long session gets expensive. Not urgent; worth a cap or a summarization
   step eventually.

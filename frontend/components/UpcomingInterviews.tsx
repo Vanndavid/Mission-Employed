@@ -5,7 +5,7 @@ import { INTERVIEW_STAGE_LABELS } from '../constants';
 
 interface UpcomingInterviewsProps {
   applications: JobApplication[];
-  onSelectApp?: (appId: string) => void;
+  onSelectApp?: (appId: number) => void;
 }
 
 export const UpcomingInterviews = ({ applications, onSelectApp }: UpcomingInterviewsProps) => {

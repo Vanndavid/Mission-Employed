@@ -1,75 +1,61 @@
-import { AuthUser, AccountPlan } from '../types/auth';
+/**
+ * Accounts: register, sign in, sign out, and the admin plan switch.
+ *
+ * Auth responses are deliberately NOT wrapped in a `data` envelope — register
+ * and login answer with a flat `{ user, token }`, and `me` with `{ user }`.
+ * Only the tracker endpoints use Laravel's resource wrapper.
+ */
 
-const TOKEN_KEY = 'mission_employed_token';
+import { AccountPlan, AuthUser } from '../types/auth';
+import { apiRequest, getStoredToken, setStoredToken } from './http';
 
-export function getStoredToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+// The token lives in localStorage under `mission_employed_token`; storage is
+// owned by http.ts because every request needs it. Re-exported so callers can
+// keep importing it from here.
+export { getStoredToken, setStoredToken };
+
+export interface AuthSession {
+  user: AuthUser;
+  token: string;
 }
 
-export function setStoredToken(token: string | null) {
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
-}
-
-async function parseError(res: Response): Promise<Error & { code?: string; status?: number }> {
-  let message = `Request failed: ${res.status}`;
-  let code: string | undefined;
-  try {
-    const body = await res.json();
-    message = body.error || body.message || message;
-    code = body.code;
-  } catch {
-    try {
-      message = (await res.text()) || message;
-    } catch {
-      /* ignore */
-    }
-  }
-  const err = new Error(message) as Error & { code?: string; status?: number };
-  err.status = res.status;
-  err.code = code;
-  return err;
-}
-
-async function authFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const headers = new Headers(options.headers || {});
-  if (!headers.has('Content-Type') && options.body) {
-    headers.set('Content-Type', 'application/json');
-  }
-  const token = getStoredToken();
-  if (token) headers.set('Authorization', `Bearer ${token}`);
-
-  const res = await fetch(path, { ...options, headers });
-  if (!res.ok) throw await parseError(res);
-  if (res.status === 204) return undefined as T;
-  return res.json();
-}
-
-export async function registerAccount(email: string, password: string) {
-  return authFetch<{ user: AuthUser; token: string }>('/api/auth/register', {
+export async function registerAccount(email: string, password: string): Promise<AuthSession> {
+  return apiRequest<AuthSession>('/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: { email, password },
+    anonymous: true,
   });
 }
 
-export async function loginAccount(email: string, password: string) {
-  return authFetch<{ user: AuthUser; token: string }>('/api/auth/login', {
+export async function loginAccount(email: string, password: string): Promise<AuthSession> {
+  return apiRequest<AuthSession>('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: { email, password },
+    anonymous: true,
   });
 }
 
-export async function fetchMe() {
-  return authFetch<{ user: AuthUser }>('/api/auth/me');
+export async function fetchMe(): Promise<{ user: AuthUser }> {
+  return apiRequest<{ user: AuthUser }>('/auth/me');
 }
 
-export async function listAdminUsers() {
-  return authFetch<{ users: AuthUser[] }>('/api/admin/users');
+/** Revokes only the token that made the request, not every session. */
+export async function logoutAccount(): Promise<void> {
+  await apiRequest<void>('/auth/logout', { method: 'POST' });
 }
 
-export async function setUserPlan(userId: string, plan: AccountPlan) {
-  return authFetch<{ user: AuthUser }>(`/api/admin/users/${userId}/plan`, {
+export async function listAdminUsers(): Promise<{ users: AuthUser[] }> {
+  return apiRequest<{ users: AuthUser[] }>('/admin/users');
+}
+
+export async function setUserPlan(userId: number, plan: AccountPlan): Promise<{ user: AuthUser }> {
+  return apiRequest<{ user: AuthUser }>(`/admin/users/${userId}/plan`, {
     method: 'PATCH',
-    body: JSON.stringify({ plan }),
+    body: { plan },
   });
+}
+
+/** Unauthenticated smoke test, used by deploy checks. */
+export async function checkHealth(): Promise<{ status: string }> {
+  return apiRequest<{ status: string }>('/health', { anonymous: true });
 }

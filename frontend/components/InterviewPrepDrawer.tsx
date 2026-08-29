@@ -12,7 +12,7 @@ interface InterviewPrepDrawerProps {
   onClose: () => void;
   onUpdate: (partial: Partial<JobApplication>) => void;
   onAddStage: (stage: Omit<InterviewStage, 'id'>) => void;
-  onRemoveStage: (stageId: string) => void;
+  onRemoveStage: (stageId: number) => void;
   onOpenCoverLetter: () => void;
   onOpenCV: () => void;
 }
