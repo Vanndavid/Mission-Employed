@@ -1,9 +1,22 @@
 .git
 .github
-node_modules
+
+# Frontend
+frontend/node_modules
+frontend/dist
+
+# Backend (Laravel) — not yet part of the deployed stack, but keep it out of
+# any build context so a stray vendor/ or sqlite file never ships.
+backend/vendor
+backend/node_modules
+backend/database/*.sqlite
+backend/storage/logs
+backend/bootstrap/cache
+
+# Express API (still the deployed backend until the Laravel cutover)
 server/node_modules
 server/data
-dist
+
 *.log
 
 # Never let a real environment file into the build context: vite.config.ts

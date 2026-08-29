@@ -3,7 +3,7 @@
 Migrating off the Express backend to a **Laravel API + React TypeScript client**,
 and cutting the app down to four features.
 
-**Branch:** `rebuild/laravel-react` · **Status:** Waves 0 and 1 done, Wave 2 next
+**Branch:** `main` (the `rebuild/laravel-react` work is merged) · **Status:** Waves 0 and 1 done, Wave 2 next
 
 ## How to use this file
 
@@ -370,14 +370,63 @@ you saw. Tick the 3.5 box in TASKS.md with a one-line note. Do not commit.
 
 ## Wave 4 — Close out
 
-Needs Wave 3.
+Needs Wave 3. **Read the Deployment section below before starting any of these** —
+the app is live at mission-employed.vanndavidteng.com and Express is what
+currently serves it.
 
-### 4.1 Retire Express
+### 4.1 Laravel production image and nginx cutover
 
-- [ ] Not started
+- [ ] Not started · must land BEFORE 4.2
 
 ```
-Task 4.1 from TASKS.md: delete the old Express backend.
+Task 4.1 from TASKS.md: put Laravel into the deployed stack.
+
+The app is live at mission-employed.vanndavidteng.com, served by docker
+compose: an nginx container (Dockerfile) serving the built SPA and proxying
+/api/ and /ai/ to an Express container (Dockerfile.api) on :3001. Read the
+Deployment section of TASKS.md before you touch anything.
+
+Express is still the production backend. This task adds Laravel alongside it
+and moves traffic over. Do NOT delete server/ -- that is task 4.2, and it must
+not happen until this one is deployed and confirmed working.
+
+Build:
+- Dockerfile.laravel: PHP 8.3-fpm-alpine or php:8.3-cli, composer install
+  --no-dev --optimize-autoloader, the pdo_sqlite extension, config/route/view
+  caching, and php artisan migrate --force on boot. The SQLite file must live
+  on a volume, not in the container layer -- the Express container already does
+  this for its JSON store, follow the same pattern.
+- A laravel service in docker-compose.yml with its own named volume for the
+  database, reading APP_KEY, GEMINI_API_KEY and the rest from .env.
+- nginx.conf: repoint location /api/ from the Express container to the Laravel
+  one. Keep client_max_body_size 10m -- mock interviews POST base64 audio and
+  nginx will 413 before the backend sees it. Keep proxy_read_timeout 300s;
+  model calls are slow. Confirm Laravel's own upload limits match.
+- Leave the /ai/ location pointing at Express for now; nothing calls it once
+  Wave 3 lands, and 4.2 removes it.
+
+There is no user data to migrate: production accounts live in the Express
+JSON volume and the plan was always a fresh start on Laravel. If that is wrong,
+stop and ask rather than guessing -- confirm before destroying anything.
+
+Verify: docker compose build, then docker compose up and exercise
+/api/health, register, login and one AI route against the running stack. If the
+Docker daemon is unreachable from your shell, say so plainly rather than
+claiming the build passed.
+
+Tick the 4.1 box in TASKS.md and record what the deployed topology now is.
+Do not commit.
+```
+
+### 4.2 Retire Express
+
+- [ ] Not started · needs 4.1 deployed and confirmed
+
+```
+Task 4.2 from TASKS.md: delete the old Express backend.
+
+Do NOT start until 4.1 is deployed and Laravel is confirmed serving production
+traffic. Deleting server/ before that takes the live site down.
 
 Delete the server/ directory entirely. Nothing may reference it first — grep the
 whole repo, including .github/workflows, dev.sh, README.md and both
@@ -393,18 +442,22 @@ Two things to remove from the frontend while you are there:
   Confirm afterwards that the built bundle contains no key: build with a dummy
   GEMINI_API_KEY set and grep dist/ for it.
 
+Also remove the Express pieces from the deployment: Dockerfile.api, the api
+service and its api_data volume in docker-compose.yml, and the /ai/ location in
+nginx.conf. Check .dockerignore for now-dead server/ entries.
+
 Verify with: cd frontend && npm run build && npm test, and
 cd backend && php artisan test.
 Report the real output plus the result of the bundle grep.
-Tick the 4.1 box in TASKS.md. Do not commit.
+Tick the 4.2 box in TASKS.md. Do not commit.
 ```
 
-### 4.2 Test coverage pass
+### 4.3 Test coverage pass
 
 - [ ] Not started
 
 ```
-Task 4.2 from TASKS.md: close the gaps in test coverage.
+Task 4.3 from TASKS.md: close the gaps in test coverage.
 
 Read every controller under backend/app/Http/Controllers and check it against
 the existing feature tests. Add what is missing, focusing on the boundaries
@@ -424,15 +477,15 @@ either the code is wrong or the test is, and say which.
 Verify with: cd backend && php artisan test, and
 cd frontend && npm test && npx tsc --noEmit.
 Report the real output and the coverage gaps you found.
-Tick the 4.2 box in TASKS.md. Do not commit.
+Tick the 4.3 box in TASKS.md. Do not commit.
 ```
 
-### 4.3 CI and a real end-to-end run
+### 4.4 CI and a real end-to-end run
 
 - [ ] Not started
 
 ```
-Task 4.3 from TASKS.md: get CI green and walk the whole app.
+Task 4.4 from TASKS.md: get CI green and walk the whole app.
 
 Update .github/workflows so one workflow covers both packages: PHP 8.3 with
 pdo_sqlite, composer install, php artisan test for the backend; Node with a
@@ -449,8 +502,42 @@ survive, which was the whole point of moving them out of the Express Map.
 
 Write down what actually worked and what did not. Do not fix large problems
 silently — report them and add a task to TASKS.md.
-Tick the 4.3 box in TASKS.md. Do not commit.
+Tick the 4.4 box in TASKS.md. Do not commit.
 ```
+
+---
+
+## Deployment
+
+**The app is live at `mission-employed.vanndavidteng.com`.** Treat main as
+something that gets deployed, not just a branch.
+
+The stack is docker compose behind Traefik:
+
+| Service | Image | Role |
+| --- | --- | --- |
+| `nginx` | `Dockerfile` | Serves the built SPA, proxies `/api/` and `/ai/` |
+| `api` | `Dockerfile.api` | The Express server on `:3001`, accounts in a JSON volume |
+
+`docker-compose.prod.yml` adds the Traefik labels and TLS. `nginx.conf` sets
+`client_max_body_size 10m` to match the Express JSON limit — mock interviews POST
+base64 audio, and nginx would 413 before the backend ever saw it — and a 300s
+read timeout because model calls are slow.
+
+**Express is still the production backend.** Laravel has its schema, Gemini
+client and endpoints but is not in the deployed stack yet. Task 4.1 adds it and
+moves traffic over; 4.2 deletes Express only after that is confirmed. Until then,
+do not delete `server/`.
+
+The repo split moved the client into `frontend/`, so `Dockerfile` now copies from
+there and `.dockerignore` covers both packages. The Docker build has **not** been
+run locally — the daemon is not reachable from this WSL shell — so it is verified
+by path inspection only. Watch the first deploy after the split.
+
+`Dockerfile` and `.dockerignore` both carry comments about keeping
+`GEMINI_API_KEY` out of the build context, because `vite.config.ts` inlines it
+into the client bundle. Task 4.2 removes that `define` block, which retires the
+whole hazard.
 
 ---
 

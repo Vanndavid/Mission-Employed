@@ -50,6 +50,23 @@ cd frontend && npm test && npx tsc --noEmit
   exactly this (`res.status(500).json({ error: e.message })`). `GeminiException`
   keeps upstream detail in a separate accessor for logging, not in `getMessage()`.
 
+## Deployment — main is live
+
+**The app is deployed at `mission-employed.vanndavidteng.com`** via docker
+compose behind Traefik. `main` gets deployed; treat it accordingly.
+
+- `Dockerfile` builds the SPA from `frontend/` and serves it from nginx.
+- `Dockerfile.api` runs the **Express** server, which is still the production
+  backend. Laravel is not in the deployed stack yet.
+- `nginx.conf` proxies `/api/` and `/ai/` to Express on `:3001`. Its
+  `client_max_body_size 10m` matches the Express JSON limit — mock interviews
+  POST base64 audio and nginx would 413 first — and `proxy_read_timeout 300s`
+  exists because model calls are slow. Keep both when repointing at Laravel.
+- Accounts live in a JSON file on a Docker volume, not in the image.
+
+**Do not delete `server/` until Laravel is deployed and confirmed serving
+traffic.** Tasks 4.1 and 4.2 in `TASKS.md` sequence that cutover.
+
 ## Scope — this is the whole product
 
 Five things. Anything not on this list was deliberately deleted, so do not
