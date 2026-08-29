@@ -1,0 +1,8 @@
+{
+  "name": "Mission: Employed",
+  "description": "A job-hunt workspace for software engineers: AI coding practice, a job application tracker, behavioral interview drills, and full mock interviews powered by Gemini AI.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

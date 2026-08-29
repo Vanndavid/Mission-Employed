@@ -1,18 +1,49 @@
 # Logs
 logs
 *.log
+
+# --- Node / frontend ------------------------------------------------------
+node_modules
+dist
+dist-ssr
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
 *.local
 
-# Editor directories and files
+# --- PHP / Laravel backend ------------------------------------------------
+# backend/.gitignore (shipped by Laravel) covers most of this; these are
+# repeated here so the rules survive if that file is ever removed.
+backend/vendor/
+backend/public/build
+backend/public/hot
+backend/public/storage
+backend/storage/*.key
+backend/storage/logs/*
+!backend/storage/logs/.gitignore
+backend/storage/framework/cache/data/*
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*
+backend/storage/framework/testing
+backend/bootstrap/cache/*.php
+backend/.phpunit.result.cache
+backend/.phpunit.cache
+backend/auth.json
+
+# --- Databases (SQLite is the dev database) -------------------------------
+*.sqlite
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+
+# --- Environment ----------------------------------------------------------
+.env
+.env.*
+!.env.example
+
+# --- Editors / OS ---------------------------------------------------------
 .vscode/*
 !.vscode/extensions.json
 .idea
