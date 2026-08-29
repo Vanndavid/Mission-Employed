@@ -43,7 +43,12 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-ensureBootstrapAdmin();
+const bootstrapAdmin = ensureBootstrapAdmin();
+console.log(
+  bootstrapAdmin.user
+    ? `[auth] bootstrap admin ${bootstrapAdmin.user.email}: ${bootstrapAdmin.action}`
+    : `[auth] bootstrap admin ${bootstrapAdmin.action}`
+);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });

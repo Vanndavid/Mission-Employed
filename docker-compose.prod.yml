@@ -1,0 +1,23 @@
+# Production overrides — Traefik + TLS at mission-employed.vanndavidteng.com
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+
+services:
+  nginx:
+    ports: !reset []
+    networks:
+      - web
+      - default
+    labels:
+      - "traefik.enable=true"
+      # The container sits on both this project's default network and web;
+      # without this Traefik may pick the unreachable one and return 504.
+      - "traefik.docker.network=web"
+      - "traefik.http.routers.mission-employed.rule=Host(`mission-employed.vanndavidteng.com`)"
+      - "traefik.http.routers.mission-employed.entrypoints=web,websecure"
+      - "traefik.http.routers.mission-employed.tls=true"
+      - "traefik.http.routers.mission-employed.tls.certresolver=letsencrypt"
+      - "traefik.http.services.mission-employed.loadbalancer.server.port=80"
+
+networks:
+  web:
+    external: true

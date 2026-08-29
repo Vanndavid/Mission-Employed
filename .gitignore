@@ -53,3 +53,11 @@ backend/auth.json
 *.njsproj
 *.sln
 *.sw?
+
+# Environment files — these hold the Gemini key and admin credentials
+.env
+.env.local
+server/.env
+
+# Local JSON stores written by the API server
+server/data

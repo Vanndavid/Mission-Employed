@@ -1,0 +1,13 @@
+.git
+.github
+node_modules
+server/node_modules
+server/data
+dist
+*.log
+
+# Never let a real environment file into the build context: vite.config.ts
+# inlines GEMINI_API_KEY into the client bundle if it can see one.
+.env
+.env.*
+!.env.example
