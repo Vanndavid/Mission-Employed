@@ -28,8 +28,12 @@ class UpdateBehavioralAnswerRequest extends FormRequest
     {
         return [
             'themeId' => ['required', 'string', 'in:'.implode(',', BehavioralAnswer::THEME_IDS)],
-            'bullets' => ['required', 'array'],
-            'bullets.*' => ['string'],
+            // 'present' rather than 'required': clearing a theme means sending
+            // an empty list, and 'required' rejects [] outright. The nullable on
+            // the elements is for ConvertEmptyStringsToNull, which is global and
+            // turns a blank bullet into null before validation ever sees it.
+            'bullets' => ['present', 'array'],
+            'bullets.*' => ['nullable', 'string'],
         ];
     }
 
@@ -46,9 +50,20 @@ class UpdateBehavioralAnswerRequest extends FormRequest
         return (string) $this->validated()['themeId'];
     }
 
-    /** @return list<string> */
+    /**
+     * Blank bullets are dropped rather than rejected. The client sends a fixed
+     * number of inputs and leaves unused ones empty, so treating a blank as a
+     * validation failure would make a partially filled theme unsavable.
+     *
+     * @return list<string>
+     */
     public function bullets(): array
     {
-        return array_values($this->validated()['bullets']);
+        $bullets = array_map(
+            static fn ($bullet): string => trim((string) $bullet),
+            $this->validated()['bullets']
+        );
+
+        return array_values(array_filter($bullets, static fn (string $b): bool => $b !== ''));
     }
 }

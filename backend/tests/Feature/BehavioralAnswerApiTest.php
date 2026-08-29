@@ -100,4 +100,60 @@ class BehavioralAnswerApiTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors('bullets');
     }
+
+    /**
+     * A user who has written an answer must be able to take it back. The rule
+     * was 'required', which rejects [] outright, so a saved theme could be
+     * edited but never emptied.
+     */
+    public function test_a_theme_can_be_cleared_with_an_empty_list(): void
+    {
+        $user = User::factory()->create();
+        BehavioralAnswer::factory()->for($user)->theme('failure')->create([
+            'bullets' => ['Shipped the wrong migration'],
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->putJson('/api/behavioral-answers/failure', ['bullets' => []])
+            ->assertSuccessful();
+
+        $this->assertSame([], $user->behavioralAnswers()->sole()->bullets);
+    }
+
+    /**
+     * The client sends a fixed number of inputs and leaves unused ones blank.
+     * ConvertEmptyStringsToNull is global, so those arrive as null -- which the
+     * old 'string' element rule rejected, making a partially filled theme
+     * unsavable and a cleared one impossible.
+     */
+    public function test_blank_bullets_are_dropped_rather_than_rejected(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $this->putJson('/api/behavioral-answers/pressure', [
+            'bullets' => ['Kept the release calm', '', '   ', null],
+        ])->assertSuccessful();
+
+        $this->assertSame(
+            ['Kept the release calm'],
+            $user->behavioralAnswers()->sole()->bullets
+        );
+    }
+
+    public function test_a_theme_of_only_blank_bullets_clears_it(): void
+    {
+        $user = User::factory()->create();
+        BehavioralAnswer::factory()->for($user)->theme('impact')->create([
+            'bullets' => ['Something worth keeping'],
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->putJson('/api/behavioral-answers/impact', ['bullets' => ['', '']])
+            ->assertSuccessful();
+
+        $this->assertSame([], $user->behavioralAnswers()->sole()->bullets);
+    }
 }

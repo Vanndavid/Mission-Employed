@@ -685,13 +685,10 @@ Things found in the Express code that are **not** being reproduced as-is.
   log. Keeping them in sync is a controller concern.
 - **`behavioral_answers` is per-user global**, not per-application, matching how
   PrepRoom and MockTest read it.
-- **A behavioral theme cannot be cleared.** `PUT /api/behavioral-answers/{theme}`
-  validates `bullets` as `required|array` and each element as `string`, so an
-  empty list is rejected and `['']` arrives as `[null]` (global
-  `ConvertEmptyStringsToNull`) and is rejected too. The client therefore skips
-  the save when every bullet is blank, and the old answer survives a refresh.
-  Fixing it is a backend change: `present` instead of `required`, plus a
-  nullable element rule or a DELETE route.
+- ~~**A behavioral theme could not be emptied.**~~ Resolved: `bullets` is now
+  `present` rather than `required` so `[]` is accepted, and blank elements are
+  dropped rather than rejected — `ConvertEmptyStringsToNull` was turning a blank
+  bullet into `null`, which the `string` element rule refused.
 - **`@types/react` is not installed**, so every import from `react` and
   `react-dom` is an implicit `any` and `strict` is off in `tsconfig.json`. That
   means `npx tsc --noEmit` checks far less inside components than it looks like
