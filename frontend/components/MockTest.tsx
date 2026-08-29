@@ -1,9 +1,42 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { conductMockTurn, createMockSession, generateMockReport, textToSpeech } from '../services/apiClient';
-import { decodeAudioPCM, decode } from '../utils';
+import { conductMockTurn, createMockSession, fetchSession, generateMockReport, textToSpeech } from '../services/apiClient';
+import { playSpokenClip } from '../utils/speech';
 import { BehavioralAnswer, InterviewTurn, JobApplication } from '../types';
+
+/**
+ * Which interview is in progress. The session itself lives on the server in
+ * `ai_sessions`; this is only the pointer, so a refresh can find it again.
+ * The Express version kept the whole conversation in a server-side Map and
+ * lost it on every restart -- persisting the id is what makes the move useful.
+ */
+const ACTIVE_MOCK_SESSION_KEY = 'mission_employed_mock_session';
+
+function rememberSession(id: number): void {
+  try {
+    localStorage.setItem(ACTIVE_MOCK_SESSION_KEY, String(id));
+  } catch {
+    // A blocked or full localStorage costs the resume, not the interview.
+  }
+}
+
+function forgetSession(): void {
+  try {
+    localStorage.removeItem(ACTIVE_MOCK_SESSION_KEY);
+  } catch {
+    // Nothing to do; the stale id is harmless and gets replaced on next start.
+  }
+}
+
+function rememberedSession(): number | null {
+  try {
+    const stored = Number(localStorage.getItem(ACTIVE_MOCK_SESSION_KEY));
+    return Number.isInteger(stored) && stored > 0 ? stored : null;
+  } catch {
+    return null;
+  }
+}
 
 interface MockTestProps {
   applications: JobApplication[];
@@ -40,10 +73,45 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
   const [sessionReport, setSessionReport] = useState<string | null>(null);
   const [generatingReport, setGeneratingReport] = useState(false);
 
+  const [resuming, setResuming] = useState(() => rememberedSession() !== null);
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
+
+  /**
+   * Pick up an interview that a refresh interrupted. The transcript is read
+   * back from the server rather than kept locally, so it is the same one the
+   * model will be replayed on the next turn.
+   */
+  useEffect(() => {
+    const stored = rememberedSession();
+    if (stored === null) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const session = await fetchSession(stored);
+        if (cancelled) return;
+
+        setSessionId(session.id);
+        setHistory(session.messages.map(message => ({
+          role: message.role === 'model' ? 'interviewer' : 'candidate',
+          text: message.content,
+        })));
+        setSessionActive(true);
+      } catch {
+        // Finished, deleted, or belonging to someone else: drop the pointer
+        // rather than stranding the user on an interview they cannot continue.
+        if (!cancelled) forgetSession();
+      } finally {
+        if (!cancelled) setResuming(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -52,24 +120,13 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
   const speak = async (text: string) => {
     setIsInterviewerSpeaking(true);
     try {
+      // The API answers with a complete WAV, so this goes straight to an
+      // <audio> element -- no PCM decoding, no hand-built header.
       const base64Audio = await textToSpeech(text);
-      if (base64Audio) {
-        if (!audioContextRef.current) {
-          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-        }
-        const ctx = audioContextRef.current;
-        if (ctx.state === 'suspended') await ctx.resume();
-        const audioBuffer = await decodeAudioPCM(decode(base64Audio), ctx, 24000, 1);
-        const source = ctx.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(ctx.destination);
-        return new Promise(resolve => {
-          source.onended = () => { setIsInterviewerSpeaking(false); resolve(true); };
-          source.start();
-        });
-      }
+      if (base64Audio) await playSpokenClip(base64Audio);
     } catch (e) {
       console.error('Speech Error:', e);
+    } finally {
       setIsInterviewerSpeaking(false);
     }
   };
@@ -81,6 +138,7 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
     try {
       const session = await createMockSession(companyContext);
       setSessionId(session.id);
+      rememberSession(session.id);
 
       // An opening turn with no audio and no typed answer asks the model for
       // the first question, and stores it on the session.
@@ -140,10 +198,7 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
     setSessionActive(false);
     setSessionId(null);
     setHistory([]);
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
+    forgetSession();
   };
 
   const dismissReport = () => setSessionReport(null);
@@ -190,9 +245,10 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
           <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 uppercase italic mb-4">Interview Mode</h3>
           <button
             onClick={startInterview}
-            className="px-12 py-5 bg-brand-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-2xl hover:scale-105 transition-all text-lg"
+            disabled={resuming}
+            className="px-12 py-5 bg-brand-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-2xl hover:scale-105 transition-all text-lg disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
           >
-            Begin Session
+            {resuming ? 'Resuming…' : 'Begin Session'}
           </button>
         </div>
       ) : sessionReport ? (

@@ -384,9 +384,12 @@ persisted. Report what you saw, including anything that broke.
 Tick the 3.2 box in TASKS.md with a one-line note. Do not commit.
 ```
 
-### 3.3 Coding practice and dashboard
+### 3.3 Coding practice and dashboard ✅
 
-- [ ] Not started · needs 3.1
+- [x] Done — dashboard slimmed to coding practice, pipeline summary and upcoming
+  interviews; tutor wired to the session endpoints with real error handling.
+  Not done: restoring an in-progress tutor conversation after a refresh, which
+  `fetchSession` now makes possible. Small follow-up.
 
 ```
 Task 3.3 from TASKS.md: wire coding practice and slim the dashboard.
@@ -410,9 +413,10 @@ refresh mid-conversation and confirm it resumes. Report what you saw.
 Tick the 3.3 box in TASKS.md with a one-line note. Do not commit.
 ```
 
-### 3.4 Both interview modes
+### 3.4 Both interview modes ✅
 
-- [ ] Not started · needs 3.1
+- [x] Done — TTS double-decoding fixed in both components and the mock session
+  now resumes after a refresh via a new `GET /api/ai/sessions/{session}`.
 
 ```
 Task 3.4 from TASKS.md: wire interview practice and the full mock interview.

@@ -1,4 +1,4 @@
-import { JobApplication, JobStatus } from '../types';
+import { ApplicationInput, JobApplication, JobStatus } from '../types';
 
 const HEADERS = [
   'company', 'role', 'location', 'url', 'status', 'dateApplied',
@@ -59,12 +59,37 @@ export function exportApplicationsCsv(applications: JobApplication[]): string {
   return rows.join('\n');
 }
 
-export function importApplicationsCsv(csv: string): Partial<JobApplication>[] {
+/**
+ * A date cell as the API wants it: 'YYYY-MM-DD', or '' when the column was
+ * blank or unparseable.
+ *
+ * `''` matters — {@link toApplicationPayload} turns a blank date into an
+ * explicit `null` rather than letting `''` reach a nullable date column, and
+ * the applications context fills in today's date on create. Inventing a full
+ * ISO timestamp here would defeat both.
+ */
+function toDateOnly(value: string): string {
+  const raw = value.trim();
+  if (!raw) return '';
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString().slice(0, 10);
+}
+
+/**
+ * Parse a CSV export back into create payloads.
+ *
+ * These are {@link ApplicationInput}s, not applications: no `id`, because the
+ * server assigns one per row. The caller POSTs each of them.
+ */
+export function importApplicationsCsv(csv: string): ApplicationInput[] {
   const lines = csv.trim().split(/\r?\n/);
   if (lines.length < 2) return [];
 
   const header = parseCsvLine(lines[0]).map(h => h.trim().toLowerCase());
-  const apps: Partial<JobApplication>[] = [];
+  const apps: ApplicationInput[] = [];
 
   for (let i = 1; i < lines.length; i++) {
     if (!lines[i].trim()) continue;
@@ -82,11 +107,11 @@ export function importApplicationsCsv(csv: string): Partial<JobApplication>[] {
       location: row.location || '',
       url: row.url || '',
       status,
-      dateApplied: row.dateapplied || row.dateApplied || new Date().toISOString(),
+      dateApplied: toDateOnly(row.dateapplied ?? ''),
       notes: row.notes || '',
-      jobDescription: row.jobdescription || row.jobDescription || row.notes || '',
-      coverLetter: row.coverletter || row.coverLetter || '',
-      tailoredCV: row.tailoredcv || row.tailoredCV || '',
+      jobDescription: row.jobdescription || row.notes || '',
+      coverLetter: row.coverletter || '',
+      tailoredCV: row.tailoredcv || '',
     });
   }
   return apps;

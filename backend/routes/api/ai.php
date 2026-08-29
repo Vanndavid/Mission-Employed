@@ -5,6 +5,7 @@ use App\Http\Controllers\Ai\CodingController;
 use App\Http\Controllers\Ai\DocumentController;
 use App\Http\Controllers\Ai\JobController;
 use App\Http\Controllers\Ai\MockInterviewController;
+use App\Http\Controllers\Ai\SessionController;
 use App\Http\Controllers\Ai\SessionMessageController;
 use App\Http\Controllers\Ai\TtsController;
 use Illuminate\Support\Facades\Route;
@@ -31,6 +32,8 @@ Route::prefix('ai')->middleware(['auth:sanctum', 'premium'])->group(function ():
     // One turn of any stored chat session (coding tutor today; cover_letter and
     // cv refinement if those sessions come back). Mock interviews use their own
     // turn route below — they need JSON and inline audio.
+    // Read a session back so a refresh can resume it rather than start over.
+    Route::get('/sessions/{session}', [SessionController::class, 'show']);
     Route::post('/sessions/{session}/messages', [SessionMessageController::class, 'store']);
 
     // One-question interview practice.

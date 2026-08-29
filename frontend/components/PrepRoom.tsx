@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { BehavioralAnswer } from '../types';
 import { BEHAVIORAL_THEMES } from '../constants';
 import { generateBehavioralPrompt, processAudioResponse, textToSpeech } from '../services/apiClient';
-import { decodeAudioPCM, decode } from '../utils';
+import { playSpokenClip } from '../utils/speech';
 import { PremiumGate } from './PremiumGate';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -50,21 +50,15 @@ export const PrepRoom = ({ answers, onUpdateAnswer }: PrepRoomProps) => {
   const playQuestion = async (text: string) => {
     setIsSpeaking(true);
     try {
+      // The API answers with a complete WAV, so this goes straight to an
+      // <audio> element -- no PCM decoding, no hand-built header.
       const base64Audio = await textToSpeech(text);
-      if (base64Audio) {
-        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-        if (ctx.state === 'suspended') await ctx.resume();
-        const audioBuffer = await decodeAudioPCM(decode(base64Audio), ctx, 24000, 1);
-        const source = ctx.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(ctx.destination);
-        return new Promise(resolve => {
-          source.onended = () => { setIsSpeaking(false); ctx.close(); resolve(true); };
-          source.start();
-        });
-      }
-    } catch (e) { console.error('Audio error:', e); }
-    setIsSpeaking(false);
+      if (base64Audio) await playSpokenClip(base64Audio);
+    } catch (e) {
+      console.error('Audio error:', e);
+    } finally {
+      setIsSpeaking(false);
+    }
   };
 
   const startRecording = async () => {

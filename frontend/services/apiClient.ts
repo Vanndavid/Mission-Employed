@@ -39,6 +39,20 @@ export interface AiSessionPayload {
   updatedAt: string;
 }
 
+/**
+ * Read a stored session and its transcript back.
+ *
+ * This is what makes a refresh resume a conversation rather than start one.
+ * The Express server held chats in memory, so there was nothing to fetch;
+ * `ai_sessions` only helps if the client can find its session again.
+ */
+export async function fetchSession(sessionId: string | number): Promise<AiSessionPayload> {
+  const { session } = await apiRequest<{ session: AiSessionPayload }>(
+    `/ai/sessions/${sessionId}`,
+  );
+  return session;
+}
+
 // --- Coding practice ------------------------------------------------------
 
 export interface CodingProblem {
