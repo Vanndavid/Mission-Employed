@@ -50,7 +50,10 @@ function AppRoutes() {
   } = useApplications();
   const { profile, updateProfile } = useProfile();
   const { codingHistory, addAttempt } = useCodingHistory();
-  const { answers, updateAnswer } = useBehavioralAnswers();
+  // The prep room reads and writes this set through the context itself, the
+  // way Dashboard does; the two read-only consumers below still take it as a
+  // prop.
+  const { answers } = useBehavioralAnswers();
 
   const handleDelete = (id: number) => {
     if (window.confirm('Terminate mission record?')) {
@@ -105,7 +108,7 @@ function AppRoutes() {
           />
         }
       />
-      <Route path="/prep" element={<PrepRoom answers={answers} onUpdateAnswer={updateAnswer} />} />
+      <Route path="/prep" element={<PrepRoom />} />
       <Route
         path="/mock"
         element={

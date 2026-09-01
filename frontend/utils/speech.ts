@@ -11,13 +11,35 @@ import { TTS_MIME_TYPE } from '../services/apiClient';
  *
  * Rejects if the browser refuses to play, so callers can clear their speaking
  * state instead of hanging on a promise that never settles.
+ *
+ * @param signal  Aborting stops playback and resolves. The prep room uses this
+ *                so hitting record cuts the question off rather than letting
+ *                the interviewer's voice bleed into the recording.
  */
-export function playSpokenClip(base64Wav: string): Promise<void> {
+export function playSpokenClip(base64Wav: string, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      resolve();
+      return;
+    }
+
     const audio = new Audio(`data:${TTS_MIME_TYPE};base64,${base64Wav}`);
 
-    audio.onended = () => resolve();
-    audio.onerror = () => reject(new Error('The spoken clip could not be played.'));
+    const stop = () => {
+      audio.pause?.();
+      resolve();
+    };
+
+    audio.onended = () => {
+      signal?.removeEventListener('abort', stop);
+      resolve();
+    };
+    audio.onerror = () => {
+      signal?.removeEventListener('abort', stop);
+      reject(new Error('The spoken clip could not be played.'));
+    };
+
+    signal?.addEventListener('abort', stop, { once: true });
 
     audio.play().catch(reject);
   });

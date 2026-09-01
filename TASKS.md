@@ -417,6 +417,17 @@ Tick the 3.3 box in TASKS.md with a one-line note. Do not commit.
 
 - [x] Done — TTS double-decoding fixed in both components and the mock session
   now resumes after a refresh via a new `GET /api/ai/sessions/{session}`.
+- [x] Follow-up — Training Room (`PrepRoom.tsx`) redesigned as a two-column
+  workspace: the fact bank stays on screen and editable beside the drill, and
+  is no longer behind the premium gate. The evaluator's Markdown is now parsed
+  and rendered as cards (`utils/coachFeedback.ts`, `components/CoachFeedback.tsx`)
+  instead of printing literal `###`; recording moved into
+  `hooks/useAnswerRecorder.ts` with a clock, a level meter and real teardown.
+  Three bugs went with it: the question stayed hidden behind the spinner while
+  it was spoken, an evaluation failure inside the `FileReader` callback left the
+  screen spinning forever, and roughly fifteen classes had no `dark:` variant.
+  `playSpokenClip` now takes an optional `AbortSignal` so starting a recording
+  cuts the question off rather than recording it.
 
 ```
 Task 3.4 from TASKS.md: wire interview practice and the full mock interview.
