@@ -67,6 +67,8 @@ export interface JobApplication {
   /** 'YYYY-MM-DD', or '' when never applied. Nullable columns read back as ''. */
   dateApplied: string;
   status: JobStatus;
+  /** Starred by the user. Starred rows pin to the top of the tracker table. */
+  isImportant: boolean;
   notes: string;
   jobDescription: string;
   coverLetter: string;

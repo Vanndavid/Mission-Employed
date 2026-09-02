@@ -283,7 +283,7 @@ its props or switch to the hook directly — both work.
 
 1. **`JobApplication.id` and `InterviewStage.id` are `number`, not `string`.**
    Client-side id generation is gone; a new record is whatever the API
-   answered with. Already updated: `Pipeline` (five handler prop types, and the
+   answered with. Already updated: `JobApplications` (five handler prop types, and the
    `?prep=` lookup now goes through `Number()`), `InterviewPrepDrawer`
    (`onRemoveStage`), `InterviewStageEditor` (`onRemove`), `UpcomingInterviews`
    (`onSelectApp`), and the `utils/csv.test.ts` fixture.
@@ -347,7 +347,7 @@ which drops the token and signs the user out — no screen has to notice.
 - Field edits are debounced 400ms and coalesced per record, so the prep drawer
   is one PATCH instead of one per keystroke. `saving` covers it, and pending
   writes flush on unmount.
-- Nothing gates on `loading` yet, so `Pipeline` flashes its empty state during
+- Nothing gates on `loading` yet, so `JobApplications` flashes its empty state during
   the first load. 3.2 should gate on `useApplications().loading`.
 - `PremiumGate` still reads `useAuth().isPremium`. A 403 from the API is
   `err.isPremiumRequired` — that is what 3.5 should route to the upgrade prompt.
@@ -359,13 +359,13 @@ which drops the token and signs the user out — no screen has to notice.
 ```
 Task 3.2 from TASKS.md: wire the tracker screens to the API.
 
-Your lane: frontend/components/Pipeline.tsx, Profile.tsx, CVStudio.tsx,
+Your lane: frontend/components/JobApplications.tsx, Profile.tsx, CVStudio.tsx,
 CoverLetterStudio.tsx, A4Preview.tsx, InterviewStageEditor.tsx,
 UpcomingInterviews.tsx, InterviewPrepDrawer.tsx, and frontend/utils/csv.ts.
 Other agents hold the other components. Nothing under backend/.
 
 Task 3.1 built the data layer; use it rather than calling fetch directly.
-Move Pipeline, the profile document, and the CV and cover letter studios onto
+Move the job applications screen, the profile document, and the CV and cover letter studios onto
 server data: list, create, update, delete applications; add and remove interview
 stages; save the profile; generate a tailored CV or cover letter through the AI
 endpoints and persist the result on the application.
@@ -383,6 +383,29 @@ job description and parse it, generate a cover letter, refresh, confirm it all
 persisted. Report what you saw, including anything that broke.
 Tick the 3.2 box in TASKS.md with a one-line note. Do not commit.
 ```
+
+### 3.2a Job applications table — renamed, filterable, sortable, starrable ✅
+
+- [x] Done and deployed, 2026-09-03. The **Pipeline** tab is now **Job
+  Applications** (sidebar, page heading, dashboard card;
+  `components/Pipeline.tsx` → `components/JobApplications.tsx`, route
+  `/applications` unchanged).
+
+The table gained a toolbar — search across company, role, location and next
+action; a status dropdown; an "Important only" toggle; and a live "showing n of
+m" count — plus sortable Company / Role, Status, Next Action and Date headers.
+Status sorts in pipeline order (Saved → Applied → … → Rejected), not
+alphabetically, and rows with no date sort last in *both* directions.
+
+Marking important is a new `applications.is_important` boolean, `isImportant`
+over the wire, toggled with the star in the first column. Starred rows pin
+above the rest whatever the sort column is. Two things worth remembering:
+
+- `StoreApplicationRequest::columns()` has to default `is_important` explicitly,
+  the same way it already defaults `status`. The 201 body is serialized from
+  the model that was just created, so a column default alone serializes as null.
+- The filter and sort rules live in `frontend/utils/applicationTable.ts`, not in
+  the component, so they are unit tested without a DOM.
 
 ### 3.3 Coding practice and dashboard ✅
 

@@ -119,6 +119,44 @@ class ApplicationApiTest extends TestCase
         $this->assertSame(JobStatus::Saved, Application::sole()->statusEvents->first()->status);
     }
 
+    public function test_a_new_application_is_not_important_until_it_is_starred(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/applications', ['company' => 'Acme', 'role' => 'Engineer'])
+            ->assertCreated()
+            ->assertJsonPath('data.isImportant', false);
+
+        $application = Application::sole();
+
+        $this->patchJson("/api/applications/{$application->id}", ['isImportant' => true])
+            ->assertOk()
+            ->assertJsonPath('data.isImportant', true);
+
+        $this->assertTrue($application->fresh()->is_important);
+
+        // Unstarring is the same request with the flag flipped — no separate
+        // endpoint, so a false must not be read as "field absent".
+        $this->patchJson("/api/applications/{$application->id}", ['isImportant' => false])
+            ->assertOk()
+            ->assertJsonPath('data.isImportant', false);
+
+        $this->assertFalse($application->fresh()->is_important);
+    }
+
+    public function test_starring_an_application_logs_no_status_event(): void
+    {
+        $user = User::factory()->create();
+        $application = Application::factory()->for($user)->create(['status' => JobStatus::Applied]);
+
+        Sanctum::actingAs($user);
+
+        $this->patchJson("/api/applications/{$application->id}", ['isImportant' => true])->assertOk();
+
+        $this->assertCount(0, $application->fresh()->statusEvents);
+    }
+
     public function test_blank_dates_are_stored_as_null(): void
     {
         $user = User::factory()->create();

@@ -1,7 +1,7 @@
 import { ApplicationInput, JobApplication, JobStatus } from '../types';
 
 const HEADERS = [
-  'company', 'role', 'location', 'url', 'status', 'dateApplied',
+  'company', 'role', 'location', 'url', 'status', 'isImportant', 'dateApplied',
   'notes', 'jobDescription', 'coverLetter', 'tailoredCV',
 ] as const;
 
@@ -49,6 +49,7 @@ export function exportApplicationsCsv(applications: JobApplication[]): string {
       escapeCsv(app.location ?? ''),
       escapeCsv(app.url),
       escapeCsv(app.status),
+      app.isImportant ? 'true' : 'false',
       escapeCsv(app.dateApplied),
       escapeCsv(app.notes),
       escapeCsv(app.jobDescription),
@@ -107,6 +108,9 @@ export function importApplicationsCsv(csv: string): ApplicationInput[] {
       location: row.location || '',
       url: row.url || '',
       status,
+      // Anything but an explicit truthy cell means "not starred", so a file
+      // exported before this column existed imports as unstarred.
+      isImportant: ['true', '1', 'yes'].includes((row.isimportant ?? '').trim().toLowerCase()),
       dateApplied: toDateOnly(row.dateapplied ?? ''),
       notes: row.notes || '',
       jobDescription: row.jobdescription || row.notes || '',

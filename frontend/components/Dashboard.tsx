@@ -446,7 +446,7 @@ export const Dashboard = ({
           <div className="bg-white dark:bg-slate-800/50 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
             <div className="flex justify-between items-center mb-3">
               <h3 className="text-lg font-bold flex items-center">
-                <span className="mr-2">📁</span> Pipeline
+                <span className="mr-2">📁</span> Job Applications
               </h3>
               <button
                 onClick={() => navigate('/applications')}

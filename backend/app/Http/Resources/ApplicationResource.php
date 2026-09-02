@@ -28,6 +28,7 @@ class ApplicationResource extends JsonResource
             'url' => $this->url ?? '',
             'dateApplied' => $this->date_applied?->format('Y-m-d') ?? '',
             'status' => $this->status->value,
+            'isImportant' => (bool) $this->is_important,
             'notes' => $this->notes ?? '',
             'jobDescription' => $this->job_description ?? '',
             'coverLetter' => $this->cover_letter ?? '',
