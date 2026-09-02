@@ -504,7 +504,42 @@ currently serves it.
   service on its own `laravel_data` volume, and `nginx.conf` `/api/` repointed
   from `api:3001` to `laravel:8080`. `/ai/` still points at Express and is now
   dead traffic: the client sends AI calls to `/api/ai/...`, because `API_BASE`
-  is `/api`. **Not deployed yet** — the image is built and tested locally only.
+  is `/api`.
+- [x] **Deployed and confirmed serving traffic, 2026-09-02.** Laravel answers
+  `/api/` at mission-employed.vanndavidteng.com. This unblocks 4.2.
+
+Two things had to be fixed to make the cutover survive contact with the server,
+both of which the local build could not have shown:
+
+- **Nothing created an admin.** Registration only ever produces a free `user`,
+  and an admin is the only role that can upgrade a plan, so the first boot came
+  up with an empty database and nobody able to administer it. The Express
+  server reconciled a bootstrap admin from the environment on every boot
+  (9ada28e); `php artisan admin:bootstrap` now does the same, and the container
+  entrypoint runs it after `migrate`. It reads `ADMIN_EMAIL` / `ADMIN_PASSWORD`,
+  which the deployment `.env` already had, and is a no-op when either is unset.
+  It is a command and not a seeder because `DatabaseSeeder` also inserts demo
+  applications and a second fake user.
+- **Unauthenticated API calls answered 500.** Laravel's default
+  `redirectGuestsTo(fn () => route('login'))` runs inside the `auth`
+  middleware, and there is no such route in an API-only app. The client always
+  sends `Accept: application/json` so the app itself worked, but any other
+  caller got a 500 where a 401 belongs. Fixed in `bootstrap/app.php`; the suite
+  had missed it because every assertion used `getJson`.
+
+The deployment `.env` is not in git and was missing everything Laravel needs.
+`APP_KEY` was generated on the server, and `APP_URL`, `FRONTEND_URL`,
+`SESSION_DRIVER`, `CACHE_STORE`, `QUEUE_CONNECTION`, `BCRYPT_ROUNDS` and
+`LOG_LEVEL` were added. `GEMINI_MODEL` is pinned there to `gemini-2.0-flash`,
+the model the Express backend had been serving — see the open question below.
+
+**Open question — the Gemini model.** There is an uncommitted change in the
+working tree bumping the default from `gemini-2.0-flash` to `gemini-3.7-flash`
+in `GeminiService`, `config/services.php` and `.env.example`. It was left
+uncommitted and is *not* deployed, because the model name could not be verified
+against the API. Production is pinned to the known-good value in `.env`, so
+adopting the newer model is a one-line env change plus a restart once someone
+confirms the name is real.
 
 ```
 Task 4.1 from TASKS.md: put Laravel into the deployed stack.
@@ -653,9 +688,29 @@ The stack is docker compose behind Traefik:
 base64 audio, and nginx would 413 before the backend ever saw it — and a 300s
 read timeout because model calls are slow.
 
-**Laravel is the backend for `/api/` as of task 4.1, but this has not been
-deployed.** The live site still runs whatever image was last built there. Until
-the cutover is deployed and confirmed, do not delete `server/` — that is 4.2.
+**Laravel is the backend for `/api/`, deployed and confirmed on 2026-09-02.**
+The Express container is still up but only answers `/ai/`, which nothing calls.
+Deleting `server/` is task 4.2, and it is now unblocked.
+
+Deploying is a pull and a rebuild on the server, which is reachable as
+`ssh vps` (see `~/.ssh/config`):
+
+```
+cd /home/ubuntu/traefik-projects/Mission-Employed
+git pull --ff-only origin main
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+`.env` there is not in git and holds `APP_KEY`, `GEMINI_API_KEY` and the admin
+credentials — never overwrite it from the repo. The SQLite database is on the
+`laravel_data` volume and the legacy Express accounts JSON on `api_data`, so a
+rebuild keeps both but `docker compose down -v` would destroy them. Backups of
+`.env` and the accounts file are in `/root/backups/mission-employed/`.
+
+**Accounts did not migrate.** The Express users lived in a JSON file on the
+`api_data` volume and Laravel starts from an empty SQLite database, so everyone
+except the bootstrap admin has to register again. The old file is still on the
+volume and in the backup directory if those accounts are ever worth porting.
 
 Why this mattered: the client has sent every request to `/api/` since commit
 3f36616, and Express only implements `/api/health`, `/api/auth/*` and
