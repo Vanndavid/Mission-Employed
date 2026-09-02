@@ -1,0 +1,55 @@
+# The Laravel API. Replaces Express as the backend for /api/ (task 4.1).
+#
+# FrankenPHP rather than php-fpm because the existing nginx container proxies
+# plain HTTP to a service name (proxy_pass http://api:3001). Keeping that shape
+# means the only nginx change is the upstream address. php-fpm would have meant
+# switching that location to fastcgi_pass and hand-writing SCRIPT_FILENAME,
+# which is a lot of untested config to put in front of a live site.
+#
+# It also has to be concurrent: `php artisan serve` handles one request at a
+# time, and a single Gemini call can hold the connection for most of the 300s
+# read timeout, which would stall every other request behind it.
+FROM dunglas/frankenphp:php8.3-alpine
+
+# pdo_sqlite is the only driver this project can use -- see the SQLite note in
+# CLAUDE.md. opcache is plain throughput.
+RUN install-php-extensions pdo_sqlite opcache
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# nginx allows a 10m body; PHP defaults to 8M for both of these, so a long
+# spoken answer would clear nginx and then fail inside PHP instead. max_execution_time
+# matches the 300s proxy_read_timeout for the same reason -- a slow model call
+# must not be killed at one layer while the other is still waiting.
+RUN printf '%s\n' \
+    'post_max_size = 12M' \
+    'upload_max_filesize = 12M' \
+    'max_execution_time = 300' \
+    'memory_limit = 256M' \
+    > "$PHP_INI_DIR/conf.d/99-mission-employed.ini"
+
+WORKDIR /app
+
+# .dockerignore keeps backend/vendor and any *.sqlite out of the context, so
+# dependencies are resolved here rather than copied from a dev machine.
+COPY backend/ ./
+
+# The directories come first: .dockerignore excludes backend/bootstrap/cache
+# and backend/storage/logs, so they are absent from the build context, and
+# composer's post-autoload-dump runs `artisan package:discover`, which refuses
+# to start without a writable bootstrap/cache.
+RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache \
+    && composer install --no-dev --optimize-autoloader --no-interaction --no-progress
+
+COPY docker/laravel-entrypoint.sh /usr/local/bin/laravel-entrypoint
+RUN chmod +x /usr/local/bin/laravel-entrypoint
+
+# Caddy's site address. A bare port serves plain HTTP with no TLS attempt,
+# which is what we want -- Traefik terminates TLS at the edge.
+ENV SERVER_NAME=:8080
+
+EXPOSE 8080
+
+ENTRYPOINT ["laravel-entrypoint"]
+CMD ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile"]

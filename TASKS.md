@@ -500,7 +500,11 @@ currently serves it.
 
 ### 4.1 Laravel production image and nginx cutover
 
-- [ ] Not started · must land BEFORE 4.2
+- [x] Done — `Dockerfile.laravel` (FrankenPHP, php 8.3), a `laravel` compose
+  service on its own `laravel_data` volume, and `nginx.conf` `/api/` repointed
+  from `api:3001` to `laravel:8080`. `/ai/` still points at Express and is now
+  dead traffic: the client sends AI calls to `/api/ai/...`, because `API_BASE`
+  is `/api`. **Not deployed yet** — the image is built and tested locally only.
 
 ```
 Task 4.1 from TASKS.md: put Laravel into the deployed stack.
@@ -641,22 +645,33 @@ The stack is docker compose behind Traefik:
 | Service | Image | Role |
 | --- | --- | --- |
 | `nginx` | `Dockerfile` | Serves the built SPA, proxies `/api/` and `/ai/` |
-| `api` | `Dockerfile.api` | The Express server on `:3001`, accounts in a JSON volume |
+| `laravel` | `Dockerfile.laravel` | The Laravel API on `:8080`, SQLite on the `laravel_data` volume |
+| `api` | `Dockerfile.api` | Express on `:3001`. Serves only `/ai/`, which nothing calls. Deleted in 4.2 |
 
 `docker-compose.prod.yml` adds the Traefik labels and TLS. `nginx.conf` sets
 `client_max_body_size 10m` to match the Express JSON limit — mock interviews POST
 base64 audio, and nginx would 413 before the backend ever saw it — and a 300s
 read timeout because model calls are slow.
 
-**Express is still the production backend.** Laravel has its schema, Gemini
-client and endpoints but is not in the deployed stack yet. Task 4.1 adds it and
-moves traffic over; 4.2 deletes Express only after that is confirmed. Until then,
-do not delete `server/`.
+**Laravel is the backend for `/api/` as of task 4.1, but this has not been
+deployed.** The live site still runs whatever image was last built there. Until
+the cutover is deployed and confirmed, do not delete `server/` — that is 4.2.
+
+Why this mattered: the client has sent every request to `/api/` since commit
+3f36616, and Express only implements `/api/health`, `/api/auth/*` and
+`/api/admin/users`. Its AI handlers live at `/ai/...`, not `/api/ai/...`. So
+deploying `main` against the Express backend gives a site where login works and
+the tracker, profile, behavioral answers and every AI feature return 404.
 
 The repo split moved the client into `frontend/`, so `Dockerfile` now copies from
-there and `.dockerignore` covers both packages. The Docker build has **not** been
-run locally — the daemon is not reachable from this WSL shell — so it is verified
-by path inspection only. Watch the first deploy after the split.
+there and `.dockerignore` covers both packages.
+
+The Docker daemon **is** reachable from this WSL shell (29.7.2) — an earlier note
+here said otherwise. Task 4.1 was verified by building and running the real
+stack: `/api/health`, register, login, `GET`/`PUT /api/behavioral-answers`, the
+premium 403 and the sanitised 502 when `GEMINI_API_KEY` is empty, plus the SQLite
+volume surviving a container restart. Both through the container directly and
+through nginx.
 
 `Dockerfile` and `.dockerignore` both carry comments about keeping
 `GEMINI_API_KEY` out of the build context, because `vite.config.ts` inlines it

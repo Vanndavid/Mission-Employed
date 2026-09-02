@@ -11,10 +11,32 @@ services:
       PORT: 3001
       # The accounts store is a JSON file, so it lives on a volume rather than
       # inside the container layer. TALENT_FILE is gone with the talent
-      # ranking feature; the Laravel cutover replaces this with SQLite.
+      # ranking feature. Since task 4.1 this service only serves /ai/, which
+      # nothing calls; it is deleted in 4.2 once Laravel is confirmed.
       USERS_FILE: /data/users.json
     volumes:
       - api_data:/data
+
+  laravel:
+    build:
+      context: .
+      dockerfile: Dockerfile.laravel
+    container_name: mission_employed_laravel
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      # Absolute, because the file lives on the volume below rather than under
+      # the app directory. Laravel resolves a relative DB_DATABASE against
+      # backend/, which would put it in the container layer and lose every
+      # account on redeploy.
+      DB_CONNECTION: sqlite
+      DB_DATABASE: /data/database.sqlite
+      SERVER_NAME: ":8080"
+    volumes:
+      - laravel_data:/data
 
   nginx:
     build:
@@ -24,8 +46,10 @@ services:
     restart: unless-stopped
     depends_on:
       - api
+      - laravel
     ports:
       - "8090:80"
 
 volumes:
   api_data:
+  laravel_data:
