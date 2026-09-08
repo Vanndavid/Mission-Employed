@@ -5,6 +5,7 @@ use App\Http\Controllers\BehavioralAnswerController;
 use App\Http\Controllers\CodingAttemptController;
 use App\Http\Controllers\InterviewStageController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SeekJobController;
 use Illuminate\Support\Facades\Route;
 
 // Job application tracker, CV profile, coding history and behavioral answers.
@@ -41,4 +42,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
     // not a row id: answers are unique per user and theme.
     Route::get('/behavioral-answers', [BehavioralAnswerController::class, 'index']);
     Route::put('/behavioral-answers/{themeId}', [BehavioralAnswerController::class, 'update']);
+
+    // Seek's own jobsearch JSON, mapped into the tracker-shaped listing.
+    // Not premium-gated: browsing listings is the free half of applying.
+    Route::get('/seek/jobs', [SeekJobController::class, 'index']);
 });

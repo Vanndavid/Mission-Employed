@@ -407,6 +407,15 @@ above the rest whatever the sort column is. Two things worth remembering:
 - The filter and sort rules live in `frontend/utils/applicationTable.ts`, not in
   the component, so they are unit tested without a DOM.
 
+### 3.2b Seek listings on Job Applications ✅
+
+- [x] Done — the Job Applications page has a Seek section that loads live
+  listings through `GET /api/seek/jobs`, a Laravel proxy of Seek's own
+  `GET /api/jobsearch/v5/search`. Saving a listing creates a `Saved`
+  application with the Seek URL, teaser and bullets. Upstream Seek errors
+  become a contained 502 (`seek_unavailable`) and never leak the body.
+  Tests fake the HTTP client; nothing hits the network.
+
 ### 3.3 Coding practice and dashboard ✅
 
 - [x] Done — dashboard slimmed to coding practice, pipeline summary and upcoming

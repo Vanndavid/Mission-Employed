@@ -73,6 +73,16 @@ function stubApi() {
     if (url.endsWith('/api/behavioral-answers')) {
       return json({ data: [{ themeId: 'weakness', bullets: ['Cut deploy time 40%'] }] });
     }
+    if (url.includes('/api/seek/jobs')) {
+      return json({
+        jobs: [],
+        totalCount: 0,
+        page: 1,
+        pageSize: 20,
+        keywords: 'software engineer',
+        where: 'All Australia',
+      });
+    }
     return json({ message: `unstubbed ${url}` }, 404);
   });
 

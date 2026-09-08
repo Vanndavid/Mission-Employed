@@ -58,4 +58,26 @@ return [
         'retry_delay' => (int) env('GEMINI_RETRY_DELAY', 500),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Seek job search
+    |--------------------------------------------------------------------------
+    |
+    | Seek has no public job-seeker API, but the site's own listing page talks
+    | to GET /api/jobsearch/v5/search. App\Services\Seek\SeekJobSearch is a
+    | thin proxy of that endpoint so the SPA never has to call Seek from the
+    | browser (cross-origin-resource-policy is same-origin). Errors are
+    | contained the same way Gemini's are: upstream bodies stay in the log.
+    |
+    */
+
+    'seek' => [
+        'base_url' => env('SEEK_BASE_URL', 'https://www.seek.com.au'),
+        'site_key' => env('SEEK_SITE_KEY', 'AU-Main'),
+        'timeout' => (int) env('SEEK_TIMEOUT', 15),
+        'connect_timeout' => (int) env('SEEK_CONNECT_TIMEOUT', 5),
+        'retries' => (int) env('SEEK_RETRIES', 2),
+        'retry_delay' => (int) env('SEEK_RETRY_DELAY', 300),
+    ],
+
 ];
