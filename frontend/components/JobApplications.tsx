@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { BehavioralAnswer, InterviewStage, JobApplication, JobStatus } from '../types';
 import { parseJobApplication } from '../services/apiClient';
+import { SeekJobs } from './SeekJobs';
 import { InterviewPrepDrawer } from './InterviewPrepDrawer';
 import { CoverLetterStudio } from './CoverLetterStudio';
 import { CVStudio } from './CVStudio';
@@ -299,6 +300,11 @@ export const JobApplications = ({
           </button>
         </div>
       </section>
+
+      <SeekJobs
+        trackedUrls={applications.map(app => app.url)}
+        onSave={input => onAdd(input)}
+      />
 
       {isAdding && (
         <div className="bg-white dark:bg-slate-800/80 rounded-2xl p-8 border border-slate-200 dark:border-slate-700 shadow-xl">
