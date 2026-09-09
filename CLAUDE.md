@@ -32,6 +32,13 @@ cd backend  && php artisan test
 cd frontend && npm test && npx tsc --noEmit
 ```
 
+Write the failing test first. Feature tests use model factories. Tests must
+never hit the network: `Tests\TestCase` calls `Http::preventStrayRequests()`,
+and anything that talks to a model binds `FakeGeminiService`. Do not bind the
+fake globally — `GeminiServiceTest` exercises the real client with `Http::fake()`.
+Frontend tests go through `services/http.ts` (`ApiError`, `apiRequest`,
+`apiResource`) rather than raw `fetch`.
+
 ## Constraints that are not preferences
 
 - **SQLite is forced.** This PHP build has `pdo_sqlite` but no `pdo_mysql`. Keep
@@ -97,7 +104,8 @@ import/export, the emergency modal.
   `AccountPlan`, `AccountRole`). Each has a `values()` helper for validation rules.
 - Every model has a factory. Feature tests use them rather than hand-built arrays.
 - Tests must never hit the network. Bind `FakeGeminiService` for anything that
-  touches a model.
+  touches a model. `Http::preventStrayRequests()` is on `Tests\TestCase` so a
+  missed fake fails the test instead of opening a socket.
 - `behavioral_answers` is per-user global, not per-application, and unique on
   `(user_id, theme_id)`. Saves go through `updateOrCreate` — edit in place, don't
   accumulate rows.

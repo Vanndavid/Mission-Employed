@@ -85,6 +85,19 @@ class AiDocumentTest extends TestCase
         $gemini->assertNothingSent();
     }
 
+    public function test_both_documents_need_a_job_description_and_a_cv(): void
+    {
+        $gemini = FakeGeminiService::swap();
+
+        foreach (['/api/ai/cover-letter/generate', '/api/ai/cv/generate'] as $route) {
+            $this->postJson($route, ['company' => 'Acme', 'role' => 'SWE'])
+                ->assertStatus(422)
+                ->assertJsonValidationErrors(['jobDescription', 'cv']);
+        }
+
+        $gemini->assertNothingSent();
+    }
+
     public function test_a_gemini_failure_is_contained(): void
     {
         FakeGeminiService::swap()->throwOn('generateText');

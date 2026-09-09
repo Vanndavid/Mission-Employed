@@ -1,7 +1,6 @@
-// @vitest-environment jsdom
 import React from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 /**
@@ -66,8 +65,6 @@ beforeEach(() => {
   generateBehavioralPrompt.mockReset().mockResolvedValue('"Tell me about a weakness."');
   textToSpeech.mockReset().mockResolvedValue('');
 });
-
-afterEach(cleanup);
 
 describe('PrepRoom', () => {
   it('shows how many facts each theme has', () => {

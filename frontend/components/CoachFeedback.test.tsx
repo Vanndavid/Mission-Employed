@@ -1,7 +1,6 @@
-// @vitest-environment jsdom
 import React from 'react';
-import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import { render, screen } from '@testing-library/react';
 import { CoachFeedback } from './CoachFeedback';
 
 /**
@@ -20,8 +19,6 @@ const FEEDBACK = [
   '### 🚀 Training Directives',
   '* Quantify the outcome.',
 ].join('\n');
-
-afterEach(cleanup);
 
 describe('CoachFeedback', () => {
   it('renders each section heading as text, without the Markdown markers', () => {
