@@ -647,9 +647,14 @@ Report the real output plus the result of the bundle grep.
 Tick the 4.2 box in TASKS.md. Do not commit.
 ```
 
-### 4.3 Test coverage pass
+### 4.3 Test coverage pass ✅
 
-- [ ] Not started
+- [x] Done — `AiPremiumGateTest` walks every AI route as a free user (403 +
+  `premium_required`, Gemini never called). Remaining FormRequest 422s
+  (behavioral theme, document jobDescription/cv) and session-message Gemini
+  containment (exact JSON, no upstream body). `Tests\TestCase` now
+  `preventStrayRequests()` by default. Frontend: `http.ts` contract tests and
+  `PremiumGate`. CI runs `tsc --noEmit`.
 
 ```
 Task 4.3 from TASKS.md: close the gaps in test coverage.
@@ -677,7 +682,11 @@ Tick the 4.3 box in TASKS.md. Do not commit.
 
 ### 4.4 CI and a real end-to-end run
 
-- [ ] Not started
+- [x] **CI half** — `.github/workflows/ci.yml` already ran PHPUnit, Vitest and
+  the frontend build from a clean checkout; it now also runs `npx tsc --noEmit`.
+- [ ] **Live walk still outstanding** — boot `./dev.sh` as free and premium,
+  exercise all four features, hard-refresh mid-conversation. Needs a Gemini
+  key; not part of the TDD plumbing PR.
 
 ```
 Task 4.4 from TASKS.md: get CI green and walk the whole app.

@@ -1,7 +1,6 @@
-// @vitest-environment jsdom
 import React from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { SeekJob } from '../utils/seekJobs';
 
 const searchSeekJobs = vi.fn();
@@ -39,8 +38,6 @@ beforeEach(() => {
     where: 'All Australia',
   });
 });
-
-afterEach(cleanup);
 
 describe('SeekJobs', () => {
   it('loads Seek listings on mount with the default software-engineer search', async () => {
