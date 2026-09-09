@@ -92,9 +92,11 @@ describe('apiRequest', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/ai/tts', expect.objectContaining({
       method: 'POST',
       body: JSON.stringify({ text: 'hi' }),
+      headers: expect.objectContaining({
+        Authorization: 'Bearer 1|test-token',
+        Accept: 'application/json',
+      }),
     }));
-    const headers = new Headers(fetchMock.mock.calls[0][1]?.headers as HeadersInit);
-    expect(headers.get('Authorization')).toBe('Bearer 1|test-token');
   });
 
   it('calls the unauthorized handler on a 401, then throws', async () => {
