@@ -32,12 +32,14 @@ cd backend  && php artisan test
 cd frontend && npm test && npx tsc --noEmit
 ```
 
-Write the failing test first. Feature tests use model factories. Tests must
-never hit the network: `Tests\TestCase` calls `Http::preventStrayRequests()`,
-and anything that talks to a model binds `FakeGeminiService`. Do not bind the
-fake globally — `GeminiServiceTest` exercises the real client with `Http::fake()`.
-Frontend tests go through `services/http.ts` (`ApiError`, `apiRequest`,
-`apiResource`) rather than raw `fetch`.
+Write the failing test first. The working loop — where to put a test, what
+to assert, the commands — is [`.cursor/rules/tdd.mdc`](.cursor/rules/tdd.mdc).
+Feature tests use model factories. Tests must never hit the network:
+`Tests\TestCase` calls `Http::preventStrayRequests()`, and anything that talks
+to a model binds `FakeGeminiService`. Do not bind the fake globally —
+`GeminiServiceTest` exercises the real client with `Http::fake()`. Frontend
+tests go through `services/http.ts` (`ApiError`, `apiRequest`, `apiResource`)
+rather than raw `fetch`.
 
 ## Constraints that are not preferences
 

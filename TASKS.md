@@ -10,7 +10,8 @@ and cutting the app down to four features.
 Every open task below has a **copy-paste brief** — a fenced block you can paste
 straight into a fresh `claude` session or agent in this folder. Project context
 comes from `CLAUDE.md`, which loads automatically, so the brief only carries what
-is specific to that task.
+is specific to that task. Work is test-driven: write the failing test first.
+[`.cursor/rules/tdd.mdc`](.cursor/rules/tdd.mdc) is the how-to.
 
 Tasks in the same wave are independent and can run at the same time. A wave
 cannot start until the wave above it is done. Each brief ends by telling the
