@@ -1,0 +1,87 @@
+---
+description: How to approach any change — write the failing test first, then the code.
+alwaysApply: true
+---
+
+# How to approach a change
+
+Read `TASKS.md` for what is in scope. Then **write the failing test, then the
+code**. Product facts (stack, auth, Gemini, what was deleted) live in
+`CLAUDE.md` — this file is only the working loop.
+
+```
+failing test → implement until green → run the package suite → stop
+```
+
+Do not open a PR that only has implementation. Do not add Pest, Playwright,
+PHPStan, ESLint, or a coverage-percentage gate.
+
+## Commands
+
+```bash
+cd backend  && php artisan test                  # whole suite
+cd backend  && php artisan test --filter=Name    # one class or method
+cd frontend && npm test                          # Vitest
+cd frontend && npm run test:watch                # stay in the loop
+cd frontend && npm run typecheck                 # tsc --noEmit (CI runs this)
+```
+
+Backend tests use in-memory SQLite. Need a `.env`? `cp .env.example .env && php artisan key:generate`.
+
+## Where to put the test
+
+| Change lives in | Test lives in | Copy the shape of |
+| --- | --- | --- |
+| A Laravel route / controller / FormRequest | `backend/tests/Feature/` | The nearest `*Test.php` for that feature |
+| `FakeGeminiService` itself | `backend/tests/Unit/` | `FakeGeminiServiceTest` |
+| The real Gemini HTTP client | `backend/tests/Feature/GeminiServiceTest.php` | That file — `Http::fake()`, never `FakeGeminiService` |
+| A React screen or hook | `frontend/**/*.test.tsx` next to it | `PremiumGate.test.tsx`, `PrepRoom.test.tsx` |
+| `services/http.ts` or a client | `frontend/services/*.test.ts` | `http.test.ts` |
+| A pure util | `frontend/utils/*.test.ts` | `applicationTable.test.ts` |
+
+Vitest is jsdom with `frontend/setupTests.ts` (jest-dom + cleanup). Do not add
+`// @vitest-environment` or a per-file `afterEach(cleanup)` unless you must.
+
+## Backend — the few rules that bite
+
+- Use model factories (`User::factory()->premium()`, `->admin()`), not hand-built arrays.
+- `Tests\TestCase` already calls `Http::preventStrayRequests()`. A missed fake fails the test instead of opening a socket.
+- Anything that would call Gemini: `FakeGeminiService::swap()`, then `assertNothingSent()` / `assertPromptContains()`. Do **not** bind the fake globally — `GeminiServiceTest` needs the real client.
+- Someone else's record is **404**, not 403. Do not leak that it exists.
+- Every `/api/ai/*` route is `auth:sanctum` + `premium`. A free user is `403` + `premium_required`. An admin on a free plan is allowed (`User::isPremium()` is plan **or** role).
+- Session-bound routes (`/sessions/{session}`, mock turns) need a real row first. `SubstituteBindings` runs with the `api` group, **before** `premium`, so a missing id is a 404 that never proves the gate. See `AiPremiumGateTest`.
+- `GeminiException` becomes `502` `{ code: 'ai_unavailable' }` with **no** upstream body, model name, or status in the JSON.
+- Empty client strings (`''`) on nullable dates become `null` in the FormRequest, not the controller.
+
+## Frontend — the few rules that bite
+
+- Screens talk to the API through `services/http.ts` (`apiRequest`, `apiResource`, `ApiError`). Do not `fetch` in a component or reinvent `isPremiumRequired`.
+- A 401 is handled once in `AuthContext` via `setUnauthorizedHandler`. Tests that hit 401 should expect that, not a toast.
+- IDs are numbers from the server. Never `crypto.randomUUID()` a new application or stage.
+- `PremiumGate` is a courtesy. The server is the enforcement. When a 403 `premium_required` comes back, surface the upgrade prompt (`err.isPremiumRequired`), do not show a raw error.
+
+## What a good new test proves
+
+Pick the boundary the change can get wrong. Happy-path 200s already exist.
+
+- Other user's application / stage / session → 404
+- Free user on an AI route → 403, Gemini not called
+- FormRequest rejects the input it claims to reject → 422, Gemini not called
+- Gemini throws → 502 `ai_unavailable`, body has no leak
+- Client `''` date → stored `null`; blank recruiter → serialized `null`
+
+## A typical change, start to finish
+
+Adding a required field to an AI endpoint:
+
+1. Open the existing Feature test for that controller (or `AiPremiumGateTest` if it is a new route).
+2. Add a method that posts without the field, expects `422`, and `assertNothingSent()`.
+3. Run `php artisan test --filter=thatTest`. It should fail.
+4. Add the rule on the FormRequest. Re-run. Green.
+5. Run `php artisan test` once before you stop.
+
+Adding a screen state (loading, error, premium):
+
+1. Colocate `Component.test.tsx`. Mock `useAuth` / the data hook the same way `PrepRoom.test.tsx` does.
+2. Assert the empty / error / free-user state, not only the happy render.
+3. `npm test` then `npm run typecheck`.

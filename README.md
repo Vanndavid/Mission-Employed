@@ -89,11 +89,15 @@ for the AI features (ported in a later wave). Never commit a real key —
 
 ## Tests
 
+Work is test-driven. [`.cursor/rules/tdd.mdc`](.cursor/rules/tdd.mdc) is the
+how-to — where a test goes, what to assert, and the red-green loop.
+
 ```bash
 cd backend  && php artisan test    # PHPUnit, in-memory SQLite
 cd frontend && npm test            # Vitest
+cd frontend && npm run typecheck   # tsc --noEmit
 cd frontend && npm run build       # production build
 ```
 
-CI (`.github/workflows/ci.yml`) runs both packages. `deploy.yml` builds
-`frontend/` and publishes it to GitHub Pages.
+CI (`.github/workflows/ci.yml`) runs PHPUnit, Vitest, `tsc --noEmit`, and the
+frontend build. `deploy.yml` builds `frontend/` and publishes it to GitHub Pages.
