@@ -13,8 +13,9 @@ as work lands rather than letting it go stale.
 | --- | --- |
 | `backend/` | Laravel 12, PHP 8.3, Sanctum bearer tokens, SQLite |
 | `frontend/` | React 19, TypeScript, Vite 6, Tailwind, Vitest |
+| `mcp/` | MCP server over the Laravel API — Node 22, TypeScript, `node:test` |
 
-Two separate packages with their own dependencies and test runners.
+Separate packages with their own dependencies and test runners.
 
 ## Running it
 
@@ -30,6 +31,7 @@ Tests:
 ```bash
 cd backend  && php artisan test
 cd frontend && npm test && npx tsc --noEmit
+cd mcp      && npm test && npm run typecheck
 ```
 
 ## Constraints that are not preferences
@@ -66,6 +68,17 @@ compose behind Traefik. `main` gets deployed; treat it accordingly.
 
 **Do not delete `server/` until Laravel is deployed and confirmed serving
 traffic.** Tasks 4.1 and 4.2 in `TASKS.md` sequence that cutover.
+
+## The MCP server
+
+`mcp/` exposes the same API to an MCP client (Claude Code, Claude Desktop,
+Cowork) so an application can be tracked or a CV tailored from a conversation.
+It is a **thin client** — ownership checks, validation, the status timeline and
+the premium gate stay in Laravel, and no rule is reimplemented there. When an
+endpoint changes shape, the matching tool in `mcp/src/tools/` changes with it.
+
+Audio round trips (`/api/ai/behavioral/evaluate`, `/api/ai/tts`) are deliberately
+not exposed: they only make sense in the browser. See `mcp/README.md`.
 
 ## Scope — this is the whole product
 

@@ -635,6 +635,42 @@ Tick the 4.4 box in TASKS.md. Do not commit.
 
 ---
 
+## Wave 5 — MCP server
+
+Independent of the waves above; it only needs the Wave 2 API, which is done.
+
+### 5.1 MCP server over the API ✅
+
+- [x] Done — `mcp/`, a stdio (and optional Streamable HTTP) MCP server wrapping
+  the Laravel API in 28 tools: the tracker, interview stages, the CV profile,
+  practice history, and the premium AI features. Sign-in is either
+  `MISSION_EMPLOYED_TOKEN` or the `login` tool, whose token is stored at
+  `~/.config/mission-employed/token` with `0600`. 10 tests against a fake API,
+  plus a manual end-to-end run against `php artisan serve`.
+
+Three decisions worth remembering:
+
+- **It is a thin client.** No rule is reimplemented — ownership, validation, the
+  status timeline and the premium gate stay in Laravel. The tools only reshape
+  input and make failures readable. A 404 is reported with one generic sentence
+  rather than Laravel's own body, which names the model class.
+- **Audio is not exposed.** `/api/ai/behavioral/evaluate` and `/api/ai/tts` are
+  browser-only round trips and have no MCP tool. Mock interviews work through
+  the typed-answer path (`MockTurnRequest::typedAnswer()`), which is exactly why
+  that fallback exists.
+- **Two composite tools** carry the common requests:
+  `track_job_from_description` (parse a posting and create the application in
+  one call) and the document generators, which take an `applicationId` and pull
+  company, role, job description and the base CV from the tracker and profile,
+  with `save: true` writing the result back onto the application.
+
+Not done and worth a later pass: `npm install` in `mcp/` crashes npm 10.9.2 when
+vitest is a dependency (`Cannot read properties of null (reading 'edgesOut')`,
+an arborist peer-resolution bug), so the tests run on `node:test` via `tsx`
+rather than the vitest the other packages use.
+
+---
+
 ## Deployment
 
 **The app is live at `mission-employed.vanndavidteng.com`.** Treat main as
