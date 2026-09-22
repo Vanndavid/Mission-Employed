@@ -10,7 +10,8 @@ and cutting the app down to four features.
 Every open task below has a **copy-paste brief** — a fenced block you can paste
 straight into a fresh `claude` session or agent in this folder. Project context
 comes from `CLAUDE.md`, which loads automatically, so the brief only carries what
-is specific to that task.
+is specific to that task. Work is test-driven: write the failing test first.
+[`.cursor/rules/tdd.mdc`](.cursor/rules/tdd.mdc) is the how-to.
 
 Tasks in the same wave are independent and can run at the same time. A wave
 cannot start until the wave above it is done. Each brief ends by telling the
@@ -407,7 +408,16 @@ above the rest whatever the sort column is. Two things worth remembering:
 - The filter and sort rules live in `frontend/utils/applicationTable.ts`, not in
   the component, so they are unit tested without a DOM.
 
-### 3.2b Spreadsheet import ✅
+### 3.2b Seek listings on Job Applications ✅
+
+- [x] Done — the Job Applications page has a Seek section that loads live
+  listings through `GET /api/seek/jobs`, a Laravel proxy of Seek's own
+  `GET /api/jobsearch/v5/search`. Saving a listing creates a `Saved`
+  application with the Seek URL, teaser and bullets. Upstream Seek errors
+  become a contained 502 (`seek_unavailable`) and never leak the body.
+  Tests fake the HTTP client; nothing hits the network.
+
+### 3.2c Spreadsheet import ✅
 
 - [x] Done, 2026-09-22. "Import CSV" is now **Import spreadsheet**: it takes
   `.xlsx`, `.xls` or `.csv`, whatever the columns are called, and whether or not
@@ -700,9 +710,14 @@ Report the real output plus the result of the bundle grep.
 Tick the 4.2 box in TASKS.md. Do not commit.
 ```
 
-### 4.3 Test coverage pass
+### 4.3 Test coverage pass ✅
 
-- [ ] Not started
+- [x] Done — `AiPremiumGateTest` walks every AI route as a free user (403 +
+  `premium_required`, Gemini never called). Remaining FormRequest 422s
+  (behavioral theme, document jobDescription/cv) and session-message Gemini
+  containment (exact JSON, no upstream body). `Tests\TestCase` now
+  `preventStrayRequests()` by default. Frontend: `http.ts` contract tests and
+  `PremiumGate`. CI runs `tsc --noEmit`.
 
 ```
 Task 4.3 from TASKS.md: close the gaps in test coverage.
@@ -730,7 +745,11 @@ Tick the 4.3 box in TASKS.md. Do not commit.
 
 ### 4.4 CI and a real end-to-end run
 
-- [ ] Not started
+- [x] **CI half** — `.github/workflows/ci.yml` already ran PHPUnit, Vitest and
+  the frontend build from a clean checkout; it now also runs `npx tsc --noEmit`.
+- [ ] **Live walk still outstanding** — boot `./dev.sh` as free and premium,
+  exercise all four features, hard-refresh mid-conversation. Needs a Gemini
+  key; not part of the TDD plumbing PR.
 
 ```
 Task 4.4 from TASKS.md: get CI green and walk the whole app.

@@ -10,6 +10,7 @@
  *      - 403 `{message, code}`            → `premium_required` / `admin_required`
  *      - 422 `{message, errors}`          → standard validation failure
  *      - 502 `{code: 'ai_unavailable'}`   → Gemini failed, contained server-side
+      - 502 `{code: 'seek_unavailable'}` → Seek's jobsearch JSON failed, contained server-side
  * 2. **The resource envelope.** Tracker endpoints return Laravel's default
  *    `{ data: ... }` wrapper; auth and AI endpoints return flat objects. The
  *    caller says which it expects rather than this module guessing.
@@ -55,7 +56,12 @@ export class ApiError extends Error {
 
   /** Gemini failed. The detail is in the server log, never in this message. */
   get isAiUnavailable(): boolean {
-    return this.status === 502 || this.code === 'ai_unavailable';
+    return this.code === 'ai_unavailable' || (this.status === 502 && this.code !== 'seek_unavailable');
+  }
+
+  /** Seek's jobsearch JSON failed. Same containment rule as Gemini. */
+  get isSeekUnavailable(): boolean {
+    return this.status === 502 && this.code === 'seek_unavailable';
   }
 
   /** The record does not exist, or belongs to someone else — the API does not say which. */

@@ -9,6 +9,8 @@
     "build:pages": "GITHUB_PAGES=true vite build && cp dist/index.html dist/404.html",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
     "server": "node ../server/index.js"
   },
   "dependencies": {

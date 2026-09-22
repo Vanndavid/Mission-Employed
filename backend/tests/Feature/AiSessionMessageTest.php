@@ -7,6 +7,7 @@ use App\Models\AiMessage;
 use App\Models\AiSession;
 use App\Models\User;
 use App\Services\FakeGeminiService;
+use App\Services\GeminiException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
@@ -125,11 +126,23 @@ class AiSessionMessageTest extends TestCase
         $user = $this->premium();
         $session = $this->chatSession($user);
 
-        FakeGeminiService::swap()->throwOn('chat');
+        FakeGeminiService::swap()->throwOn(
+            'chat',
+            GeminiException::fromStatus(429, 'gemini-2.0-flash', '{"error":{"message":"QUOTA_EXCEEDED for project 12345"}}'),
+        );
 
-        $this->postJson("/api/ai/sessions/{$session->id}/messages", ['message' => 'How do I start?'])
-            ->assertStatus(502)
-            ->assertJsonPath('code', 'ai_unavailable');
+        $response = $this->postJson("/api/ai/sessions/{$session->id}/messages", ['message' => 'How do I start?']);
+
+        $response->assertStatus(502)->assertExactJson([
+            'message' => 'The AI service is unavailable right now. Please try again in a moment.',
+            'code' => 'ai_unavailable',
+        ]);
+
+        $body = $response->getContent();
+
+        foreach (['QUOTA_EXCEEDED', '12345', 'gemini-2.0-flash', 'Gemini', '429'] as $leak) {
+            $this->assertStringNotContainsString($leak, $body);
+        }
 
         // A dangling user turn would be replayed forever on every later turn.
         $this->assertSame(0, $session->messages()->count());

@@ -99,6 +99,17 @@ class AiBehavioralTest extends TestCase
         );
     }
 
+    public function test_a_prompt_requires_a_theme(): void
+    {
+        $gemini = FakeGeminiService::swap();
+
+        $this->postJson('/api/ai/behavioral/prompt', [])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('theme');
+
+        $gemini->assertNothingSent();
+    }
+
     public function test_it_requires_the_audio(): void
     {
         $gemini = FakeGeminiService::swap();

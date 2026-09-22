@@ -1,0 +1,49 @@
+{
+  "totalCount": 1572,
+  "data": [
+    {
+      "id": "94488368",
+      "title": "Software Engineer",
+      "companyName": "Energetica",
+      "advertiser": { "id": "55342542", "description": "Energetica" },
+      "employer": { "id": "238468", "name": "Energetica" },
+      "salaryLabel": "$105,000 – $135,000 per year",
+      "teaser": "End-to-end software platform in energy and sustainability.",
+      "bulletPoints": ["career development", "rapidly growing startup"],
+      "listingDate": "2026-09-08T05:10:53Z",
+      "listingDateDisplay": "7h ago",
+      "workTypes": ["Full time"],
+      "workArrangements": {
+        "displayText": "Hybrid",
+        "data": [{ "id": "2", "label": { "text": "Hybrid" } }]
+      },
+      "locations": [
+        { "label": "Melbourne VIC", "countryCode": "AU" }
+      ],
+      "classifications": [
+        {
+          "classification": { "id": "6281", "description": "Information & Communication Technology" },
+          "subclassification": { "id": "6290", "description": "Engineering - Software" }
+        }
+      ]
+    },
+    {
+      "id": "94480001",
+      "title": "Backend Engineer",
+      "advertiser": { "description": "Northwind Systems" },
+      "teaser": "Build APIs.",
+      "bulletPoints": [],
+      "listingDate": "2026-09-07T01:00:00Z",
+      "listingDateDisplay": "1d ago",
+      "workTypes": ["Contract/Temp"],
+      "locations": [
+        { "label": "Sydney NSW" },
+        { "label": "Remote" }
+      ]
+    },
+    {
+      "id": "skip-me",
+      "companyName": "No title should be dropped"
+    }
+  ]
+}
