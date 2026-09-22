@@ -20,7 +20,7 @@ class GeminiService implements GeminiClient
 {
     public const DEFAULT_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 
-    public const DEFAULT_MODEL = 'gemini-2.0-flash';
+    public const DEFAULT_MODEL = 'gemini-3.7-flash';
 
     public const DEFAULT_TTS_MODEL = 'gemini-2.5-flash-preview-tts';
 
