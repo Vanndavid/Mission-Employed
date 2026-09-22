@@ -7,7 +7,8 @@ import {
   NewInterviewStage,
 } from '../types';
 import * as tracker from '../services/trackerClient';
-import { errorMessage, isAbortError } from '../services/http';
+import { ApiError, errorMessage, isAbortError } from '../services/http';
+import { RowPlan, RowVerdict } from '../utils/importMerge';
 import { useDebouncedQueue } from '../hooks/useDebouncedQueue';
 
 /**
@@ -37,8 +38,23 @@ export interface ApplicationsContextValue {
   deleteApplication: (id: number) => Promise<void>;
   addInterviewStage: (applicationId: number, stage: NewInterviewStage) => Promise<InterviewStage | null>;
   removeInterviewStage: (applicationId: number, stageId: number) => Promise<void>;
-  /** Creates one record per input; returns how many landed. */
-  importApplications: (inputs: ApplicationInput[]) => Promise<number>;
+  /**
+   * Commit a reviewed spreadsheet import, one request per row, and report what
+   * happened to each. Replaces the old blind bulk create: rows that matched
+   * something already tracked are patched rather than duplicated, and a row
+   * that fails says why instead of being counted and forgotten.
+   */
+  commitImport: (plans: RowPlan[]) => Promise<ImportOutcome[]>;
+}
+
+/** What happened to one row of a committed import. */
+export interface ImportOutcome {
+  rowNumber: number;
+  verdict: RowVerdict;
+  status: 'created' | 'filled' | 'skipped' | 'failed';
+  applicationId: number | null;
+  /** Why it failed or was skipped. '' when it simply worked. */
+  message: string;
 }
 
 const ApplicationsContext = createContext<ApplicationsContextValue | null>(null);
@@ -211,24 +227,87 @@ export function ApplicationsProvider({ children }: { children: React.ReactNode }
     [],
   );
 
-  const importApplications = useCallback(async (inputs: ApplicationInput[]) => {
+  const commitImport = useCallback(async (plans: RowPlan[]) => {
+    const outcomes: ImportOutcome[] = [];
     const created: JobApplication[] = [];
-    let failed = 0;
+    const updated = new Map<number, JobApplication>();
 
-    // One request per row: there is no bulk create endpoint, and a single bad
-    // row should not lose the rest of the file.
-    for (const input of inputs) {
+    // One request per row, in order: there is no bulk endpoint, and doing them
+    // one at a time means a single bad row cannot lose the rest of the file.
+    for (const plan of plans) {
+      if (plan.verdict === 'identical' || plan.verdict === 'invalid') {
+        outcomes.push({
+          rowNumber: plan.rowNumber,
+          verdict: plan.verdict,
+          status: 'skipped',
+          applicationId: plan.match?.id ?? null,
+          message: plan.reason,
+        });
+        continue;
+      }
+
       try {
-        created.push(await tracker.createApplication(withCreateDefaults(input)));
-      } catch {
-        failed += 1;
+        if (plan.verdict === 'create') {
+          // Deliberately not through withCreateDefaults: its invented role and
+          // today's date would put values where the sheet had blanks, which is
+          // exactly what a later import needs to be able to fill.
+          const application = await tracker.createApplication(plan.payload as ApplicationInput);
+          created.push(application);
+
+          outcomes.push({
+            rowNumber: plan.rowNumber,
+            verdict: plan.verdict,
+            status: 'created',
+            applicationId: application.id,
+            message: '',
+          });
+        } else {
+          // The direct client call, not this context's own updateApplication:
+          // that one is optimistic and debounced, and a burst of row patches
+          // would coalesce and lose writes.
+          const application = await tracker.updateApplication(
+            plan.match!.id,
+            plan.payload as ApplicationInput,
+          );
+          updated.set(application.id, application);
+
+          outcomes.push({
+            rowNumber: plan.rowNumber,
+            verdict: plan.verdict,
+            status: 'filled',
+            applicationId: application.id,
+            message: '',
+          });
+        }
+      } catch (cause) {
+        // Keep the reason. The old bulk import counted failures and discarded
+        // every one of them, which made a bad row impossible to diagnose.
+        const fieldError = cause instanceof ApiError && cause.isValidation
+          ? cause.firstFieldError()
+          : null;
+
+        outcomes.push({
+          rowNumber: plan.rowNumber,
+          verdict: plan.verdict,
+          status: 'failed',
+          applicationId: plan.match?.id ?? null,
+          message: fieldError ?? errorMessage(cause, 'That row could not be imported.'),
+        });
       }
     }
 
-    if (created.length) setApplications(prev => [...created.reverse(), ...prev]);
-    setError(failed ? `${failed} of ${inputs.length} rows could not be imported.` : null);
+    // One state update for the whole file, so the table renders once.
+    if (created.length > 0 || updated.size > 0) {
+      setApplications(prev => [
+        ...created.slice().reverse(),
+        ...prev.map(application => updated.get(application.id) ?? application),
+      ]);
+    }
 
-    return created.length;
+    // The importer reports per row; the global banner would only duplicate it.
+    setError(null);
+
+    return outcomes;
   }, []);
 
   return (
@@ -245,7 +324,7 @@ export function ApplicationsProvider({ children }: { children: React.ReactNode }
         deleteApplication,
         addInterviewStage,
         removeInterviewStage,
-        importApplications,
+        commitImport,
       }}
     >
       {children}

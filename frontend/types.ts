@@ -64,6 +64,8 @@ export interface JobApplication {
   role: string;
   location?: string;
   url: string;
+  /** Where it came from: a job board, a recruiter, the company's own site. */
+  source: string;
   /** 'YYYY-MM-DD', or '' when never applied. Nullable columns read back as ''. */
   dateApplied: string;
   status: JobStatus;
@@ -85,10 +87,16 @@ export interface JobApplication {
 /**
  * The fields a client may send when creating or patching an application.
  * `id`, `interviewStages` and `statusHistory` are server-owned and ignored.
+ *
+ * `statusDate` is write-only, which is why it is added here rather than to
+ * JobApplication: it is not a column, it dates the status event the server
+ * writes when the status is set or changed. A spreadsheet import is the only
+ * thing that sends it, so the timeline shows when a status actually changed
+ * rather than when the row was imported.
  */
 export type ApplicationInput = Partial<
   Omit<JobApplication, 'id' | 'interviewStages' | 'statusHistory'>
->;
+> & { statusDate?: string };
 
 export interface BehavioralAnswer {
   themeId: string;

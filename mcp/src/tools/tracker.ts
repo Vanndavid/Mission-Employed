@@ -64,8 +64,22 @@ const offer = z.object({
 const applicationFields = {
   location: z.string().nullable().optional(),
   url: z.string().nullable().optional(),
+  source: z
+    .string()
+    .nullable()
+    .optional()
+    .describe("Where it came from: a job board, a recruiter, the company's own site."),
   status: z.enum(JOB_STATUSES).optional().describe("Changing this appends to the status timeline."),
+  isImportant: z.boolean().optional().describe("Starred. Starred rows pin to the top of the tracker."),
   dateApplied: z.string().nullable().optional().describe("YYYY-MM-DD."),
+  statusDate: z
+    .string()
+    .nullable()
+    .optional()
+    .describe(
+      "YYYY-MM-DD. Dates the status timeline entry instead of stamping it now. " +
+        "Only has an effect when the status is being set or changed.",
+    ),
   notes: z.string().nullable().optional(),
   jobDescription: z.string().nullable().optional(),
   coverLetter: z.string().nullable().optional(),

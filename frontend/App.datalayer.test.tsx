@@ -26,6 +26,7 @@ const APPLICATION = {
   company: 'Acme Corp',
   role: 'Backend Engineer',
   location: '',
+  source: 'Seek',
   url: 'https://example.com/job',
   dateApplied: '2026-08-30',
   status: 'Applied',

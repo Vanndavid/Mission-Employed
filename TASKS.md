@@ -407,6 +407,68 @@ above the rest whatever the sort column is. Two things worth remembering:
 - The filter and sort rules live in `frontend/utils/applicationTable.ts`, not in
   the component, so they are unit tested without a DOM.
 
+### 3.2b Spreadsheet import ✅
+
+- [x] Done, 2026-09-22. "Import CSV" is now **Import spreadsheet**: it takes
+  `.xlsx`, `.xls` or `.csv`, whatever the columns are called, and whether or not
+  the applications are already tracked.
+
+Three steps in `components/ImportApplicationsModal.tsx`: read the file, review
+the column mapping, review the rows and commit.
+
+**Parsing is client-side.** There is no upload handling anywhere in Laravel —
+no multipart, no `Storage` — and `apiRequest` always `JSON.stringify`s its
+body. SheetJS (pinned to the patched 0.20.3 from `cdn.sheetjs.com`, because
+npm's newest `xlsx` is 0.18.5 with two unfixed CVEs) reads all three formats
+through one path, dynamically imported so it is a separate 500 kB chunk and the
+main bundle is untouched. That also killed a real bug: the old hand-rolled
+`parseCsvLine` split on newlines *before* parsing quotes, so a quoted notes cell
+containing a newline corrupted its row. `utils/csv.ts` is now export-only.
+
+**The AI maps the vocabulary, not the rows.** `POST /api/ai/import/plan` gets the
+header row, 8 sample rows and the distinct values of the low-cardinality columns,
+and answers with column indices per field plus dictionaries translating the
+sheet's own status and channel wording. The client then applies that plan to
+every row deterministically. So a 500-row sheet costs the same as a 10-row one,
+the same sheet always imports identically, and — because the mapping is a form
+with `guessPlan()` as its baseline — a wrong answer costs one dropdown rather
+than a sheet full of bad rows. It answers with *indices*, never header text, so
+a blank or duplicated header cannot break the join.
+
+**It works with the AI off.** `guessPlan()` maps the sheet from header synonyms
+and value shapes, and is both the fallback and the diff baseline. A free user
+(403) and an unreachable model (502) both fall through to it with *different*
+messages, so a premium user is never told their plan lapsed.
+
+**Committing fills blanks; it never overwrites.** Every row gets a verdict —
+`create`, `fill`, `identical`, `invalid` — and `identical` makes no request at
+all, which is what makes re-importing the same sheet a no-op. Matching is on
+normalised company **and** role, because people apply to one company repeatedly
+(the real sheet has three Nexigen applications and two REA Group roles). A
+status advances along the pipeline or is left alone, so a stale export cannot
+reopen a rejected application.
+
+Things worth remembering:
+
+- All the logic is in `utils/{spreadsheet,importPlan,importRows,importMerge}.ts`
+  as pure functions, tested without a DOM, the way `applicationTable.ts` is.
+- The commit path must **not** go through `withCreateDefaults`. Its
+  `role || 'Software Engineer'` and `dateApplied || today` write values where the
+  sheet had blanks, which silently defeats filling them later. `commitImport`
+  replaced `importApplications`, which counted failures and discarded every
+  reason for them.
+- A `fill` uses the **direct** `trackerClient.updateApplication`, not the
+  context's own optimistic debounced one — a burst of row patches would coalesce
+  and lose writes.
+- Backend: a nullable `source` column (free string, not an enum — job boards are
+  open-ended), and an optional `statusDate` that backdates the status event.
+  `statusDate` is validated but absent from `COLUMN_MAP` because it is not a
+  column. The `isDirty('status')` gate in `update()` is load-bearing: without it
+  a blank-filling PATCH would log a status event and idempotency would die.
+- `Days Since Applied` can reconstruct the many blank dates, but it is a live
+  formula whose baseline is whenever the file was last opened, so it is opt-in
+  and never replaces a date the sheet has.
+
 ### 3.3 Coding practice and dashboard ✅
 
 - [x] Done — dashboard slimmed to coding practice, pipeline summary and upcoming

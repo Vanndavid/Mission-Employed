@@ -46,8 +46,14 @@ const INITIAL_DIRECTION: Record<SortKey, SortDirection> = {
   dateApplied: 'desc',
 };
 
-/** Pipeline order, not alphabetical: Saved → Applied → … → Rejected. */
-const STATUS_ORDER: JobStatus[] = Object.values(JobStatus);
+/**
+ * Pipeline order, not alphabetical: Saved → Applied → … → Rejected.
+ *
+ * Exported because the spreadsheet importer needs the same order to decide
+ * whether a sheet's status advances an existing application or regresses it.
+ * One definition, so sorting and importing cannot disagree.
+ */
+export const STATUS_ORDER: JobStatus[] = Object.values(JobStatus);
 
 export function hasActiveFilters(filters: ApplicationFilters): boolean {
   return (

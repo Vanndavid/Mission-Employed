@@ -91,7 +91,10 @@ reintroduce it or build features that depend on it:
 2. **Coding practice** — software engineering only. Problem generation, AI tutor
    chat, attempt history.
 3. **Job application tracker** — CRUD, statuses, interview stages, paste-a-JD
-   parsing, tailored CV and cover letter.
+   parsing, tailored CV and cover letter, and **spreadsheet import**: drop in an
+   `.xlsx`/`.xls`/`.csv` whose columns are named anything at all, an AI proposes
+   the column mapping, you correct it and review the rows, and committing fills
+   blanks on applications already tracked rather than duplicating them.
 4. **Interview practice** — one question at a time: prompt, answer, AI feedback,
    spoken playback.
 5. **Full mock interview** — multi-turn session ending in a written report.
@@ -99,7 +102,12 @@ reintroduce it or build features that depend on it:
 Deleted and staying deleted: talent ranking, analytics, contacts, the Codex/rules
 page, offer tools and negotiation scripts, follow-up emails, system design drills,
 hunt personas and onboarding, criteria scoring, daily logs and task streaks,
-import/export, the emergency modal.
+the emergency modal.
+
+> This list used to say "import/export". What was cut was the old blind bulk
+> import — exact header match, a POST per row, no dedupe. Spreadsheet import as
+> described in 3 above replaces it and is a first-class feature; CSV export
+> stays as it is.
 
 > `system_design` is still a valid **interview stage type** in the tracker — people
 > get scheduled for one. Only the practice drill was cut.
@@ -111,6 +119,16 @@ import/export, the emergency modal.
 - Every model has a factory. Feature tests use them rather than hand-built arrays.
 - Tests must never hit the network. Bind `FakeGeminiService` for anything that
   touches a model.
+- **Spreadsheet import never overwrites.** A row matching something already
+  tracked fills only fields that are currently blank, and a status moves forward
+  along the pipeline or not at all. Re-importing the same sheet must stay a
+  no-op — `frontend/utils/importMerge.ts` owns that and its tests assert it.
+  The AI only maps the sheet's *vocabulary* (`POST /api/ai/import/plan`); the
+  rows are applied deterministically client-side, and its answer is treated as
+  untrusted input.
+- `statusDate` is accepted on create and update but is **not a column**. It
+  backdates the status event, which is why it is absent from
+  `ApplicationRequest::COLUMN_MAP`.
 - `behavioral_answers` is per-user global, not per-application, and unique on
   `(user_id, theme_id)`. Saves go through `updateOrCreate` — edit in place, don't
   accumulate rows.

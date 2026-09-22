@@ -32,9 +32,13 @@ const APPLICATION_FIELDS = [
   'role',
   'location',
   'url',
+  'source',
   'status',
   'isImportant',
   'dateApplied',
+  // Not a column: it backdates the status event the server writes. Only the
+  // spreadsheet importer sends it.
+  'statusDate',
   'notes',
   'jobDescription',
   'coverLetter',
@@ -47,7 +51,7 @@ const APPLICATION_FIELDS = [
 ] as const;
 
 /** Date inputs the API stores in a real date column, where '' is not a date. */
-const DATE_FIELDS: ReadonlySet<string> = new Set(['dateApplied', 'nextActionDue']);
+const DATE_FIELDS: ReadonlySet<string> = new Set(['dateApplied', 'nextActionDue', 'statusDate']);
 
 /**
  * Narrow a client-side application object down to what the API accepts.

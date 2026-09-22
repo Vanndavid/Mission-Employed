@@ -19,6 +19,7 @@ function app(overrides: Partial<JobApplication> = {}): JobApplication {
     role: 'Backend Engineer',
     location: 'Sydney',
     url: '',
+    source: '',
     dateApplied: '2026-01-01',
     status: JobStatus.APPLIED,
     isImportant: false,

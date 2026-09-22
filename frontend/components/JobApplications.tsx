@@ -5,7 +5,10 @@ import { parseJobApplication } from '../services/apiClient';
 import { InterviewPrepDrawer } from './InterviewPrepDrawer';
 import { CoverLetterStudio } from './CoverLetterStudio';
 import { CVStudio } from './CVStudio';
-import { exportApplicationsCsv, importApplicationsCsv } from '../utils/csv';
+import { ImportOutcome } from '../contexts/ApplicationsContext';
+import { RowPlan } from '../utils/importMerge';
+import { ImportApplicationsModal } from './ImportApplicationsModal';
+import { exportApplicationsCsv } from '../utils/csv';
 import {
   ApplicationFilters,
   ApplicationSort,
@@ -26,7 +29,7 @@ interface JobApplicationsProps {
   onAddInterviewStage: (appId: number, stage: Omit<InterviewStage, 'id'>) => void;
   onRemoveInterviewStage: (appId: number, stageId: number) => void;
   onDelete: (id: number) => void;
-  onBulkImport: (apps: Partial<JobApplication>[]) => void;
+  onCommitImport: (plans: RowPlan[]) => Promise<ImportOutcome[]>;
   baseCV: string;
   coverLetterTemplate: string;
   cvTemplate: string;
@@ -134,7 +137,7 @@ export const JobApplications = ({
   onAddInterviewStage,
   onRemoveInterviewStage,
   onDelete,
-  onBulkImport,
+  onCommitImport,
   baseCV,
   coverLetterTemplate,
   cvTemplate,
@@ -158,6 +161,7 @@ export const JobApplications = ({
   const [coverLetterApp, setCoverLetterApp] = useState<JobApplication | null>(null);
   const [cvApp, setCvApp] = useState<JobApplication | null>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
+  const [importFile, setImportFile] = useState<File | null>(null);
 
   const [filters, setFilters] = useState<ApplicationFilters>(DEFAULT_FILTERS);
   const [sort, setSort] = useState<ApplicationSort>(DEFAULT_SORT);
@@ -239,15 +243,13 @@ export const JobApplications = ({
     URL.revokeObjectURL(url);
   };
 
-  const handleImportCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePickImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const imported = importApplicationsCsv(reader.result as string);
-      if (imported.length > 0) onBulkImport(imported);
-    };
-    reader.readAsText(file);
+
+    // The modal does the reading, the mapping and the review; all this does is
+    // hand over the file. Clearing the input lets the same file be re-picked,
+    // which matters when a first attempt was abandoned.
+    if (file) setImportFile(file);
     e.target.value = '';
   };
 
@@ -266,9 +268,15 @@ export const JobApplications = ({
           <button onClick={handleExportCsv} className="px-4 py-2 rounded-xl font-bold text-sm border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-brand-600">
             Export CSV
           </button>
-          <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportCsv} />
+          <input
+            ref={csvInputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            onChange={handlePickImport}
+          />
           <button onClick={() => csvInputRef.current?.click()} className="px-4 py-2 rounded-xl font-bold text-sm border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-brand-600">
-            Import CSV
+            Import spreadsheet
           </button>
           <button
             onClick={() => setIsAdding(!isAdding)}
@@ -560,6 +568,15 @@ export const JobApplications = ({
           portfolioUrl={portfolioUrl}
           onSave={cv => onUpdateApplication(cvApp.id, { tailoredCV: cv })}
           onClose={() => setCvApp(null)}
+        />
+      )}
+
+      {importFile && (
+        <ImportApplicationsModal
+          file={importFile}
+          existing={applications}
+          onCommit={onCommitImport}
+          onClose={() => setImportFile(null)}
         />
       )}
 

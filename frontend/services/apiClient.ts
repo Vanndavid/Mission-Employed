@@ -218,6 +218,30 @@ export async function parseJobApplication(text: string): Promise<ParsedJobApplic
   return parsed;
 }
 
+// --- Tracker: map a spreadsheet's columns ---------------------------------
+
+/**
+ * Ask the API how an arbitrary spreadsheet maps onto tracker fields.
+ *
+ * The rows themselves never go over: only the header row, a short sample and
+ * the distinct values of the low-cardinality columns, which is what lets the
+ * answer cover a whole sheet's vocabulary while costing one small call.
+ *
+ * The raw answer is returned unnarrowed on purpose. `sanitizePlan` in
+ * utils/importPlan does the whitelisting, so that logic is unit-testable
+ * without stubbing fetch, and this stays a wire call and nothing more.
+ */
+export async function requestImportPlan(
+  headers: string[],
+  sampleRows: string[][],
+  columnValues: Record<number, string[]>,
+): Promise<unknown> {
+  return apiRequest<unknown>('/ai/import/plan', {
+    method: 'POST',
+    body: { headers, sampleRows, columnValues },
+  });
+}
+
 // --- Tailored documents ---------------------------------------------------
 
 export interface DocumentParams {

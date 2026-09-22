@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { ApplicationsProvider, useApplications } from './ApplicationsContext';
 import { JobStatus } from '../types';
+import { RowPlan } from '../utils/importMerge';
 
 /**
  * The write path. Field edits arrive one keystroke at a time, so the thing
@@ -18,6 +19,7 @@ const APPLICATION = {
   role: 'Backend Engineer',
   location: '',
   url: '',
+  source: '',
   dateApplied: '2026-08-30',
   status: 'Applied',
   notes: '',
@@ -164,5 +166,123 @@ describe('ApplicationsProvider', () => {
     await waitFor(() => expect(result.current.error).toBe('The company field is required.'));
     // Reloaded from the server, so the rejected edit is gone.
     await waitFor(() => expect(result.current.applications[0].company).toBe('Acme Corp'));
+  });
+});
+
+describe('commitImport', () => {
+  /** A reviewed row plan, as the import modal hands them over. */
+  function plan(overrides: Partial<RowPlan> = {}): RowPlan {
+    return {
+      rowNumber: 2,
+      verdict: 'create',
+      match: null,
+      payload: { company: 'Globex', role: 'Developer' },
+      fills: [],
+      statusDate: '',
+      warnings: [],
+      reason: 'Not tracked yet.',
+      company: 'Globex',
+      role: 'Developer',
+      ...overrides,
+    } as RowPlan;
+  }
+
+  it('creates new rows and patches matched ones', async () => {
+    const { result } = renderHook(() => useApplications(), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    requests = [];
+
+    let outcomes: Awaited<ReturnType<typeof result.current.commitImport>> = [];
+
+    await act(async () => {
+      outcomes = await result.current.commitImport([
+        plan(),
+        plan({
+          rowNumber: 3,
+          verdict: 'fill',
+          match: APPLICATION as any,
+          payload: { location: 'Sydney' },
+          fills: ['location'],
+        }),
+      ]);
+    });
+
+    const writes = requests.filter(request => request.method !== 'GET');
+
+    expect(writes).toHaveLength(2);
+    expect(writes[0].method).toBe('POST');
+    expect(writes[0].url).toContain('/api/applications');
+    expect(writes[1].method).toBe('PATCH');
+    expect(writes[1].url).toContain('/api/applications/5');
+    // Only the fields being filled go over, so nothing else is touched.
+    expect(writes[1].body).toEqual({ location: 'Sydney' });
+
+    expect(outcomes.map(outcome => outcome.status)).toEqual(['created', 'filled']);
+  });
+
+  it('sends nothing at all for unchanged or invalid rows', async () => {
+    const { result } = renderHook(() => useApplications(), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    requests = [];
+
+    let outcomes: Awaited<ReturnType<typeof result.current.commitImport>> = [];
+
+    await act(async () => {
+      outcomes = await result.current.commitImport([
+        plan({ verdict: 'identical', payload: {}, reason: 'Already tracked as #5.' }),
+        plan({ rowNumber: 3, verdict: 'invalid', payload: {}, reason: 'No company.' }),
+      ]);
+    });
+
+    // Re-importing an unchanged sheet must cost zero requests.
+    expect(requests.filter(request => request.method !== 'GET')).toHaveLength(0);
+    expect(outcomes.map(outcome => outcome.status)).toEqual(['skipped', 'skipped']);
+    expect(outcomes[0].message).toBe('Already tracked as #5.');
+  });
+
+  it('keeps going after a row fails, and says why', async () => {
+    const { result } = renderHook(() => useApplications(), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    let seen = 0;
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        if ((init?.method ?? 'GET') === 'GET') return json({ data: [APPLICATION] });
+
+        seen += 1;
+
+        // The first write fails on validation, the second must still run.
+        return seen === 1
+          ? json({ message: 'Unprocessable.', errors: { role: ['The role field is required.'] } }, 422)
+          : json({ data: { ...APPLICATION, id: 9 } }, 201);
+      }),
+    );
+
+    let outcomes: Awaited<ReturnType<typeof result.current.commitImport>> = [];
+
+    await act(async () => {
+      outcomes = await result.current.commitImport([plan(), plan({ rowNumber: 3 })]);
+    });
+
+    expect(outcomes[0].status).toBe('failed');
+    // The field error itself, not a generic sentence.
+    expect(outcomes[0].message).toBe('The role field is required.');
+    expect(outcomes[0].rowNumber).toBe(2);
+    expect(outcomes[1].status).toBe('created');
+    // The modal reports per row, so the global banner stays clear.
+    expect(result.current.error).toBeNull();
+  });
+
+  it('puts created rows into state', async () => {
+    const { result } = renderHook(() => useApplications(), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => {
+      await result.current.commitImport([plan(), plan({ rowNumber: 3 })]);
+    });
+
+    expect(result.current.applications).toHaveLength(3);
   });
 });
