@@ -8,6 +8,7 @@ use App\Models\ApplicationStatusEvent;
 use App\Models\InterviewStage;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -303,6 +304,159 @@ class ApplicationApiTest extends TestCase
         // before validation runs.
         $this->patchJson("/api/applications/{$theirs->id}", ['status' => 'Nonsense'])
             ->assertNotFound();
+    }
+
+    public function test_it_stores_the_source_a_spreadsheet_import_supplies(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/applications', $this->payload(['source' => 'Seek']))
+            ->assertCreated()
+            ->assertJsonPath('data.source', 'Seek');
+
+        $this->assertSame('Seek', Application::sole()->source);
+    }
+
+    public function test_it_patches_and_blanks_the_source(): void
+    {
+        $user = User::factory()->create();
+        $application = Application::factory()->for($user)->create(['source' => 'LinkedIn']);
+
+        Sanctum::actingAs($user);
+
+        $this->patchJson("/api/applications/{$application->id}", ['source' => 'Company site'])
+            ->assertOk()
+            ->assertJsonPath('data.source', 'Company site');
+
+        // '' is how the client says "cleared", and a nullable column should get
+        // null rather than an empty string.
+        $this->patchJson("/api/applications/{$application->id}", ['source' => ''])
+            ->assertOk()
+            ->assertJsonPath('data.source', '');
+
+        $this->assertNull($application->fresh()->source);
+    }
+
+    public function test_an_unset_source_serializes_as_an_empty_string(): void
+    {
+        $user = User::factory()->create();
+        Application::factory()->for($user)->create(['source' => null]);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/applications')->assertOk()->assertJsonPath('data.0.source', '');
+    }
+
+    public function test_it_backdates_the_first_status_event_to_a_supplied_status_date(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/applications', $this->payload([
+            'status' => JobStatus::Rejected->value,
+            'statusDate' => '2026-09-18',
+        ]))->assertCreated();
+
+        $event = Application::sole()->statusEvents->sole();
+
+        $this->assertSame(JobStatus::Rejected, $event->status);
+        $this->assertSame('2026-09-18', $event->occurred_at->format('Y-m-d'));
+    }
+
+    public function test_it_stamps_the_first_status_event_now_without_a_status_date(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/applications', $this->payload())->assertCreated();
+
+        $event = Application::sole()->statusEvents->sole();
+
+        $this->assertTrue($event->occurred_at->isToday());
+    }
+
+    public function test_status_date_is_not_written_as_a_column(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        // It is validated but absent from COLUMN_MAP, so it must reach the
+        // event log and nothing else.
+        $this->postJson('/api/applications', $this->payload(['statusDate' => '2026-09-18']))
+            ->assertCreated()
+            ->assertJsonMissingPath('data.statusDate');
+
+        $this->assertFalse(Schema::hasColumn('applications', 'status_date'));
+    }
+
+    public function test_it_backdates_the_event_for_a_status_change(): void
+    {
+        $user = User::factory()->create();
+        $application = Application::factory()->for($user)->create(['status' => JobStatus::Applied]);
+
+        Sanctum::actingAs($user);
+
+        $this->patchJson("/api/applications/{$application->id}", [
+            'status' => JobStatus::Rejected->value,
+            'statusDate' => '2026-09-15',
+        ])->assertOk();
+
+        $event = $application->fresh()->statusEvents->sole();
+
+        $this->assertSame(JobStatus::Rejected, $event->status);
+        $this->assertSame('2026-09-15', $event->occurred_at->format('Y-m-d'));
+    }
+
+    public function test_a_status_date_without_a_status_change_records_nothing(): void
+    {
+        $user = User::factory()->create();
+        $application = Application::factory()->for($user)->create(['status' => JobStatus::Applied]);
+
+        Sanctum::actingAs($user);
+
+        // The guard that keeps re-importing a spreadsheet idempotent: filling a
+        // blank field must not pile up status events.
+        $this->patchJson("/api/applications/{$application->id}", [
+            'status' => JobStatus::Applied->value,
+            'statusDate' => '2026-09-15',
+            'notes' => 'Filled in from the sheet',
+        ])->assertOk();
+
+        $this->assertCount(0, $application->fresh()->statusEvents);
+    }
+
+    public function test_status_history_orders_a_backdated_event_first(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $created = $this->postJson('/api/applications', $this->payload([
+            'status' => JobStatus::Applied->value,
+            'statusDate' => '2026-08-01',
+        ]))->assertCreated();
+
+        $id = $created->json('data.id');
+
+        $response = $this->patchJson("/api/applications/{$id}", [
+            'status' => JobStatus::Rejected->value,
+            'statusDate' => '2026-09-10',
+        ])->assertOk();
+
+        $this->assertSame(
+            ['Applied', 'Rejected'],
+            array_column($response->json('data.statusHistory'), 'status'),
+        );
+    }
+
+    public function test_it_rejects_a_status_date_that_is_not_a_date(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/applications', $this->payload(['statusDate' => 'whenever']))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('statusDate');
     }
 
     public function test_it_validates_the_payload(): void

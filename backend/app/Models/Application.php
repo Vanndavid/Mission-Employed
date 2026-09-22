@@ -22,6 +22,7 @@ class Application extends Model
         'role',
         'location',
         'url',
+        'source',
         'status',
         'is_important',
         'date_applied',

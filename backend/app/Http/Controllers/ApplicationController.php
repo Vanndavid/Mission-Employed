@@ -7,6 +7,7 @@ use App\Http\Requests\Tracker\StoreApplicationRequest;
 use App\Http\Requests\Tracker\UpdateApplicationRequest;
 use App\Http\Resources\ApplicationResource;
 use App\Models\Application;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -44,8 +45,11 @@ class ApplicationController extends Controller
         $application = DB::transaction(function () use ($request): Application {
             $application = $request->user()->applications()->create($request->columns());
 
-            // The timeline starts at creation, not at the first change.
-            $this->recordStatusEvent($application);
+            // The timeline starts at creation, not at the first change. An
+            // import supplies statusDate so the first event carries the date
+            // from the spreadsheet rather than today; it seeds one event, not a
+            // synthetic Applied -> Rejected pair.
+            $this->recordStatusEvent($application, $request->validated('statusDate'));
 
             return $application;
         });
@@ -76,8 +80,11 @@ class ApplicationController extends Controller
 
             $application->save();
 
+            // Gated on the status actually changing, statusDate or not: a
+            // patch that only fills a blank field must not log an event, or
+            // re-importing the same spreadsheet would pile up duplicates.
             if ($statusChanged) {
-                $this->recordStatusEvent($application);
+                $this->recordStatusEvent($application, $request->validated('statusDate'));
             }
         });
 
@@ -97,12 +104,15 @@ class ApplicationController extends Controller
     /**
      * Append the application's current status to its event log. The single
      * place any status event is written.
+     *
+     * $occurredAt backdates the entry, for an import carrying the date the
+     * status actually changed. Absent, the event is stamped now().
      */
-    private function recordStatusEvent(Application $application): void
+    private function recordStatusEvent(Application $application, ?string $occurredAt = null): void
     {
         $application->statusEvents()->create([
             'status' => $application->status,
-            'occurred_at' => now(),
+            'occurred_at' => $occurredAt === null ? now() : CarbonImmutable::parse($occurredAt),
         ]);
     }
 }

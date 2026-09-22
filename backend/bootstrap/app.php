@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\EnsureAdmin;
+use App\Http\Middleware\EnsurePremium;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -14,8 +16,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'premium' => \App\Http\Middleware\EnsurePremium::class,
-            'admin' => \App\Http\Middleware\EnsureAdmin::class,
+            'premium' => EnsurePremium::class,
+            'admin' => EnsureAdmin::class,
         ]);
 
         // There is no login *page* here -- this is an API and a separate SPA --

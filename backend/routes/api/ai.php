@@ -3,6 +3,7 @@
 use App\Http\Controllers\Ai\BehavioralController;
 use App\Http\Controllers\Ai\CodingController;
 use App\Http\Controllers\Ai\DocumentController;
+use App\Http\Controllers\Ai\ImportController;
 use App\Http\Controllers\Ai\JobController;
 use App\Http\Controllers\Ai\MockInterviewController;
 use App\Http\Controllers\Ai\SessionController;
@@ -47,6 +48,11 @@ Route::prefix('ai')->middleware(['auth:sanctum', 'premium'])->group(function ():
 
     // Tracker: paste a job description, get fields back.
     Route::post('/job/parse', [JobController::class, 'parse']);
+
+    // Tracker: hand over a spreadsheet's shape, get a column mapping back.
+    // The rows themselves never come here — the client applies the plan and
+    // imports through the ordinary /applications endpoints.
+    Route::post('/import/plan', [ImportController::class, 'plan']);
 
     // Tailored application documents.
     Route::post('/cover-letter/generate', [DocumentController::class, 'coverLetter']);

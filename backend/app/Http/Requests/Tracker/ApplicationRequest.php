@@ -13,8 +13,11 @@ use Illuminate\Foundation\Http\FormRequest;
 abstract class ApplicationRequest extends FormRequest
 {
     /**
-     * Client field => database column. `recruiterContact` is deliberately
-     * absent: it arrives nested and is flattened separately.
+     * Client field => database column. Two fields are deliberately absent, and
+     * the map is otherwise exhaustive, so neither omission is an oversight:
+     * `recruiterContact` arrives nested and is flattened separately, and
+     * `statusDate` is not a column at all — it dates the status event the
+     * controller writes. See ApplicationController::recordStatusEvent().
      *
      * @var array<string, string>
      */
@@ -23,6 +26,7 @@ abstract class ApplicationRequest extends FormRequest
         'role' => 'role',
         'location' => 'location',
         'url' => 'url',
+        'source' => 'source',
         'status' => 'status',
         'isImportant' => 'is_important',
         'dateApplied' => 'date_applied',
@@ -46,7 +50,9 @@ abstract class ApplicationRequest extends FormRequest
     private const BLANKABLE = [
         'location',
         'url',
+        'source',
         'dateApplied',
+        'statusDate',
         'notes',
         'jobDescription',
         'coverLetter',
@@ -132,9 +138,14 @@ abstract class ApplicationRequest extends FormRequest
         return [
             'location' => ['sometimes', 'nullable', 'string', 'max:255'],
             'url' => ['sometimes', 'nullable', 'string', 'max:2048'],
+            'source' => ['sometimes', 'nullable', 'string', 'max:255'],
             'status' => ['sometimes', 'required', 'string', 'in:'.implode(',', JobStatus::values())],
             'isImportant' => ['sometimes', 'boolean'],
             'dateApplied' => ['sometimes', 'nullable', 'date'],
+            // Not a column: when the status is set or changed, this dates the
+            // resulting status event instead of defaulting it to now(). An
+            // import carries historical dates and the timeline has to match.
+            'statusDate' => ['sometimes', 'nullable', 'date'],
             'notes' => ['sometimes', 'nullable', 'string'],
             'jobDescription' => ['sometimes', 'nullable', 'string'],
             'coverLetter' => ['sometimes', 'nullable', 'string'],

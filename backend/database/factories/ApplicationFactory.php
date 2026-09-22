@@ -23,6 +23,9 @@ class ApplicationFactory extends Factory
             'role' => fake()->jobTitle(),
             'location' => fake()->city(),
             'url' => fake()->url(),
+            // Null by default: it arrives from a spreadsheet import, and tests
+            // asserting the empty state should not have to override it.
+            'source' => null,
             'status' => fake()->randomElement(JobStatus::cases()),
             'is_important' => false,
             'date_applied' => fake()->dateTimeBetween('-3 months', 'now')->format('Y-m-d'),
