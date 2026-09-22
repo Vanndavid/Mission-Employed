@@ -39,7 +39,7 @@ export const Sidebar = ({
 
   const tabs = [
     { path: '/dashboard', label: 'Mission Control', sub: 'Coding Practice', icon: '🚀', end: true },
-    { path: '/applications', label: 'Pipeline', sub: 'Mechanical Applying', icon: '📁', end: true },
+    { path: '/applications', label: 'Job Applications', sub: 'Mechanical Applying', icon: '📁', end: true },
     { path: '/applications/profile', label: 'CV & Profile', sub: 'Frozen Documents', icon: '📄', end: false },
     { path: '/prep', label: 'Training Room', sub: 'Behavioral Drills', icon: '🧠', end: true },
     { path: '/mock', label: 'Mock Test', sub: isPremium ? 'Conversational Sim' : 'Premium unlock', icon: '👔', end: true },

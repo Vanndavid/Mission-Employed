@@ -18,11 +18,20 @@ if [ ! -f "$DB_PATH" ]; then
     touch "$DB_PATH"
 fi
 
+# Clear before anything reads config, not after. A cache file left in the image
+# layer from a previous build would otherwise win over the environment this
+# container was actually started with -- and `migrate` resolves DB_DATABASE
+# through that same config, so a stale entry would migrate the wrong file.
+php artisan config:clear
+
 php artisan migrate --force
 
-# Clear first: a cache file left in the image layer from a previous build would
-# otherwise win over the environment this container was actually started with.
-php artisan config:clear
+# Registration only ever produces a free `user`, and an admin is the only role
+# that can upgrade a plan, so without this a fresh deployment comes up with
+# nobody able to administer it. Idempotent, and a no-op unless both ADMIN_EMAIL
+# and ADMIN_PASSWORD are set.
+php artisan admin:bootstrap
+
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache

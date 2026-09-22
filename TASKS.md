@@ -283,7 +283,7 @@ its props or switch to the hook directly — both work.
 
 1. **`JobApplication.id` and `InterviewStage.id` are `number`, not `string`.**
    Client-side id generation is gone; a new record is whatever the API
-   answered with. Already updated: `Pipeline` (five handler prop types, and the
+   answered with. Already updated: `JobApplications` (five handler prop types, and the
    `?prep=` lookup now goes through `Number()`), `InterviewPrepDrawer`
    (`onRemoveStage`), `InterviewStageEditor` (`onRemove`), `UpcomingInterviews`
    (`onSelectApp`), and the `utils/csv.test.ts` fixture.
@@ -347,7 +347,7 @@ which drops the token and signs the user out — no screen has to notice.
 - Field edits are debounced 400ms and coalesced per record, so the prep drawer
   is one PATCH instead of one per keystroke. `saving` covers it, and pending
   writes flush on unmount.
-- Nothing gates on `loading` yet, so `Pipeline` flashes its empty state during
+- Nothing gates on `loading` yet, so `JobApplications` flashes its empty state during
   the first load. 3.2 should gate on `useApplications().loading`.
 - `PremiumGate` still reads `useAuth().isPremium`. A 403 from the API is
   `err.isPremiumRequired` — that is what 3.5 should route to the upgrade prompt.
@@ -359,13 +359,13 @@ which drops the token and signs the user out — no screen has to notice.
 ```
 Task 3.2 from TASKS.md: wire the tracker screens to the API.
 
-Your lane: frontend/components/Pipeline.tsx, Profile.tsx, CVStudio.tsx,
+Your lane: frontend/components/JobApplications.tsx, Profile.tsx, CVStudio.tsx,
 CoverLetterStudio.tsx, A4Preview.tsx, InterviewStageEditor.tsx,
 UpcomingInterviews.tsx, InterviewPrepDrawer.tsx, and frontend/utils/csv.ts.
 Other agents hold the other components. Nothing under backend/.
 
 Task 3.1 built the data layer; use it rather than calling fetch directly.
-Move Pipeline, the profile document, and the CV and cover letter studios onto
+Move the job applications screen, the profile document, and the CV and cover letter studios onto
 server data: list, create, update, delete applications; add and remove interview
 stages; save the profile; generate a tailored CV or cover letter through the AI
 endpoints and persist the result on the application.
@@ -383,6 +383,29 @@ job description and parse it, generate a cover letter, refresh, confirm it all
 persisted. Report what you saw, including anything that broke.
 Tick the 3.2 box in TASKS.md with a one-line note. Do not commit.
 ```
+
+### 3.2a Job applications table — renamed, filterable, sortable, starrable ✅
+
+- [x] Done and deployed, 2026-09-03. The **Pipeline** tab is now **Job
+  Applications** (sidebar, page heading, dashboard card;
+  `components/Pipeline.tsx` → `components/JobApplications.tsx`, route
+  `/applications` unchanged).
+
+The table gained a toolbar — search across company, role, location and next
+action; a status dropdown; an "Important only" toggle; and a live "showing n of
+m" count — plus sortable Company / Role, Status, Next Action and Date headers.
+Status sorts in pipeline order (Saved → Applied → … → Rejected), not
+alphabetically, and rows with no date sort last in *both* directions.
+
+Marking important is a new `applications.is_important` boolean, `isImportant`
+over the wire, toggled with the star in the first column. Starred rows pin
+above the rest whatever the sort column is. Two things worth remembering:
+
+- `StoreApplicationRequest::columns()` has to default `is_important` explicitly,
+  the same way it already defaults `status`. The 201 body is serialized from
+  the model that was just created, so a column default alone serializes as null.
+- The filter and sort rules live in `frontend/utils/applicationTable.ts`, not in
+  the component, so they are unit tested without a DOM.
 
 ### 3.3 Coding practice and dashboard ✅
 
@@ -504,7 +527,42 @@ currently serves it.
   service on its own `laravel_data` volume, and `nginx.conf` `/api/` repointed
   from `api:3001` to `laravel:8080`. `/ai/` still points at Express and is now
   dead traffic: the client sends AI calls to `/api/ai/...`, because `API_BASE`
-  is `/api`. **Not deployed yet** — the image is built and tested locally only.
+  is `/api`.
+- [x] **Deployed and confirmed serving traffic, 2026-09-02.** Laravel answers
+  `/api/` at mission-employed.vanndavidteng.com. This unblocks 4.2.
+
+Two things had to be fixed to make the cutover survive contact with the server,
+both of which the local build could not have shown:
+
+- **Nothing created an admin.** Registration only ever produces a free `user`,
+  and an admin is the only role that can upgrade a plan, so the first boot came
+  up with an empty database and nobody able to administer it. The Express
+  server reconciled a bootstrap admin from the environment on every boot
+  (9ada28e); `php artisan admin:bootstrap` now does the same, and the container
+  entrypoint runs it after `migrate`. It reads `ADMIN_EMAIL` / `ADMIN_PASSWORD`,
+  which the deployment `.env` already had, and is a no-op when either is unset.
+  It is a command and not a seeder because `DatabaseSeeder` also inserts demo
+  applications and a second fake user.
+- **Unauthenticated API calls answered 500.** Laravel's default
+  `redirectGuestsTo(fn () => route('login'))` runs inside the `auth`
+  middleware, and there is no such route in an API-only app. The client always
+  sends `Accept: application/json` so the app itself worked, but any other
+  caller got a 500 where a 401 belongs. Fixed in `bootstrap/app.php`; the suite
+  had missed it because every assertion used `getJson`.
+
+The deployment `.env` is not in git and was missing everything Laravel needs.
+`APP_KEY` was generated on the server, and `APP_URL`, `FRONTEND_URL`,
+`SESSION_DRIVER`, `CACHE_STORE`, `QUEUE_CONNECTION`, `BCRYPT_ROUNDS` and
+`LOG_LEVEL` were added. `GEMINI_MODEL` is pinned there to `gemini-2.0-flash`,
+the model the Express backend had been serving — see the open question below.
+
+**Open question — the Gemini model.** There is an uncommitted change in the
+working tree bumping the default from `gemini-2.0-flash` to `gemini-3.7-flash`
+in `GeminiService`, `config/services.php` and `.env.example`. It was left
+uncommitted and is *not* deployed, because the model name could not be verified
+against the API. Production is pinned to the known-good value in `.env`, so
+adopting the newer model is a one-line env change plus a restart once someone
+confirms the name is real.
 
 ```
 Task 4.1 from TASKS.md: put Laravel into the deployed stack.
@@ -689,9 +747,29 @@ The stack is docker compose behind Traefik:
 base64 audio, and nginx would 413 before the backend ever saw it — and a 300s
 read timeout because model calls are slow.
 
-**Laravel is the backend for `/api/` as of task 4.1, but this has not been
-deployed.** The live site still runs whatever image was last built there. Until
-the cutover is deployed and confirmed, do not delete `server/` — that is 4.2.
+**Laravel is the backend for `/api/`, deployed and confirmed on 2026-09-02.**
+The Express container is still up but only answers `/ai/`, which nothing calls.
+Deleting `server/` is task 4.2, and it is now unblocked.
+
+Deploying is a pull and a rebuild on the server, which is reachable as
+`ssh vps` (see `~/.ssh/config`):
+
+```
+cd /home/ubuntu/traefik-projects/Mission-Employed
+git pull --ff-only origin main
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+`.env` there is not in git and holds `APP_KEY`, `GEMINI_API_KEY` and the admin
+credentials — never overwrite it from the repo. The SQLite database is on the
+`laravel_data` volume and the legacy Express accounts JSON on `api_data`, so a
+rebuild keeps both but `docker compose down -v` would destroy them. Backups of
+`.env` and the accounts file are in `/root/backups/mission-employed/`.
+
+**Accounts did not migrate.** The Express users lived in a JSON file on the
+`api_data` volume and Laravel starts from an empty SQLite database, so everyone
+except the bootstrap admin has to register again. The old file is still on the
+volume and in the backup directory if those accounts are ever worth porting.
 
 Why this mattered: the client has sent every request to `/api/` since commit
 3f36616, and Express only implements `/api/health`, `/api/auth/*` and

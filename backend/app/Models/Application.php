@@ -23,6 +23,7 @@ class Application extends Model
         'location',
         'url',
         'status',
+        'is_important',
         'date_applied',
         'notes',
         'job_description',
@@ -42,6 +43,7 @@ class Application extends Model
     {
         return [
             'status' => JobStatus::class,
+            'is_important' => 'boolean',
             'date_applied' => 'date',
             'next_action_due' => 'date',
             'offer' => 'array',

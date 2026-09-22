@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Sidebar, MobileHeader } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
-import { Pipeline } from './components/Pipeline';
+import { JobApplications } from './components/JobApplications';
 import { PrepRoom } from './components/PrepRoom';
 import { MockTest } from './components/MockTest';
 import { Profile } from './components/Profile';
@@ -77,7 +77,7 @@ function AppRoutes() {
       <Route
         path="/applications"
         element={
-          <Pipeline
+          <JobApplications
             applications={applications}
             behavioralAnswers={answers}
             onAdd={addApplication}

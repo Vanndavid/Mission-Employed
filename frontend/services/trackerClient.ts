@@ -33,6 +33,7 @@ const APPLICATION_FIELDS = [
   'location',
   'url',
   'status',
+  'isImportant',
   'dateApplied',
   'notes',
   'jobDescription',

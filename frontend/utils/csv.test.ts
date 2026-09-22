@@ -10,6 +10,7 @@ const sampleApp: JobApplication = {
   url: 'https://example.com',
   dateApplied: '2025-06-01T00:00:00.000Z',
   status: JobStatus.APPLIED,
+  isImportant: true,
   notes: 'Good fit',
   jobDescription: 'JD text',
   coverLetter: 'Dear hiring manager',
@@ -31,5 +32,12 @@ describe('csv', () => {
     expect(imported[0].company).toBe('Acme Corp');
     expect(imported[0].role).toBe('Backend Engineer');
     expect(imported[0].jobDescription).toBe('JD text');
+    expect(imported[0].isImportant).toBe(true);
+  });
+
+  it('imports a file written before the isImportant column existed', () => {
+    const legacy = 'company,role,status\nAcme Corp,Backend Engineer,Applied';
+
+    expect(importApplicationsCsv(legacy)[0].isImportant).toBe(false);
   });
 });

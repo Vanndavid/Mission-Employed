@@ -24,6 +24,7 @@ class ApplicationFactory extends Factory
             'location' => fake()->city(),
             'url' => fake()->url(),
             'status' => fake()->randomElement(JobStatus::cases()),
+            'is_important' => false,
             'date_applied' => fake()->dateTimeBetween('-3 months', 'now')->format('Y-m-d'),
             'notes' => fake()->sentence(),
             'job_description' => fake()->paragraphs(2, true),
@@ -42,6 +43,11 @@ class ApplicationFactory extends Factory
     public function status(JobStatus $status): static
     {
         return $this->state(fn (array $attributes) => ['status' => $status]);
+    }
+
+    public function important(): static
+    {
+        return $this->state(fn (array $attributes) => ['is_important' => true]);
     }
 
     public function withOffer(): static
