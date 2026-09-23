@@ -127,6 +127,16 @@ describe('buildRowPlans', () => {
     expect(plan.payload).toEqual({ company: 'Acme Corp', role: 'Backend Engineer' });
   });
 
+  it('creates a row with its status, dated from the sheet', () => {
+    const [plan] = buildRowPlans([mapped({
+      input: { company: 'Cullen Jewellery', role: 'Software Engineer', status: JobStatus.REJECTED, dateApplied: '2026-09-20' },
+      statusDate: '2026-09-22',
+    })], []);
+
+    expect(plan.verdict).toBe('create');
+    expect(plan.payload).toMatchObject({ status: JobStatus.REJECTED, statusDate: '2026-09-22' });
+  });
+
   it('matches through spelling differences', () => {
     const existing = [tracked({ company: 'Acme Pty Ltd', role: 'Backend Engineer' })];
     const [plan] = buildRowPlans([mapped({ input: { company: 'ACME', role: 'backend engineer' } })], existing);

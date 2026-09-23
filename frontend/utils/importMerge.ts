@@ -191,6 +191,9 @@ export function buildRowPlans(rows: MappedRow[], existing: JobApplication[]): Ro
       // reviewer's to fix — flagged rather than silently invented.
       const payload: Record<string, unknown> = { ...input };
 
+      // Dates the first status event from the sheet rather than import day.
+      if (statusDate !== '' && input.status !== undefined) payload.statusDate = statusDate;
+
       if (role === '') {
         payload.role = 'Unknown role';
         base.warnings = [...warnings, 'No role in the sheet — imported as "Unknown role".'];
