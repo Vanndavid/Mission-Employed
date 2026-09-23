@@ -201,7 +201,7 @@ export function buildRowPlans(rows: MappedRow[], existing: JobApplication[]): Ro
         verdict: 'create' as const,
         match: null,
         payload,
-        reason: 'Not tracked yet.',
+        reason: 'New — not in your tracker yet.',
       };
     }
 

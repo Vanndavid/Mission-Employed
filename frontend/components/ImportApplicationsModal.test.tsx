@@ -180,6 +180,19 @@ describe('ImportApplicationsModal', () => {
     expect(screen.getByText('Fills source, nextAction')).toBeTruthy();
   });
 
+  it('shows the status and dates each new row will be imported with', async () => {
+    await openMapping();
+    await goToReview();
+
+    // Row 3 is Cullen Jewellery: applied 20 Sep, rejected 22 Sep.
+    const row = screen.getByLabelText('Import row 3').closest('tr') as HTMLElement;
+
+    expect(within(row).getByText('Rejected')).toBeTruthy();
+    expect(within(row).getByText('on 2026-09-22')).toBeTruthy();
+    expect(within(row).getByText('2026-09-20')).toBeTruthy();
+    expect(within(row).getByText('New — not in your tracker yet.')).toBeTruthy();
+  });
+
   it('marks a row unchanged when there is nothing to fill', async () => {
     await openMapping({ existing: [tracked({ source: 'Seek', nextAction: 'Follow up' })] });
     await goToReview();

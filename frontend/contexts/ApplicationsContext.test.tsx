@@ -179,7 +179,7 @@ describe('commitImport', () => {
       fills: [],
       statusDate: '',
       warnings: [],
-      reason: 'Not tracked yet.',
+      reason: 'New — not in your tracker yet.',
       company: 'Globex',
       role: 'Developer',
       ...overrides,

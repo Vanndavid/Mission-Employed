@@ -612,12 +612,20 @@ const RowTable = ({ plans, skipped, onToggle }: RowTableProps) => (
           <th className="px-4 py-3 text-left w-24">Action</th>
           <th className="px-4 py-3 text-left">Company</th>
           <th className="px-4 py-3 text-left">Role</th>
+          <th className="px-4 py-3 text-left">Status</th>
+          <th className="px-4 py-3 text-left">Applied</th>
           <th className="px-4 py-3 text-left">Detail</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
         {plans.map(plan => {
           const actionable = isActionable(plan.verdict);
+          // What the application will hold after the import: the sheet's value
+          // where this row writes one, otherwise what is already tracked.
+          const written = plan.payload as { status?: string; dateApplied?: string };
+          const status = written.status ?? plan.match?.status ?? '';
+          const dateApplied = written.dateApplied ?? plan.match?.dateApplied ?? '';
+          const statusDate = written.status !== undefined ? plan.statusDate : '';
 
           return (
             <tr
@@ -643,6 +651,15 @@ const RowTable = ({ plans, skipped, onToggle }: RowTableProps) => (
                 {plan.company || '—'}
               </td>
               <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{plan.role || '—'}</td>
+              <td className="px-4 py-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                <span className="block">{status || '—'}</span>
+                {statusDate && (
+                  <span className="block text-xs text-slate-400">on {statusDate}</span>
+                )}
+              </td>
+              <td className="px-4 py-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                {dateApplied || '—'}
+              </td>
               <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
                 <span className="block">
                   {plan.verdict === 'fill' ? `Fills ${plan.fills.join(', ')}` : plan.reason}
