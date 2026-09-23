@@ -38,6 +38,24 @@ services:
     volumes:
       - laravel_data:/data
 
+  # The remote MCP connector (Claude, Cowork). Deliberately not on env_file:
+  # it needs no Gemini key or APP_KEY, only these, interpolated from .env.
+  mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp
+    container_name: mission_employed_mcp
+    restart: unless-stopped
+    environment:
+      MISSION_EMPLOYED_API_URL: http://laravel:8080
+      # The issuer and resource URL clients see. Must be the public origin in
+      # production; localhost is allowed over plain http for local runs.
+      MCP_PUBLIC_URL: ${MCP_PUBLIC_URL:-http://localhost:8090}
+      MCP_OAUTH_SECRET: ${MCP_OAUTH_SECRET:?set MCP_OAUTH_SECRET in .env (openssl rand -base64 48)}
+      PORT: 8787
+    depends_on:
+      - laravel
+
   nginx:
     build:
       context: .

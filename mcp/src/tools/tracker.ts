@@ -99,7 +99,13 @@ type Application = {
   dateApplied: string;
   nextAction: string;
   nextActionDue: string;
+  notes?: string | null;
 };
+
+/** How a note's source is marked, so the same email is never recorded twice. */
+export function refMarker(ref: string): string {
+  return `[ref: ${ref}]`;
+}
 
 export function registerTrackerTools(server: McpServer, api: ApiClient): void {
   server.registerTool(
@@ -203,6 +209,43 @@ export function registerTrackerTools(server: McpServer, api: ApiClient): void {
         unwrap(await api.request(`/applications/${id}`, { method: "PATCH", body: present(fields) })),
       ),
     ),
+  );
+
+  server.registerTool(
+    "append_application_note",
+    {
+      title: "Add a note to a job application",
+      description:
+        "Append one dated line to an application's notes, keeping what is already there — use it " +
+        "instead of rewriting `notes` through update_application. Pass `ref` whenever the note " +
+        "comes from something with an id, such as an email's message id: if a note with that ref " +
+        "is already on the application, nothing is written, so re-reading the same inbox is safe.",
+      inputSchema: {
+        id: z.number().int().describe("The application id."),
+        note: z.string().min(1).describe("One line — what happened, not the whole email."),
+        ref: z
+          .string()
+          .optional()
+          .describe("A stable id for the source, e.g. `gmail:<message id>`. Makes the call idempotent."),
+        date: z.string().optional().describe("YYYY-MM-DD the thing happened. Defaults to today."),
+      },
+    },
+    guarded(async ({ id, note, ref, date }) => {
+      const application = unwrap<Application>(await api.request(`/applications/${id}`));
+      const existing = application.notes ?? "";
+
+      if (ref !== undefined && existing.includes(refMarker(ref))) {
+        return ok(`Already recorded on #${id} — nothing changed.`);
+      }
+
+      const day = date ?? new Date().toISOString().slice(0, 10);
+      const line = `${day} — ${note.trim()}${ref === undefined ? "" : ` ${refMarker(ref)}`}`;
+      const notes = existing.trim() === "" ? line : `${existing.replace(/\s+$/, "")}\n${line}`;
+
+      await api.request(`/applications/${id}`, { method: "PATCH", body: { notes } });
+
+      return ok(line, `Noted on ${application.company} — ${application.role} (#${id}).`);
+    }),
   );
 
   server.registerTool(

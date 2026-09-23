@@ -5,12 +5,15 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 
 import { type Config, loadConfig } from "./config.js";
+import { createHostedApp } from "./http.js";
 import { createServer } from "./server.js";
 
 /**
  * Two transports. stdio is the normal one — an MCP client spawns this process.
  * `--http` serves the same tools over Streamable HTTP for a client that
- * connects to a URL rather than a command.
+ * connects to a URL rather than a command. With MCP_PUBLIC_URL set it is the
+ * hosted remote connector, behind OAuth; without it, an unauthenticated
+ * endpoint for localhost only.
  */
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -25,6 +28,18 @@ async function main(): Promise<void> {
   }
 
   const port = Number(process.env.PORT ?? 8787);
+  const publicUrl = process.env.MCP_PUBLIC_URL?.trim();
+
+  if (publicUrl) {
+    const secret = process.env.MCP_OAUTH_SECRET?.trim() ?? "";
+    const app = createHostedApp(config, { publicUrl: new URL(publicUrl), secret });
+
+    app.listen(port, () => {
+      console.error(`mission-employed MCP connector at ${publicUrl}/mcp (API: ${config.baseUrl})`);
+    });
+
+    return;
+  }
 
   const http = createHttpServer((req, res) => {
     void handleHttp(req, res, config);

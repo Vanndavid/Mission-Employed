@@ -808,6 +808,35 @@ vitest is a dependency (`Cannot read properties of null (reading 'edgesOut')`,
 an arborist peer-resolution bug), so the tests run on `node:test` via `tsx`
 rather than the vitest the other packages use.
 
+### 5.2 Remote connector for Claude and Cowork, and email sync ✅
+
+- [x] Done. `node dist/index.js --http` with `MCP_PUBLIC_URL` set is now an
+  OAuth 2.1 authorization server (dynamic client registration, PKCE, rotating
+  refresh tokens) in front of `/mcp`, so the tracker can be added in Claude or
+  Cowork as a custom connector at `https://mission-employed.vanndavidteng.com/mcp`.
+  Deployed as the `mcp` compose service (`Dockerfile.mcp`). 26 tests, including
+  the full connector flow over real HTTP, plus a manual run against
+  `php artisan serve`.
+
+Decisions:
+
+- **Stateless OAuth.** Client ids, codes and tokens are AES-GCM-sealed blobs
+  under `MCP_OAUTH_SECRET` (in the server `.env`), so the service has no
+  database. The sealed token carries the user's Sanctum token, and every MCP
+  request re-checks it with `/api/auth/me`, so revoking the Sanctum token cuts
+  the connector off. The one bit of state is the in-memory list of spent codes
+  that makes a code single-use. It resets on restart, and codes live 5 minutes.
+- **The sign-in page is the MCP server's, not the SPA's.** It posts to Laravel's
+  `/api/auth/login` and is rate-limited per IP at 10 failures per 15 minutes,
+  because the Laravel login route has no throttle of its own. Worth adding one
+  there too at some point.
+- **Email is read by the client, not by us.** Claude's Gmail connector reads the
+  inbox; this server adds `append_application_note` (idempotent on a `ref` such
+  as `gmail:<message id>`) and a `sync_job_emails` prompt with the matching
+  rules. No mailbox credential or Google OAuth app is involved.
+- nginx resolves `mcp` per request (`resolver 127.0.0.11`), so a broken `mcp`
+  container 502s `/mcp` but cannot keep nginx, and so the site, from starting.
+
 ---
 
 ## Deployment

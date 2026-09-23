@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { createServer, type Server } from "node:http";
 import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -10,78 +9,9 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 import { ApiClient } from "./client.js";
+import { FakeApi } from "./test/fakeApi.js";
 import { loadConfig, normalizeBaseUrl } from "./config.js";
 import { createServer as createMcpServer } from "./server.js";
-
-/** One recorded request, so a test can assert what reached the API. */
-type Recorded = { method: string; path: string; body: unknown; auth: string | undefined };
-
-type Route = (body: any) => { status?: number; json: unknown };
-
-/** A stand-in for the Laravel API. Nothing here talks to a real backend. */
-class FakeApi {
-  readonly requests: Recorded[] = [];
-  private readonly routes = new Map<string, Route>();
-  private server?: Server;
-  private port = 0;
-
-  route(method: string, path: string, handler: Route): this {
-    this.routes.set(`${method} ${path}`, handler);
-
-    return this;
-  }
-
-  get url(): string {
-    return `http://127.0.0.1:${this.port}/api`;
-  }
-
-  async start(): Promise<void> {
-    this.server = createServer((req, res) => {
-      const chunks: Buffer[] = [];
-
-      req.on("data", (chunk: Buffer) => chunks.push(chunk));
-      req.on("end", () => {
-        const raw = Buffer.concat(chunks).toString();
-        const body = raw === "" ? null : JSON.parse(raw);
-        const path = (req.url ?? "").replace(/^\/api/, "");
-
-        this.requests.push({
-          method: req.method ?? "",
-          path,
-          body,
-          auth: req.headers.authorization,
-        });
-
-        const handler = this.routes.get(`${req.method} ${path}`);
-
-        if (!handler) {
-          res.writeHead(404, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ message: `No fake route for ${req.method} ${path}` }));
-
-          return;
-        }
-
-        const { status = 200, json } = handler(body);
-
-        res.writeHead(status, { "Content-Type": "application/json" });
-        res.end(JSON.stringify(json));
-      });
-    });
-
-    await new Promise<void>((resolve) => {
-      this.server!.listen(0, "127.0.0.1", () => {
-        const address = this.server!.address();
-
-        this.port = typeof address === "object" && address ? address.port : 0;
-        resolve();
-      });
-    });
-  }
-
-  async stop(): Promise<void> {
-    await new Promise<void>((resolve) => this.server?.close(() => resolve()));
-  }
-}
 
 function text(result: CallToolResult): string {
   return result.content
@@ -105,6 +35,8 @@ describe("the MCP server", () => {
   const api = new FakeApi();
   let client: Client;
   let tokenFile: string;
+  // A stateful record, so a note appended once can be seen on the next read.
+  const noted = { id: 5, company: "Hooli", role: "SRE", status: "Applied", notes: "Referred by Sam." };
 
   before(async () => {
     await api.start();
@@ -129,6 +61,12 @@ describe("the MCP server", () => {
         json: { data: { id: 3, ...body } },
       }))
       .route("PATCH", "/applications/1", (body) => ({ json: { data: { id: 1, ...body } } }))
+      .route("GET", "/applications/5", () => ({ json: { data: { ...noted } } }))
+      .route("PATCH", "/applications/5", (body) => {
+        Object.assign(noted, body);
+
+        return { json: { data: { ...noted } } };
+      })
       .route("POST", "/ai/job/parse", () => ({
         json: {
           company: "Initech",
@@ -256,5 +194,65 @@ describe("the MCP server", () => {
 
     assert.equal(result.isError, true);
     assert.match(text(result), /Your plan does not include this/);
+  });
+
+  it("appends a dated note tagged with its source, keeping what was there", async () => {
+    const result = (await client.callTool({
+      name: "append_application_note",
+      arguments: { id: 5, note: "Invited to a phone screen.", ref: "gmail:18c2f", date: "2026-09-20" },
+    })) as CallToolResult;
+
+    assert.notEqual(result.isError, true);
+    assert.equal(
+      noted.notes,
+      "Referred by Sam.\n2026-09-20 — Invited to a phone screen. [ref: gmail:18c2f]",
+    );
+    assert.deepEqual(Object.keys(api.requests.at(-1)?.body as object), ["notes"]);
+  });
+
+  it("does nothing when a note with the same ref is already there", async () => {
+    const before = api.requests.length;
+
+    const result = (await client.callTool({
+      name: "append_application_note",
+      arguments: { id: 5, note: "Invited to a phone screen, again.", ref: "gmail:18c2f" },
+    })) as CallToolResult;
+
+    assert.match(text(result), /Already recorded/);
+    // One read, no write.
+    assert.equal(api.requests.length, before + 1);
+    assert.equal(api.requests.at(-1)?.method, "GET");
+  });
+
+  it("offers a prompt for syncing the tracker from an inbox", async () => {
+    const prompts = (await client.listPrompts()).prompts.map((prompt) => prompt.name);
+
+    assert.ok(prompts.includes("sync_job_emails"));
+
+    const prompt = await client.getPrompt({ name: "sync_job_emails", arguments: { since: "14 days" } });
+    const body = prompt.messages.map((message) => (message.content as { text: string }).text).join("\n");
+
+    assert.match(body, /14 days/);
+    assert.match(body, /append_application_note/);
+    assert.match(body, /list_applications/);
+  });
+});
+
+describe("a hosted server", () => {
+  it("leaves out login and logout, because OAuth owns the token", async () => {
+    const config = { ...loadConfig({}), token: "sealed-upstream", tokenFile: "/nonexistent" };
+    const server = createMcpServer(config, new ApiClient(config), { hosted: true });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: "test", version: "0" });
+
+    await Promise.all([client.connect(clientTransport), server.connect(serverTransport)]);
+
+    const names = (await client.listTools()).tools.map((tool) => tool.name);
+
+    assert.ok(!names.includes("login"));
+    assert.ok(!names.includes("logout"));
+    assert.ok(names.includes("whoami"));
+
+    await client.close();
   });
 });

@@ -8,7 +8,30 @@ import { guarded, ok } from "./shared.js";
  * Signing in and finding out who you are. Everything else in this server needs
  * a token, so these are the tools a fresh client reaches for first.
  */
-export function registerAuthTools(server: McpServer, api: ApiClient): void {
+export function registerAuthTools(
+  server: McpServer,
+  api: ApiClient,
+  { withLogin = true }: { withLogin?: boolean } = {},
+): void {
+  if (withLogin) {
+    registerLoginTools(server, api);
+  }
+
+  server.registerTool(
+    "whoami",
+    {
+      title: "Current account",
+      description:
+        "The signed-in user: id, email, role and effective plan. Use it to check whether the " +
+        "account can reach the premium AI tools before calling one.",
+      inputSchema: {},
+      annotations: { readOnlyHint: true },
+    },
+    guarded(async () => ok(await api.request("/auth/me"))),
+  );
+}
+
+function registerLoginTools(server: McpServer, api: ApiClient): void {
   server.registerTool(
     "login",
     {
@@ -41,18 +64,5 @@ export function registerAuthTools(server: McpServer, api: ApiClient): void {
 
       return ok("Token revoked.");
     }),
-  );
-
-  server.registerTool(
-    "whoami",
-    {
-      title: "Current account",
-      description:
-        "The signed-in user: id, email, role and effective plan. Use it to check whether the " +
-        "account can reach the premium AI tools before calling one.",
-      inputSchema: {},
-      annotations: { readOnlyHint: true },
-    },
-    guarded(async () => ok(await api.request("/auth/me"))),
   );
 }

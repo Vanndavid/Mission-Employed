@@ -13,6 +13,10 @@ backend/database/*.sqlite
 backend/storage/logs
 backend/bootstrap/cache
 
+# MCP server — built inside Dockerfile.mcp
+mcp/node_modules
+mcp/dist
+
 # Express API (still the deployed backend until the Laravel cutover)
 server/node_modules
 server/data

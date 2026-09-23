@@ -13,7 +13,7 @@ as work lands rather than letting it go stale.
 | --- | --- |
 | `backend/` | Laravel 12, PHP 8.3, Sanctum bearer tokens, SQLite |
 | `frontend/` | React 19, TypeScript, Vite 6, Tailwind, Vitest |
-| `mcp/` | MCP server over the Laravel API — Node 22, TypeScript, `node:test` |
+| `mcp/` | MCP server over the Laravel API — Node 22, TypeScript, Express (hosted OAuth mode), `node:test` |
 
 Separate packages with their own dependencies and test runners.
 
@@ -88,6 +88,12 @@ endpoint changes shape, the matching tool in `mcp/src/tools/` changes with it.
 
 Audio round trips (`/api/ai/behavioral/evaluate`, `/api/ai/tts`) are deliberately
 not exposed: they only make sense in the browser. See `mcp/README.md`.
+
+It is deployed as the `mcp` compose service. It serves OAuth plus `/mcp`, so
+Claude and Cowork can add it as a custom connector. All of its OAuth state is
+sealed with `MCP_OAUTH_SECRET` from the server `.env`, and it keeps no database.
+Email sync is deliberately done by the *client's* Gmail connector, driven by the
+`sync_job_emails` prompt. Do not add mailbox access to the app.
 
 ## Scope — this is the whole product
 
