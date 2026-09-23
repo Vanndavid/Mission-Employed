@@ -49,6 +49,7 @@ describe('SeekJobs', () => {
     expect(params.keywords).toBe('software engineer');
     expect(params.where).toBe('All Australia');
     expect(params.page).toBe(1);
+    expect(params.pageSize).toBe(6);
     expect(screen.getByText('Software Engineer')).toBeTruthy();
     expect(screen.getByText('End-to-end software platform.')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'View on Seek' }).getAttribute('href')).toBe(JOB.url);
@@ -107,5 +108,25 @@ describe('SeekJobs', () => {
     await waitFor(() =>
       expect(screen.getByRole('alert').textContent).toMatch(/Seek is unavailable/i),
     );
+  });
+
+  it('changes how many listings a page shows and goes back to page 1', async () => {
+    searchSeekJobs.mockResolvedValue({
+      jobs: [JOB],
+      totalCount: 40,
+      page: 1,
+      pageSize: 6,
+      keywords: 'software engineer',
+      where: 'All Australia',
+    });
+    render(<SeekJobs trackedUrls={[]} onSave={vi.fn()} />);
+    await waitFor(() => expect(screen.getByText('Energetica')).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await waitFor(() => expect(searchSeekJobs.mock.calls.at(-1)?.[0].page).toBe(2));
+
+    fireEvent.change(screen.getByLabelText('Listings per page'), { target: { value: '12' } });
+    await waitFor(() => expect(searchSeekJobs.mock.calls.at(-1)?.[0].pageSize).toBe(12));
+    expect(searchSeekJobs.mock.calls.at(-1)?.[0].page).toBe(1);
   });
 });

@@ -12,6 +12,10 @@ import {
 } from '../utils/seekJobs';
 import { ApplicationInput } from '../types';
 
+/** Page sizes offered in the picker. The API caps a page at 50. */
+export const SEEK_PAGE_SIZES = [6, 12, 20, 50] as const;
+export const DEFAULT_SEEK_PAGE_SIZE = 6;
+
 interface SeekJobsProps {
   /** Application URLs already in the tracker, used to mark listings as saved. */
   trackedUrls: string[];
@@ -24,7 +28,7 @@ interface SeekJobsProps {
  * Loads a default software-engineer / All Australia search on mount, then
  * lets the user refine keywords and location. Saving writes through
  * {@link onSave} as a Saved application — the same create path as the
- * manual form above the table.
+ * manual form on the tracker tab.
  */
 export const SeekJobs = ({ trackedUrls, onSave }: SeekJobsProps) => {
   const { toast } = useToast();
@@ -34,6 +38,7 @@ export const SeekJobs = ({ trackedUrls, onSave }: SeekJobsProps) => {
     keywords: DEFAULT_SEEK_KEYWORDS,
     where: DEFAULT_SEEK_WHERE,
     page: 1,
+    pageSize: DEFAULT_SEEK_PAGE_SIZE,
   });
   const [result, setResult] = useState<SeekSearchResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,15 +71,16 @@ export const SeekJobs = ({ trackedUrls, onSave }: SeekJobsProps) => {
 
   const handleSearch = (event: FormEvent) => {
     event.preventDefault();
-    setQuery({
+    setQuery(current => ({
+      ...current,
       keywords: keywords.trim() || DEFAULT_SEEK_KEYWORDS,
       where: where.trim() || DEFAULT_SEEK_WHERE,
       page: 1,
-    });
+    }));
   };
 
   const page = query.page;
-  const pageSize = result?.pageSize ?? 20;
+  const pageSize = result?.pageSize ?? query.pageSize;
   const totalCount = result?.totalCount ?? 0;
   const lastPage = Math.max(1, Math.ceil(totalCount / pageSize) || 1);
   const from = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
@@ -195,12 +201,32 @@ export const SeekJobs = ({ trackedUrls, onSave }: SeekJobsProps) => {
         </ul>
       )}
 
-      {totalCount > pageSize && (
-        <div className="flex items-center justify-between gap-3 pt-1">
-          <p className="text-xs text-slate-400" aria-live="polite">
-            Showing {from}–{to} of {totalCount}
-          </p>
-          <div className="flex gap-2">
+      {totalCount > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+          <div className="flex items-center gap-3">
+            <p className="text-xs text-slate-400" aria-live="polite">
+              Showing {from}–{to} of {totalCount}
+            </p>
+            <label className="flex items-center gap-2 text-xs text-slate-400">
+              Per page
+              <select
+                value={query.pageSize}
+                onChange={e =>
+                  setQuery(current => ({ ...current, pageSize: Number(e.target.value), page: 1 }))
+                }
+                aria-label="Listings per page"
+                className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300"
+              >
+                {SEEK_PAGE_SIZES.map(size => (
+                  <option key={size} value={size}>{size}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400">
+              Page {page} of {lastPage}
+            </span>
             <button
               type="button"
               disabled={loading || page <= 1}
