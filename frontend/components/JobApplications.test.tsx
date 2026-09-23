@@ -1,6 +1,6 @@
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 const searchSeekJobs = vi.fn();
@@ -12,12 +12,40 @@ vi.mock('../services/seekClient', () => ({
 const { JobApplications } = await import('./JobApplications');
 const { ToastProvider } = await import('./ToastProvider');
 
-const renderPage = (onAdd = vi.fn()) =>
+const { JobStatus } = await import('../types');
+
+function tracked(id: number, overrides: Record<string, unknown> = {}) {
+  return {
+    id,
+    company: `Company ${id}`,
+    role: 'Engineer',
+    location: '',
+    url: '',
+    source: '',
+    dateApplied: `2026-09-${String(id).padStart(2, '0')}`,
+    status: JobStatus.APPLIED,
+    isImportant: false,
+    notes: '',
+    jobDescription: '',
+    coverLetter: '',
+    tailoredCV: '',
+    interviewStages: [],
+    nextAction: '',
+    nextActionDue: '',
+    recruiterContact: null,
+    takeHome: null,
+    offer: null,
+    statusHistory: [],
+    ...overrides,
+  };
+}
+
+const renderPage = (onAdd = vi.fn(), applications: unknown[] = []) =>
   render(
     <MemoryRouter>
       <ToastProvider>
         <JobApplications
-          applications={[]}
+          applications={applications as never}
           behavioralAnswers={[]}
           onAdd={onAdd}
           onUpdateStatus={vi.fn()}
@@ -77,5 +105,36 @@ describe('JobApplications', () => {
 
     expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ company: 'Acme', role: 'Backend Engineer' }));
     expect(screen.queryByLabelText('Company')).toBeNull();
+  });
+
+  it('shows five applications a page', () => {
+    const apps = Array.from({ length: 12 }, (_, i) => tracked(i + 1));
+    renderPage(vi.fn(), apps);
+
+    const table = screen.getByRole('table');
+    // Newest applied first: 12..8 on page one.
+    expect(within(table).getByText('Company 12')).toBeTruthy();
+    expect(within(table).getByText('Company 8')).toBeTruthy();
+    expect(within(table).queryByText('Company 7')).toBeNull();
+    expect(screen.getByText('Page 1 of 3')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+
+    expect(within(table).getByText('Company 7')).toBeTruthy();
+    expect(within(table).queryByText('Company 12')).toBeNull();
+    expect(screen.getByText('Page 2 of 3')).toBeTruthy();
+  });
+
+  it('shows when each status was last updated', () => {
+    renderPage(vi.fn(), [
+      tracked(1, {
+        status: JobStatus.REJECTED,
+        statusHistory: [{ status: JobStatus.REJECTED, date: '2026-09-22T00:00:00+00:00' }],
+      }),
+    ]);
+
+    const table = screen.getByRole('table');
+    expect(within(table).getByRole('button', { name: /Updated/ })).toBeTruthy();
+    expect(within(table).getByText(new Date('2026-09-22T00:00:00').toLocaleDateString())).toBeTruthy();
   });
 });

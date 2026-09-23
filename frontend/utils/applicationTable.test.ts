@@ -6,7 +6,10 @@ import {
   filterApplications,
   hasActiveFilters,
   nextSort,
+  paginate,
   sortApplications,
+  STATUS_STYLES,
+  statusUpdatedAt,
   visibleApplications,
 } from './applicationTable';
 
@@ -201,5 +204,59 @@ describe('visibleApplications', () => {
     );
 
     expect(companies(visible)).toEqual(['Globex', 'Acme']);
+  });
+});
+
+describe('statusUpdatedAt', () => {
+  it('is the date of the latest status event', () => {
+    const tracked = app({
+      statusHistory: [
+        { status: JobStatus.APPLIED, date: '2026-09-20T00:00:00+00:00' },
+        { status: JobStatus.REJECTED, date: '2026-09-22T00:00:00+00:00' },
+      ],
+    });
+
+    expect(statusUpdatedAt(tracked)).toBe('2026-09-22');
+  });
+
+  it('is blank when there is no history', () => {
+    expect(statusUpdatedAt(app())).toBe('');
+    expect(statusUpdatedAt(app({ statusHistory: [] }))).toBe('');
+  });
+});
+
+describe('sorting by status update', () => {
+  it('puts the most recently updated first, and never-updated last', () => {
+    const list = [
+      app({ company: 'Old', statusHistory: [{ status: JobStatus.APPLIED, date: '2026-09-01T00:00:00Z' }] }),
+      app({ company: 'None', statusHistory: [] }),
+      app({ company: 'New', statusHistory: [{ status: JobStatus.REJECTED, date: '2026-09-22T00:00:00Z' }] }),
+    ];
+
+    expect(companies(sortApplications(list, { key: 'statusUpdated', direction: 'desc' }))).toEqual(['New', 'Old', 'None']);
+    expect(nextSort(DEFAULT_SORT, 'statusUpdated')).toEqual({ key: 'statusUpdated', direction: 'desc' });
+  });
+});
+
+describe('paginate', () => {
+  const items = Array.from({ length: 12 }, (_, i) => i + 1);
+
+  it('slices out one page and reports how many there are', () => {
+    expect(paginate(items, 1, 5)).toEqual({ items: [1, 2, 3, 4, 5], page: 1, pageCount: 3 });
+    expect(paginate(items, 3, 5)).toEqual({ items: [11, 12], page: 3, pageCount: 3 });
+  });
+
+  it('clamps a page that no longer exists, e.g. after filtering', () => {
+    expect(paginate(items, 9, 5).page).toBe(3);
+    expect(paginate([], 2, 5)).toEqual({ items: [], page: 1, pageCount: 1 });
+  });
+});
+
+describe('STATUS_STYLES', () => {
+  it('gives every status its own colour', () => {
+    const styles = Object.values(JobStatus).map(status => STATUS_STYLES[status]);
+
+    expect(styles.every(Boolean)).toBe(true);
+    expect(new Set(styles).size).toBe(styles.length);
   });
 });

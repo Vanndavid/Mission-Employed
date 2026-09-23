@@ -8,7 +8,7 @@
 
 import { JobApplication, JobStatus } from '../types';
 
-export type SortKey = 'company' | 'status' | 'nextAction' | 'dateApplied';
+export type SortKey = 'company' | 'status' | 'statusUpdated' | 'nextAction' | 'dateApplied';
 
 export type SortDirection = 'asc' | 'desc';
 
@@ -42,6 +42,7 @@ export const DEFAULT_SORT: ApplicationSort = { key: 'dateApplied', direction: 'd
 const INITIAL_DIRECTION: Record<SortKey, SortDirection> = {
   company: 'asc',
   status: 'asc',
+  statusUpdated: 'desc',
   nextAction: 'asc',
   dateApplied: 'desc',
 };
@@ -54,6 +55,48 @@ const INITIAL_DIRECTION: Record<SortKey, SortDirection> = {
  * One definition, so sorting and importing cannot disagree.
  */
 export const STATUS_ORDER: JobStatus[] = Object.values(JobStatus);
+
+/** Applications per page in the tracker table. */
+export const APPLICATIONS_PAGE_SIZE = 5;
+
+/**
+ * A colour per status, for the pill and the status select. Full class strings
+ * so Tailwind's scanner sees every one.
+ */
+export const STATUS_STYLES: Record<JobStatus, string> = {
+  [JobStatus.SAVED]: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-700/50 dark:text-slate-300 dark:border-slate-600',
+  [JobStatus.APPLIED]: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-500/30',
+  [JobStatus.INTERVIEWING]: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30',
+  [JobStatus.OFFER]: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/30',
+  [JobStatus.REJECTED]: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/30',
+};
+
+/**
+ * When the status last changed, as 'YYYY-MM-DD': the newest status event, or
+ * '' when the API sent no history.
+ */
+export function statusUpdatedAt(app: JobApplication): string {
+  const dates = (app.statusHistory ?? []).map(entry => entry.date ?? '').filter(Boolean);
+  if (dates.length === 0) return '';
+
+  return dates.reduce((latest, date) => (date > latest ? date : latest)).slice(0, 10);
+}
+
+export interface Page<T> {
+  items: T[];
+  /** The page actually shown, clamped into range. */
+  page: number;
+  pageCount: number;
+}
+
+/** One page of a list. A page past the end (after filtering) shows the last. */
+export function paginate<T>(items: T[], page: number, pageSize: number): Page<T> {
+  const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
+  const current = Math.min(Math.max(1, page), pageCount);
+  const start = (current - 1) * pageSize;
+
+  return { items: items.slice(start, start + pageSize), page: current, pageCount };
+}
 
 export function hasActiveFilters(filters: ApplicationFilters): boolean {
   return (
@@ -127,6 +170,9 @@ function compareBy(a: JobApplication, b: JobApplication, sort: ApplicationSort):
 
     case 'status':
       return sign * (STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status));
+
+    case 'statusUpdated':
+      return compareBlankLast(statusUpdatedAt(a), statusUpdatedAt(b), sign, compareText);
 
     case 'nextAction':
       // The column shows the action and its due date, so due date leads and

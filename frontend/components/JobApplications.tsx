@@ -13,11 +13,15 @@ import { exportApplicationsCsv } from '../utils/csv';
 import {
   ApplicationFilters,
   ApplicationSort,
+  APPLICATIONS_PAGE_SIZE,
   DEFAULT_FILTERS,
   DEFAULT_SORT,
   SortKey,
   hasActiveFilters,
   nextSort,
+  paginate,
+  STATUS_STYLES,
+  statusUpdatedAt,
   visibleApplications,
 } from '../utils/applicationTable';
 
@@ -47,12 +51,16 @@ const PAGE_TABS: { key: PageTab; label: string }[] = [
 const SORT_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'company', label: 'Company / Role' },
   { key: 'status', label: 'Status' },
+  { key: 'statusUpdated', label: 'Updated' },
   { key: 'nextAction', label: 'Next Action' },
-  { key: 'dateApplied', label: 'Date' },
+  { key: 'dateApplied', label: 'Applied' },
 ];
 
+/** 'YYYY-MM-DD' as a local date, or a dash. Parsed as local time so it never shifts a day. */
+const formatDay = (day: string) => (day ? new Date(`${day}T00:00:00`).toLocaleDateString() : '—');
+
 /**
- * These three live at module scope rather than inside JobApplications: a
+ * These live at module scope rather than inside JobApplications: a
  * component declared in a render body is a new type every render, so React
  * would remount it and the sort button would lose focus on every click.
  */
@@ -183,6 +191,13 @@ export const JobApplications = ({
     () => visibleApplications(applications, filters, sort),
     [applications, filters, sort],
   );
+
+  const [page, setPage] = useState(1);
+
+  // A new filter or sort starts from the first page.
+  useEffect(() => setPage(1), [filters, sort]);
+
+  const paged = paginate(visible, page, APPLICATIONS_PAGE_SIZE);
 
   const filtering = hasActiveFilters(filters);
   const starredCount = applications.filter(app => app.isImportant).length;
@@ -510,14 +525,14 @@ export const JobApplications = ({
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {visible.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-slate-400 italic">
+                    <td colSpan={7} className="px-6 py-12 text-center text-slate-400 italic">
                       {applications.length === 0
                         ? 'No missions active. Begin mechanical applying.'
                         : 'No applications match these filters.'}
                     </td>
                   </tr>
                 ) : (
-                  visible.map(app => (
+                  paged.items.map(app => (
                     <tr
                       key={app.id}
                       className={`transition-colors cursor-pointer ${
@@ -544,12 +559,15 @@ export const JobApplications = ({
                           value={app.status}
                           onChange={e => onUpdateStatus(app.id, e.target.value as JobStatus)}
                           aria-label={`Status for ${app.company}`}
-                          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1 text-xs font-bold"
+                          className={`border rounded-full px-3 py-1 text-xs font-bold ${STATUS_STYLES[app.status]}`}
                         >
                           {Object.values(JobStatus).map(s => (
                             <option key={s} value={s}>{s}</option>
                           ))}
                         </select>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-500">
+                        {formatDay(statusUpdatedAt(app))}
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-500">
                         {app.nextAction || '—'}
@@ -560,7 +578,7 @@ export const JobApplications = ({
                         )}
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-500">
-                        {app.dateApplied ? new Date(app.dateApplied).toLocaleDateString() : '—'}
+                        {formatDay(app.dateApplied)}
                       </td>
                       <td className="px-6 py-4 text-right" onClick={e => e.stopPropagation()}>
                         <button
@@ -588,7 +606,7 @@ export const JobApplications = ({
                   : 'No applications match these filters.'}
               </p>
             ) : (
-              visible.map(app => (
+              paged.items.map(app => (
                 <div
                   key={app.id}
                   onClick={() => setPrepApp(app)}
@@ -604,7 +622,7 @@ export const JobApplications = ({
                       <p className="text-sm text-slate-500">{app.role}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest ${STATUS_STYLES[app.status]}`}>
                         {app.status}
                       </span>
                       <StarButton app={app} onToggle={toggleImportant} />
@@ -622,7 +640,8 @@ export const JobApplications = ({
                       ))}
                     </select>
                     <span className="text-[10px] text-slate-400">
-                      {app.dateApplied ? new Date(app.dateApplied).toLocaleDateString() : '—'}
+                      Applied {formatDay(app.dateApplied)}
+                      {statusUpdatedAt(app) && ` · updated ${formatDay(statusUpdatedAt(app))}`}
                     </span>
                     <button onClick={() => onDelete(app.id)} className="ml-auto text-rose-400 text-xs font-bold">
                       Delete
@@ -632,6 +651,32 @@ export const JobApplications = ({
               ))
             )}
           </div>
+
+          {paged.pageCount > 1 && (
+            <nav aria-label="Applications pages" className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                aria-label="Previous page"
+                disabled={paged.page <= 1}
+                onClick={() => setPage(paged.page - 1)}
+                className="px-3 py-2 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-500 disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <span className="text-xs text-slate-400">
+                Page {paged.page} of {paged.pageCount}
+              </span>
+              <button
+                type="button"
+                aria-label="Next page"
+                disabled={paged.page >= paged.pageCount}
+                onClick={() => setPage(paged.page + 1)}
+                className="px-3 py-2 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-500 disabled:opacity-40"
+              >
+                Next
+              </button>
+            </nav>
+          )}
         </div>
       )}
 
