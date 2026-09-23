@@ -37,6 +37,7 @@ class Application extends Model
         'recruiter_linkedin',
         'offer',
         'take_home',
+        'rejection_reasons',
     ];
 
     /** @return array<string, string> */
@@ -49,6 +50,7 @@ class Application extends Model
             'next_action_due' => 'date',
             'offer' => 'array',
             'take_home' => 'array',
+            'rejection_reasons' => 'array',
         ];
     }
 

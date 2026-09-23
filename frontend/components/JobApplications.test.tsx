@@ -137,4 +137,21 @@ describe('JobApplications', () => {
     expect(within(table).getByRole('button', { name: /Updated/ })).toBeTruthy();
     expect(within(table).getByText(new Date('2026-09-22T00:00:00').toLocaleDateString())).toBeTruthy();
   });
+
+  it('shows why a rejected application was turned down', () => {
+    const reasons = [
+      'Which of the following statements best describes your right to work in Australia?',
+      "How many years' experience do you have as a software engineer?",
+    ];
+    renderPage(vi.fn(), [tracked(1, { status: JobStatus.REJECTED, rejectionReasons: reasons })]);
+
+    const table = screen.getByRole('table');
+    expect(within(table).getByText('2 screening answers didn’t match')).toBeTruthy();
+
+    // The full questions are in the drawer.
+    fireEvent.click(within(table).getByText('Company 1'));
+    const drawer = screen.getByRole('region', { name: 'Why it was rejected' });
+    expect(within(drawer).getByText(reasons[0])).toBeTruthy();
+    expect(within(drawer).getByText(reasons[1])).toBeTruthy();
+  });
 });

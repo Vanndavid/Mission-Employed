@@ -59,6 +59,9 @@ const SORT_COLUMNS: { key: SortKey; label: string }[] = [
 /** 'YYYY-MM-DD' as a local date, or a dash. Parsed as local time so it never shifts a day. */
 const formatDay = (day: string) => (day ? new Date(`${day}T00:00:00`).toLocaleDateString() : '—');
 
+const rejectionSummary = (count: number) =>
+  `${count} screening ${count === 1 ? 'answer' : 'answers'} didn’t match`;
+
 /**
  * These live at module scope rather than inside JobApplications: a
  * component declared in a render body is a new type every render, so React
@@ -548,6 +551,14 @@ export const JobApplications = ({
                       <td className="px-6 py-4">
                         <div className="font-bold text-slate-800 dark:text-slate-200">{app.company}</div>
                         <div className="text-sm text-slate-500">{app.role}</div>
+                        {(app.rejectionReasons?.length ?? 0) > 0 && (
+                          <span
+                            className="block text-[10px] text-rose-500 font-bold uppercase"
+                            title={app.rejectionReasons!.join('\n')}
+                          >
+                            {rejectionSummary(app.rejectionReasons!.length)}
+                          </span>
+                        )}
                         {(app.interviewStages?.length ?? 0) > 0 && (
                           <span className="text-[10px] text-amber-600 font-bold uppercase">
                             {app.interviewStages.length} stage(s)
@@ -620,6 +631,11 @@ export const JobApplications = ({
                     <div>
                       <p className="font-bold text-slate-800 dark:text-slate-200">{app.company}</p>
                       <p className="text-sm text-slate-500">{app.role}</p>
+                      {(app.rejectionReasons?.length ?? 0) > 0 && (
+                        <p className="text-[10px] text-rose-500 font-bold uppercase mt-1">
+                          {rejectionSummary(app.rejectionReasons!.length)}
+                        </p>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
                       <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest ${STATUS_STYLES[app.status]}`}>

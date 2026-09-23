@@ -170,6 +170,17 @@ describe("the MCP server", () => {
     assert.deepEqual(api.requests.at(-1)?.body, { nextActionDue: null });
   });
 
+  it("passes rejection reasons through to the API", async () => {
+    const reasons = ["Which of the following statements best describes your right to work in Australia?"];
+
+    await client.callTool({
+      name: "update_application",
+      arguments: { id: 1, status: "Rejected", rejectionReasons: reasons },
+    });
+
+    assert.deepEqual(api.requests.at(-1)?.body, { status: "Rejected", rejectionReasons: reasons });
+  });
+
   it("parses a posting and creates the application in one step", async () => {
     const result = (await client.callTool({
       name: "track_job_from_description",
@@ -235,6 +246,9 @@ describe("the MCP server", () => {
     assert.match(body, /14 days/);
     assert.match(body, /append_application_note/);
     assert.match(body, /list_applications/);
+    // Seek's rejection email names the screening questions that did not match.
+    assert.match(body, /rejectionReasons/);
+    assert.match(body, /Application feedback/);
   });
 });
 

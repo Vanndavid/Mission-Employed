@@ -338,6 +338,51 @@ class ApplicationApiTest extends TestCase
         $this->assertNull($application->fresh()->source);
     }
 
+    public function test_it_stores_the_screening_questions_a_rejection_cited(): void
+    {
+        $user = User::factory()->create();
+        $application = Application::factory()->for($user)->create();
+
+        Sanctum::actingAs($user);
+
+        $reasons = [
+            'Which of the following statements best describes your right to work in Australia?',
+            "How many years' experience do you have as a software engineer?",
+        ];
+
+        $this->patchJson("/api/applications/{$application->id}", ['rejectionReasons' => $reasons])
+            ->assertOk()
+            ->assertJsonPath('data.rejectionReasons', $reasons);
+
+        $this->assertSame($reasons, $application->fresh()->rejection_reasons);
+    }
+
+    public function test_rejection_reasons_serialize_as_an_empty_list_when_unset(): void
+    {
+        $user = User::factory()->create();
+        Application::factory()->for($user)->create(['rejection_reasons' => null]);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/applications')->assertOk()->assertJsonPath('data.0.rejectionReasons', []);
+    }
+
+    public function test_it_rejects_rejection_reasons_that_are_not_a_list_of_strings(): void
+    {
+        $user = User::factory()->create();
+        $application = Application::factory()->for($user)->create();
+
+        Sanctum::actingAs($user);
+
+        $this->patchJson("/api/applications/{$application->id}", ['rejectionReasons' => 'right to work'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('rejectionReasons');
+
+        $this->patchJson("/api/applications/{$application->id}", ['rejectionReasons' => [['nested']]])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('rejectionReasons.0');
+    }
+
     public function test_an_unset_source_serializes_as_an_empty_string(): void
     {
         $user = User::factory()->create();

@@ -82,6 +82,11 @@ export interface JobApplication {
   takeHome: TakeHome | null;
   offer: OfferDetails | null;
   statusHistory?: StatusHistoryEntry[];
+  /**
+   * Why it was turned down, one short phrase each — e.g. the screening
+   * questions a Seek rejection lists. Filled by the MCP email sync.
+   */
+  rejectionReasons?: string[];
 }
 
 /**

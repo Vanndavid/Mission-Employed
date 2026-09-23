@@ -43,6 +43,7 @@ class ApplicationResource extends JsonResource
             // The accessor already treats all-blank recruiter columns as absent.
             'recruiterContact' => $this->recruiter_contact,
             'takeHome' => $this->take_home,
+            'rejectionReasons' => array_values($this->rejection_reasons ?? []),
             'offer' => $this->offer,
             'statusHistory' => $this->statusEvents
                 ->map(fn ($event) => [

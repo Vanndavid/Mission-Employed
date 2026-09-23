@@ -38,6 +38,7 @@ abstract class ApplicationRequest extends FormRequest
         'nextActionDue' => 'next_action_due',
         'offer' => 'offer',
         'takeHome' => 'take_home',
+        'rejectionReasons' => 'rejection_reasons',
     ];
 
     /**
@@ -162,6 +163,11 @@ abstract class ApplicationRequest extends FormRequest
             'takeHome.deadline' => ['sometimes', 'nullable', 'string', 'max:255'],
             'takeHome.repo' => ['sometimes', 'nullable', 'string', 'max:2048'],
             'takeHome.status' => ['sometimes', 'nullable', 'string', 'in:not_started,in_progress,submitted'],
+
+            // Short phrases, e.g. the screening questions a Seek rejection
+            // says did not match. Sent whole; null or [] clears it.
+            'rejectionReasons' => ['sometimes', 'nullable', 'array', 'max:20'],
+            'rejectionReasons.*' => ['string', 'max:500'],
 
             'offer' => ['sometimes', 'nullable', 'array'],
             'offer.base' => ['sometimes', 'nullable', 'numeric'],

@@ -89,6 +89,15 @@ const applicationFields = {
   recruiterContact: recruiterContact.nullable().optional(),
   takeHome: takeHome.nullable().optional(),
   offer: offer.nullable().optional(),
+  rejectionReasons: z
+    .array(z.string().max(500))
+    .max(20)
+    .nullable()
+    .optional()
+    .describe(
+      "Why it was turned down, one short phrase each — e.g. the screening questions a Seek " +
+        "rejection lists under \"Application feedback\". Replaces the whole list; null clears it.",
+    ),
 };
 
 type Application = {

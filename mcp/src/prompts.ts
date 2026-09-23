@@ -19,6 +19,7 @@ export function syncJobEmailsPrompt(since: string, apply: boolean): string {
    - Interview invitation or scheduling → add_interview_stage with the right type and scheduledAt when a time is given, and status Interviewing if it is earlier than that.
    - Take-home → update_application with takeHome (deadline when stated).
    - Offer → status Offer. Rejection → status Rejected.
+   - A rejection that says why → also set rejectionReasons, one short entry per reason. Seek's "Application update … unlikely to progress" email has an "Application feedback" section listing the screening questions whose answers did not match the employer's preferences (e.g. right to work, years of experience): use each question's text as an entry. Keep any reasons already recorded and add the new ones, without duplicates.
    - Recruiter name or email I do not have yet → recruiterContact.
    Status only ever moves forward: Saved → Applied → Interviewing → Offer. Rejected can follow any of them. Never move a status backwards. Pass statusDate as the email's date so the timeline is dated correctly.
 
