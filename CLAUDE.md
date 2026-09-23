@@ -63,20 +63,24 @@ rather than raw `fetch`.
 
 ## Deployment — main is live
 
-**The app is deployed at `mission-employed.vanndavidteng.com`** via docker
-compose behind Traefik. `main` gets deployed; treat it accordingly.
+**Pushing to `main` deploys** to `mission-employed.vanndavidteng.com` once CI is
+green. The CI `deploy` job runs `scripts/deploy.sh` on the server over a
+command-restricted SSH key, and the script rolls back if health checks fail.
+[`DEPLOYMENT.md`](DEPLOYMENT.md) has the design, the manual redeploy and
+rollback steps, and the secrets. There is no staging, so treat `main`
+accordingly.
+
+The stack is docker compose behind Traefik:
 
 - `Dockerfile` builds the SPA from `frontend/` and serves it from nginx.
-- `Dockerfile.api` runs the **Express** server, which is still the production
-  backend. Laravel is not in the deployed stack yet.
-- `nginx.conf` proxies `/api/` and `/ai/` to Express on `:3001`. Its
-  `client_max_body_size 10m` matches the Express JSON limit — mock interviews
-  POST base64 audio and nginx would 413 first — and `proxy_read_timeout 300s`
-  exists because model calls are slow. Keep both when repointing at Laravel.
-- Accounts live in a JSON file on a Docker volume, not in the image.
-
-**Do not delete `server/` until Laravel is deployed and confirmed serving
-traffic.** Tasks 4.1 and 4.2 in `TASKS.md` sequence that cutover.
+- `Dockerfile.laravel` is the API, with SQLite on the `laravel_data` volume.
+- `Dockerfile.mcp` is the remote MCP connector (see below).
+- `Dockerfile.api` is the retired Express server. It serves only `/ai/`, which
+  nothing calls, and is removed in task 4.2.
+- `nginx.conf` keeps `client_max_body_size 10m` (mock interviews POST base64
+  audio) and `proxy_read_timeout 300s` (model calls are slow).
+- The server `.env` is not in git and a deploy never touches it. A new required
+  key has to be added there before the deploy that needs it.
 
 ## The MCP server
 

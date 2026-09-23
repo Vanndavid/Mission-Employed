@@ -774,6 +774,17 @@ Tick the 4.4 box in TASKS.md. Do not commit.
 
 ---
 
+### 4.5 Deploy on push to main ✅
+
+- [x] Done. The `deploy` job in `ci.yml` needs the frontend, backend and (new)
+  mcp jobs, then SSHes to the server with a key that `authorized_keys` pins to
+  `scripts/deploy.sh`. The script fast-forwards, checks the compose config,
+  builds before replacing containers, health-checks three URLs and rolls back
+  on failure. The design and the operating notes are in `DEPLOYMENT.md`.
+- The GitHub Pages copy of the SPA (`deploy.yml`, `build:pages`, the Vite base
+  path and router basename) was removed. It had no backend, so nothing
+  worked on it.
+
 ## Wave 5 — MCP server
 
 Independent of the waves above; it only needs the Wave 2 API, which is done.
@@ -841,8 +852,8 @@ Decisions:
 
 ## Deployment
 
-**The app is live at `mission-employed.vanndavidteng.com`.** Treat main as
-something that gets deployed, not just a branch.
+**The app is live at `mission-employed.vanndavidteng.com`, and a green push to
+`main` deploys it automatically** (task 4.5, [`DEPLOYMENT.md`](DEPLOYMENT.md)).
 
 The stack is docker compose behind Traefik:
 

@@ -1,10 +1,14 @@
 name: CI
 
+# Tests every push and PR. On main, once every test job is green, the deploy
+# job ships it to mission-employed.vanndavidteng.com. See DEPLOYMENT.md.
 on:
   push:
     branches: [main, 'cursor/**', 'rebuild/**']
   pull_request:
     branches: [main]
+  # Redeploy main by hand: Actions -> CI -> Run workflow. Tests still run first.
+  workflow_dispatch:
 
 jobs:
   frontend:
@@ -45,3 +49,58 @@ jobs:
           touch database/database.sqlite
           php artisan migrate --force
       - run: php artisan test
+
+  mcp:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mcp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: mcp/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  deploy:
+    needs: [frontend, backend, mcp]
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://mission-employed.vanndavidteng.com
+    # One deploy at a time, and a queued one waits rather than killing a
+    # deploy halfway through replacing containers.
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    steps:
+      - name: Load the deploy key and pinned host key
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      # The key is pinned server-side to scripts/deploy.sh by a forced command,
+      # so there is nothing to send: connecting is the deploy.
+      - name: Deploy
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o ServerAliveInterval=30 \
+            "root@$DEPLOY_HOST"
+
+      - name: Forget the key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

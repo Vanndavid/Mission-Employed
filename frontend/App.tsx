@@ -137,8 +137,6 @@ function AppShell() {
     applyTheme(palette, mode);
   }, [mode, palette]);
 
-  const routerBasename = import.meta.env.BASE_URL.replace(/\/$/, '') || undefined;
-
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 text-slate-500 text-sm font-bold uppercase tracking-widest">
@@ -155,7 +153,7 @@ function AppShell() {
     // Signing out unmounts this whole subtree, so a different account never
     // reuses the previous one's loaded data.
     <DataProvider>
-      <BrowserRouter basename={routerBasename}>
+      <BrowserRouter>
         <div className="min-h-screen text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
           <Sidebar
             mode={mode}
