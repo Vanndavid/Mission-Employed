@@ -785,6 +785,17 @@ Tick the 4.4 box in TASKS.md. Do not commit.
   path and router basename) was removed. It had no backend, so nothing
   worked on it.
 
+### 4.6 Uptime monitoring ✅
+
+- [x] Done. `uptime.yml` runs `scripts/uptime-check.sh` every 10 minutes
+  against the SPA, `/api/health`, the MCP resource metadata and the TLS expiry.
+  It opens one `outage` issue on failure and closes it on recovery.
+  `/api/health` now checks SQLite and storage and returns 503 when either
+  fails. Laravel logs to stderr in production. See "Monitoring" in
+  `DEPLOYMENT.md`. Telescope was considered and rejected: it is a local
+  debugging tool that writes every request to the database, and it cannot
+  tell you the site is down.
+
 ## Wave 5 — MCP server
 
 Independent of the waves above; it only needs the Wave 2 API, which is done.

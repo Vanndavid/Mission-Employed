@@ -63,6 +63,45 @@ script. This setup follows the same idea and closes the gaps in it:
   and the script takes a `flock` as well, for the case where someone runs it by
   hand while Actions is deploying.
 
+## Monitoring
+
+**Every 10 minutes, [`.github/workflows/uptime.yml`](.github/workflows/uptime.yml)
+probes the live site from outside**, through Traefik and TLS, the same way a
+user reaches it. The probe is [`scripts/uptime-check.sh`](scripts/uptime-check.sh),
+and it checks:
+
+| Check | What it proves |
+| --- | --- |
+| `spa` — `/` contains `<div id="root">` | nginx is up and serving the built SPA |
+| `api` — `/api/health` is 200 with `"status":"ok"` | Laravel is up, SQLite answers a query, `storage/` is writable |
+| `mcp` — `/.well-known/oauth-protected-resource/mcp` | the MCP connector is up and routed |
+| `tls` — certificate has ≥ 14 days left | Traefik's Let's Encrypt renewal is working |
+
+When a check fails, the workflow opens **one** issue labelled `outage`, and
+GitHub emails you about it. While the outage lasts, it comments only when
+*what* is failing changes, not every 10 minutes. It closes the issue on
+recovery. A failing run also goes red, so the Actions failure email arrives too.
+
+`/api/health` returns **503** as soon as the database or storage check fails,
+so `deploy.sh` rolls back a deploy that boots but cannot reach its data. The
+reason goes to the log and never into the response. Laravel logs to stderr in
+production, so errors are in:
+
+```bash
+ssh vps 'cd /home/ubuntu/traefik-projects/Mission-Employed && docker compose logs --since 1h laravel'
+```
+
+Run the probe by hand from anywhere with `scripts/uptime-check.sh`, or trigger
+it through Actions → Uptime → *Run workflow*.
+
+Limits worth knowing:
+
+- GitHub's cron is best effort. Runs can start a few minutes late, and they
+  pause if the repo has had no activity for 60 days. The Actions tab says so
+  when that happens.
+- The monitor runs inside GitHub. If GitHub Actions itself is down, nothing
+  alerts you.
+
 ## Everyday operations
 
 **Deploy:** push or merge to `main`, then watch Actions → CI → deploy.

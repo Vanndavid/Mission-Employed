@@ -1,0 +1,64 @@
+name: Uptime
+
+# Probes the live site every 10 minutes with scripts/uptime-check.sh. While
+# anything fails, one open issue labelled `outage` holds the history: opened on
+# the first failure (GitHub emails the repo owner), commented on when the
+# failure changes, and closed automatically on recovery. See DEPLOYMENT.md.
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+
+      - name: Check the live site
+        id: check
+        run: |
+          set +e
+          scripts/uptime-check.sh | tee report.txt
+          echo "failed=$([[ ${PIPESTATUS[0]} == 0 ]] && echo false || echo true)" >> "$GITHUB_OUTPUT"
+
+      - name: Open, update or close the outage issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FAILED: ${{ steps.check.outputs.failed }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create outage --color B60205 \
+            --description 'Opened and closed by the Uptime workflow' 2>/dev/null || true
+
+          issue=$(gh issue list --label outage --state open --json number --jq '.[0].number')
+          failures=$(grep '^FAIL' report.txt || true)
+          body=$(printf '```\n%s\n```\n\n[Run](%s)' "$(cat report.txt)" "$RUN_URL")
+
+          if [[ $FAILED == true ]]; then
+            if [[ -z $issue ]]; then
+              gh issue create --label outage \
+                --title "Site down: $(awk '{print $2}' <<<"$failures" | paste -sd, -)" \
+                --body "$body"
+            else
+              # Only comment when what is failing changes, not every 10 minutes.
+              last=$(gh issue view "$issue" --json comments,body \
+                --jq '(.comments | last | .body) // .body' | grep '^FAIL' | awk '{print $2}' || true)
+              now=$(awk '{print $2}' <<<"$failures")
+              [[ $last != "$now" ]] && gh issue comment "$issue" --body "Failure changed:"$'\n\n'"$body"
+            fi
+            exit 1
+          elif [[ -n $issue ]]; then
+            gh issue close "$issue" --comment "Recovered."$'\n\n'"$body"
+          fi

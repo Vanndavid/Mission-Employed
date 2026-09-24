@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class HealthTest extends TestCase
@@ -10,7 +12,46 @@ class HealthTest extends TestCase
     {
         $this->getJson('/api/health')
             ->assertOk()
-            ->assertExactJson(['status' => 'ok']);
+            ->assertExactJson([
+                'status' => 'ok',
+                'checks' => ['database' => 'ok', 'storage' => 'ok'],
+            ]);
+    }
+
+    /**
+     * The uptime monitor and deploy.sh both read a non-2xx as "down", so a
+     * broken database has to fail the check rather than hide behind a 200.
+     */
+    public function test_health_is_503_when_the_database_is_unreachable(): void
+    {
+        config(['database.connections.sqlite.database' => '/nonexistent/dir/db.sqlite']);
+        DB::purge('sqlite');
+
+        $this->getJson('/api/health')
+            ->assertStatus(503)
+            ->assertJsonPath('status', 'failing')
+            ->assertJsonPath('checks.database', 'failing')
+            ->assertJsonPath('checks.storage', 'ok');
+    }
+
+    public function test_health_is_503_when_storage_is_not_writable(): void
+    {
+        Storage::shouldReceive('disk->put')->andThrow(new \RuntimeException('read-only'));
+
+        $this->getJson('/api/health')
+            ->assertStatus(503)
+            ->assertJsonPath('checks.storage', 'failing');
+    }
+
+    /** It is unauthenticated, so the reason a check failed stays in the log. */
+    public function test_health_does_not_leak_the_underlying_error(): void
+    {
+        config(['database.connections.sqlite.database' => '/nonexistent/dir/db.sqlite']);
+        DB::purge('sqlite');
+
+        $body = $this->getJson('/api/health')->getContent();
+
+        $this->assertStringNotContainsString('nonexistent', $body);
     }
 
     public function test_api_routes_are_registered_under_the_api_prefix(): void

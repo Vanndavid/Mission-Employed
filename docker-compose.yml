@@ -34,6 +34,10 @@ services:
       # account on redeploy.
       DB_CONNECTION: sqlite
       DB_DATABASE: /data/database.sqlite
+      # Errors (including a failing /api/health) go to `docker compose logs
+      # laravel`, not to storage/logs inside the container, which every
+      # redeploy throws away.
+      LOG_CHANNEL: stderr
       SERVER_NAME: ":8080"
     volumes:
       - laravel_data:/data
