@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { BehavioralAnswer, JobApplication } from '../types';
 import { BEHAVIORAL_THEMES } from '../constants';
 import { InterviewStageEditor } from './InterviewStageEditor';
+import { RejectionFeedbackSection } from './RejectionFeedback';
 import { InterviewStage, TakeHomeStatus } from '../types';
 
 interface InterviewPrepDrawerProps {
@@ -47,26 +48,7 @@ export const InterviewPrepDrawer = ({
         </div>
 
         <div className="p-6 space-y-8">
-          {(app.rejectionReasons?.length ?? 0) > 0 && (
-            <section aria-labelledby="rejection-reasons-heading">
-              <h4 id="rejection-reasons-heading" className="text-xs font-bold uppercase tracking-widest text-rose-500 mb-2">
-                Why it was rejected
-              </h4>
-              <p className="text-xs text-slate-400 mb-2">
-                The employer's screening questions these answers didn't match.
-              </p>
-              <ul className="space-y-2">
-                {app.rejectionReasons!.map(reason => (
-                  <li
-                    key={reason}
-                    className="text-sm text-slate-700 dark:text-slate-200 bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 p-3 rounded-xl"
-                  >
-                    {reason}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
+          <RejectionFeedbackSection app={app} onUpdate={onUpdate} />
 
           <section>
             <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Job Description Recap</h4>

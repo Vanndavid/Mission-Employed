@@ -40,28 +40,30 @@ function tracked(id: number, overrides: Record<string, unknown> = {}) {
   };
 }
 
-const renderPage = (onAdd = vi.fn(), applications: unknown[] = []) =>
-  render(
-    <MemoryRouter>
-      <ToastProvider>
-        <JobApplications
-          applications={applications as never}
-          behavioralAnswers={[]}
-          onAdd={onAdd}
-          onUpdateStatus={vi.fn()}
-          onUpdateApplication={vi.fn()}
-          onAddInterviewStage={vi.fn()}
-          onRemoveInterviewStage={vi.fn()}
-          onDelete={vi.fn()}
-          onCommitImport={vi.fn()}
-          baseCV=""
-          coverLetterTemplate=""
-          cvTemplate=""
-          portfolioUrl=""
-        />
-      </ToastProvider>
-    </MemoryRouter>,
-  );
+const pageWith = (applications: unknown[], onUpdateApplication = vi.fn(), onAdd = vi.fn()) => (
+  <MemoryRouter>
+    <ToastProvider>
+      <JobApplications
+        applications={applications as never}
+        behavioralAnswers={[]}
+        onAdd={onAdd}
+        onUpdateStatus={vi.fn()}
+        onUpdateApplication={onUpdateApplication}
+        onAddInterviewStage={vi.fn()}
+        onRemoveInterviewStage={vi.fn()}
+        onDelete={vi.fn()}
+        onCommitImport={vi.fn()}
+        baseCV=""
+        coverLetterTemplate=""
+        cvTemplate=""
+        portfolioUrl=""
+      />
+    </ToastProvider>
+  </MemoryRouter>
+);
+
+const renderPage = (onAdd = vi.fn(), applications: unknown[] = [], onUpdateApplication = vi.fn()) =>
+  render(pageWith(applications, onUpdateApplication, onAdd));
 
 beforeEach(() => {
   searchSeekJobs.mockReset().mockResolvedValue({
@@ -138,60 +140,86 @@ describe('JobApplications', () => {
     expect(within(table).getByText(new Date('2026-09-22T00:00:00').toLocaleDateString())).toBeTruthy();
   });
 
-  it('shows why a rejected application was turned down', () => {
-    const reasons = [
-      'Which of the following statements best describes your right to work in Australia?',
-      "How many years' experience do you have as a software engineer?",
-    ];
-    renderPage(vi.fn(), [tracked(1, { status: JobStatus.REJECTED, rejectionReasons: reasons })]);
+  const REASONS = [
+    'Which of the following statements best describes your right to work in Australia?',
+    "How many years' experience do you have as a software engineer?",
+  ];
+
+  it('badges a rejected row with its flags and shows them on tap', () => {
+    renderPage(vi.fn(), [tracked(1, { status: JobStatus.REJECTED, rejectionReasons: REASONS })]);
 
     const table = screen.getByRole('table');
-    expect(within(table).getByText('2 screening answers didn’t match')).toBeTruthy();
+    const badge = within(table).getByRole('button', { name: /2 flags/ });
+    expect(screen.queryByRole('tooltip')).toBeNull();
 
-    // The full questions are in the drawer.
-    fireEvent.click(within(table).getByText('Company 1'));
-    const drawer = screen.getByRole('region', { name: 'Why it was rejected' });
-    expect(within(drawer).getByText(reasons[0])).toBeTruthy();
-    expect(within(drawer).getByText(reasons[1])).toBeTruthy();
+    fireEvent.click(badge);
+
+    const tooltip = screen.getByRole('tooltip');
+    expect(within(tooltip).getByText(REASONS[0])).toBeTruthy();
+    expect(within(tooltip).getByText('Right to work')).toBeTruthy();
+    expect(within(tooltip).getByText('Experience')).toBeTruthy();
+    // Tapping the badge does not open the drawer as a row click would.
+    expect(screen.queryByRole('region', { name: 'Rejection feedback' })).toBeNull();
   });
 
-  it("opens the mock interview for an application from its drawer", async () => {
-    const MockRoute = () => <p>mock screen {useLocation().search}</p>;
+  it('only badges rows that are rejected', () => {
+    renderPage(vi.fn(), [tracked(1, { status: JobStatus.APPLIED, rejectionReasons: REASONS })]);
 
-    render(
-      <MemoryRouter initialEntries={['/applications?prep=7']}>
-        <ToastProvider>
-          <Routes>
-            <Route
-              path="/applications"
-              element={
-                <JobApplications
-                  applications={[tracked(7)] as never}
-                  behavioralAnswers={[]}
-                  onAdd={vi.fn()}
-                  onUpdateStatus={vi.fn()}
-                  onUpdateApplication={vi.fn()}
-                  onAddInterviewStage={vi.fn()}
-                  onRemoveInterviewStage={vi.fn()}
-                  onDelete={vi.fn()}
-                  onCommitImport={vi.fn()}
-                  baseCV=""
-                  coverLetterTemplate=""
-                  cvTemplate=""
-                  portfolioUrl=""
-                />
-              }
-            />
-            <Route path="/mock" element={<MockRoute />} />
-          </Routes>
-        </ToastProvider>
-      </MemoryRouter>,
-    );
+    expect(within(screen.getByRole('table')).queryByRole('button', { name: /flags?/ })).toBeNull();
+  });
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Mock for Company 7' }));
+  it('lists rejection feedback in the drawer with a category for each', () => {
+    renderPage(vi.fn(), [tracked(1, { status: JobStatus.REJECTED, rejectionReasons: REASONS })]);
 
-    // Closing the drawer rewrites the tracker's own query string; it must not
-    // navigate back over the trip to /mock.
-    expect(await screen.findByText('mock screen ?appId=7')).toBeTruthy();
+    fireEvent.click(within(screen.getByRole('table')).getByText('Company 1'));
+
+    const section = screen.getByRole('region', { name: 'Rejection feedback' });
+    const items = within(section).getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    expect(within(items[0]).getByText(REASONS[0])).toBeTruthy();
+    expect(within(items[0]).getByText('Right to work')).toBeTruthy();
+    expect(within(items[1]).getByText('Experience')).toBeTruthy();
+    expect(within(section).getByText(/From SEEK screening questions\. Only part of how the employer judged/)).toBeTruthy();
+  });
+
+  it('hides the feedback section when there is none to show', () => {
+    renderPage(vi.fn(), [tracked(1, { status: JobStatus.APPLIED })]);
+
+    fireEvent.click(within(screen.getByRole('table')).getByText('Company 1'));
+
+    expect(screen.queryByRole('region', { name: 'Rejection feedback' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Add rejection feedback/ })).toBeNull();
+  });
+
+  it('adds, edits and removes reasons through the update path', () => {
+    const onUpdate = vi.fn();
+    const { rerender } = renderPage(vi.fn(), [tracked(1, { status: JobStatus.REJECTED })], onUpdate);
+    fireEvent.click(within(screen.getByRole('table')).getByText('Company 1'));
+
+    // Add the first one to a rejection that had none.
+    fireEvent.click(screen.getByRole('button', { name: '+ Add rejection feedback' }));
+    fireEvent.change(screen.getByLabelText('New reason'), { target: { value: '  Do you require visa sponsorship? ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    expect(onUpdate).toHaveBeenLastCalledWith(1, { rejectionReasons: ['Do you require visa sponsorship?'] });
+
+    // The parent applies the patch; render what it would hand back.
+    rerender(pageWith([tracked(1, { status: JobStatus.REJECTED, rejectionReasons: REASONS })], onUpdate));
+
+    fireEvent.click(screen.getByRole('button', { name: `Edit reason: ${REASONS[1]}` }));
+    fireEvent.change(screen.getByLabelText('Edit reason'), { target: { value: 'Years with React' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(onUpdate).toHaveBeenLastCalledWith(1, { rejectionReasons: [REASONS[0], 'Years with React'] });
+
+    fireEvent.click(screen.getByRole('button', { name: `Remove reason: ${REASONS[0]}` }));
+    expect(onUpdate).toHaveBeenLastCalledWith(1, { rejectionReasons: [REASONS[1]] });
+  });
+
+  it('has an Insights tab beside the tracker', () => {
+    renderPage(vi.fn(), [tracked(1, { status: JobStatus.REJECTED, rejectionReasons: REASONS })]);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Insights' }));
+
+    expect(screen.getByRole('heading', { name: 'Why SEEK screened me out' })).toBeTruthy();
+    expect(screen.queryByLabelText('Search applications')).toBeNull();
   });
 });

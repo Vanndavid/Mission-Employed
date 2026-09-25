@@ -479,6 +479,34 @@ Things worth remembering:
   formula whose baseline is whenever the file was last opened, so it is opt-in
   and never replaces a date the sheet has.
 
+### 3.2d Rejection feedback and Insights ✅
+
+- [x] Done, 2026-09-25. Seek's "unlikely to progress" screening questions
+  (`rejectionReasons`) are now visible, editable and charted.
+
+- **Drawer:** a "Rejection feedback" section lists each reason with a ✗ and a
+  category tag, with add/edit/remove. It saves the whole list through the
+  ordinary `updateApplication` patch path, so no backend change was needed. A
+  rejected application with no reasons shows only "+ Add rejection feedback".
+- **Table:** rejected rows with reasons get an "N flags" badge. Hovering with a
+  mouse or tapping it shows the reasons. The popover is `position: fixed`
+  because the table clips overflow.
+- **Insights tab** (`?tab=insights`, beside "My applications"): summary tiles,
+  "Why SEEK screened me out" (one bar per category, clicking a bar lists the
+  matching applications and links to `/applications?prep=<id>`), and
+  "Rejections over time" (per month, stacked with/without feedback). The
+  All time / 3 months / 30 days range applies to everything.
+- **No chart library.** The bars are plain Tailwind divs. Two simple bar
+  charts did not justify a dependency.
+- `categorizeReason()` and all of the aggregation live in
+  `frontend/utils/rejectionInsights.ts` as pure functions, unit tested. The
+  rules are ordered keyword regexes (first match wins, word boundaries on short
+  words). Categories: Right to work, Clearances, Salary, Availability,
+  Location, Qualifications, Experience, Other.
+- A category counts **applications**, not reasons, so two experience questions
+  on one rejection count once. The range filter dates a rejected application by
+  its latest Rejected status event and anything else by `dateApplied`.
+
 ### 3.3 Coding practice and dashboard ✅
 
 - [x] Done — dashboard slimmed to coding practice, pipeline summary and upcoming

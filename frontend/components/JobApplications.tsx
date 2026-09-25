@@ -10,6 +10,9 @@ import { ImportOutcome } from '../contexts/ApplicationsContext';
 import { RowPlan } from '../utils/importMerge';
 import { ImportApplicationsModal } from './ImportApplicationsModal';
 import { exportApplicationsCsv } from '../utils/csv';
+import { rejectionReasonsOf } from '../utils/rejectionInsights';
+import { RejectionFlagsBadge } from './RejectionFeedback';
+import { RejectionInsights } from './RejectionInsights';
 import {
   ApplicationFilters,
   ApplicationSort,
@@ -41,12 +44,16 @@ interface JobApplicationsProps {
   portfolioUrl: string;
 }
 
-type PageTab = 'tracker' | 'seek';
+type PageTab = 'tracker' | 'insights' | 'seek';
 
 const PAGE_TABS: { key: PageTab; label: string }[] = [
   { key: 'tracker', label: 'My applications' },
+  { key: 'insights', label: 'Insights' },
   { key: 'seek', label: 'Find jobs on Seek' },
 ];
+
+const tabFromParam = (value: string | null): PageTab =>
+  value === 'seek' || value === 'insights' ? value : 'tracker';
 
 const SORT_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'company', label: 'Company / Role' },
@@ -59,8 +66,9 @@ const SORT_COLUMNS: { key: SortKey; label: string }[] = [
 /** 'YYYY-MM-DD' as a local date, or a dash. Parsed as local time so it never shifts a day. */
 const formatDay = (day: string) => (day ? new Date(`${day}T00:00:00`).toLocaleDateString() : '—');
 
-const rejectionSummary = (count: number) =>
-  `${count} screening ${count === 1 ? 'answer' : 'answers'} didn’t match`;
+/** Rejected with Seek feedback recorded: the rows that get a "N flags" badge. */
+const hasRejectionFlags = (app: JobApplication) =>
+  app.status === JobStatus.REJECTED && rejectionReasonsOf(app).length > 0;
 
 /**
  * These live at module scope rather than inside JobApplications: a
@@ -164,7 +172,7 @@ export const JobApplications = ({
 }: JobApplicationsProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const prepAppId = searchParams.get('prep');
-  const tab: PageTab = searchParams.get('tab') === 'seek' ? 'seek' : 'tracker';
+  const tab = tabFromParam(searchParams.get('tab'));
   // Seek mounts on first visit and then stays mounted (hidden), so its search
   // and page survive a trip to the tracker and back.
   const [seekVisited, setSeekVisited] = useState(tab === 'seek');
@@ -223,8 +231,8 @@ export const JobApplications = ({
     if (next === 'seek') setSeekVisited(true);
     setSearchParams(
       params => {
-        if (next === 'seek') params.set('tab', 'seek');
-        else params.delete('tab');
+        if (next === 'tracker') params.delete('tab');
+        else params.set('tab', next);
         return params;
       },
       { replace: true },
@@ -376,6 +384,12 @@ export const JobApplications = ({
             trackedUrls={applications.map(app => app.url)}
             onSave={input => onAdd(input)}
           />
+        </div>
+      )}
+
+      {tab === 'insights' && (
+        <div role="tabpanel" id="jobs-panel-insights" aria-labelledby="jobs-tab-insights">
+          <RejectionInsights applications={applications} />
         </div>
       )}
 
@@ -551,13 +565,10 @@ export const JobApplications = ({
                       <td className="px-6 py-4">
                         <div className="font-bold text-slate-800 dark:text-slate-200">{app.company}</div>
                         <div className="text-sm text-slate-500">{app.role}</div>
-                        {(app.rejectionReasons?.length ?? 0) > 0 && (
-                          <span
-                            className="block text-[10px] text-rose-500 font-bold uppercase"
-                            title={app.rejectionReasons!.join('\n')}
-                          >
-                            {rejectionSummary(app.rejectionReasons!.length)}
-                          </span>
+                        {hasRejectionFlags(app) && (
+                          <div>
+                            <RejectionFlagsBadge reasons={rejectionReasonsOf(app)} />
+                          </div>
                         )}
                         {(app.interviewStages?.length ?? 0) > 0 && (
                           <span className="text-[10px] text-amber-600 font-bold uppercase">
@@ -631,10 +642,8 @@ export const JobApplications = ({
                     <div>
                       <p className="font-bold text-slate-800 dark:text-slate-200">{app.company}</p>
                       <p className="text-sm text-slate-500">{app.role}</p>
-                      {(app.rejectionReasons?.length ?? 0) > 0 && (
-                        <p className="text-[10px] text-rose-500 font-bold uppercase mt-1">
-                          {rejectionSummary(app.rejectionReasons!.length)}
-                        </p>
+                      {hasRejectionFlags(app) && (
+                        <RejectionFlagsBadge reasons={rejectionReasonsOf(app)} />
                       )}
                     </div>
                     <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
