@@ -13,9 +13,19 @@ import { BehavioralAnswer, InterviewTurn, JobApplication } from '../types';
  */
 const ACTIVE_MOCK_SESSION_KEY = 'mission_employed_mock_session';
 
-function rememberSession(id: number): void {
+/**
+ * The pointer also records which application the interview was opened for
+ * (null for a generic one), so "Mock for Acme" never resumes a different
+ * interview that happened to be left open.
+ */
+interface StoredSession {
+  id: number;
+  appId: number | null;
+}
+
+function rememberSession(stored: StoredSession): void {
   try {
-    localStorage.setItem(ACTIVE_MOCK_SESSION_KEY, String(id));
+    localStorage.setItem(ACTIVE_MOCK_SESSION_KEY, JSON.stringify(stored));
   } catch {
     // A blocked or full localStorage costs the resume, not the interview.
   }
@@ -29,13 +39,31 @@ function forgetSession(): void {
   }
 }
 
-function rememberedSession(): number | null {
+const isId = (value: unknown): value is number => Number.isInteger(value) && (value as number) > 0;
+
+function rememberedSession(): StoredSession | null {
   try {
-    const stored = Number(localStorage.getItem(ACTIVE_MOCK_SESSION_KEY));
-    return Number.isInteger(stored) && stored > 0 ? stored : null;
+    const raw = localStorage.getItem(ACTIVE_MOCK_SESSION_KEY);
+    if (raw === null) return null;
+    const parsed: unknown = JSON.parse(raw);
+
+    // A bare id is the older format, from before sessions carried their application.
+    if (isId(parsed)) return { id: parsed, appId: null };
+
+    if (parsed && typeof parsed === 'object') {
+      const { id, appId } = parsed as Record<string, unknown>;
+      if (isId(id)) return { id, appId: isId(appId) ? appId : null };
+    }
+    return null;
   } catch {
     return null;
   }
+}
+
+/** The interview to resume on this screen, if the one left open is for the same application. */
+function resumableSession(appId: number | null): number | null {
+  const stored = rememberedSession();
+  return stored !== null && stored.appId === appId ? stored.id : null;
 }
 
 interface MockTestProps {
@@ -45,8 +73,9 @@ interface MockTestProps {
 
 export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => {
   const [searchParams] = useSearchParams();
-  const appId = searchParams.get('appId');
-  const companyApp = useMemo(() => applications.find(a => a.id === Number(appId)), [applications, appId]);
+  const appIdParam = Number(searchParams.get('appId'));
+  const appId = isId(appIdParam) ? appIdParam : null;
+  const companyApp = useMemo(() => applications.find(a => a.id === appId), [applications, appId]);
 
   const companyContext = useMemo(() => {
     if (!companyApp) return undefined;
@@ -73,7 +102,7 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
   const [sessionReport, setSessionReport] = useState<string | null>(null);
   const [generatingReport, setGeneratingReport] = useState(false);
 
-  const [resuming, setResuming] = useState(() => rememberedSession() !== null);
+  const [resuming, setResuming] = useState(() => resumableSession(appId) !== null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -85,7 +114,7 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
    * model will be replayed on the next turn.
    */
   useEffect(() => {
-    const stored = rememberedSession();
+    const stored = resumableSession(appId);
     if (stored === null) return;
 
     let cancelled = false;
@@ -111,6 +140,7 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
     })();
 
     return () => { cancelled = true; };
+    // Mount only: a resume is a one-off on arrival, not something to redo per render.
   }, []);
 
   useEffect(() => {
@@ -138,7 +168,7 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
     try {
       const session = await createMockSession(companyContext);
       setSessionId(session.id);
-      rememberSession(session.id);
+      rememberSession({ id: session.id, appId });
 
       // An opening turn with no audio and no typed answer asks the model for
       // the first question, and stores it on the session.
@@ -203,25 +233,31 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
 
   const dismissReport = () => setSessionReport(null);
 
+  const readAsBase64 = (blob: Blob) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve((reader.result as string).split(',')[1] ?? '');
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+
   const handleTurn = async (blob: Blob) => {
     if (sessionId === null) return;
     setIsProcessing(true);
     try {
-      const reader = new FileReader();
-      reader.readAsDataURL(blob);
-      reader.onloadend = async () => {
-        const base64Audio = (reader.result as string).split(',')[1];
-        const result = await conductMockTurn(sessionId, { audioBase64: base64Audio });
-        setHistory(prev => [
-          ...prev,
-          { role: 'candidate', text: result.transcript },
-          { role: 'interviewer', text: result.nextPrompt },
-        ]);
-        setIsProcessing(false);
-        setTimeout(() => speak(result.nextPrompt), 100);
-      };
+      const base64Audio = await readAsBase64(blob);
+      const result = await conductMockTurn(sessionId, { audioBase64: base64Audio });
+      setHistory(prev => [
+        ...prev,
+        { role: 'candidate', text: result.transcript },
+        { role: 'interviewer', text: result.nextPrompt },
+      ]);
+      setTimeout(() => speak(result.nextPrompt), 100);
     } catch (e) {
+      // Before, a failed turn threw inside onloadend, outside this try, and
+      // left the screen on "PROCESSING..." for good. Now the answer can be re-recorded.
       console.error(e);
+    } finally {
       setIsProcessing(false);
     }
   };

@@ -1,7 +1,7 @@
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 const searchSeekJobs = vi.fn();
 
@@ -153,5 +153,45 @@ describe('JobApplications', () => {
     const drawer = screen.getByRole('region', { name: 'Why it was rejected' });
     expect(within(drawer).getByText(reasons[0])).toBeTruthy();
     expect(within(drawer).getByText(reasons[1])).toBeTruthy();
+  });
+
+  it("opens the mock interview for an application from its drawer", async () => {
+    const MockRoute = () => <p>mock screen {useLocation().search}</p>;
+
+    render(
+      <MemoryRouter initialEntries={['/applications?prep=7']}>
+        <ToastProvider>
+          <Routes>
+            <Route
+              path="/applications"
+              element={
+                <JobApplications
+                  applications={[tracked(7)] as never}
+                  behavioralAnswers={[]}
+                  onAdd={vi.fn()}
+                  onUpdateStatus={vi.fn()}
+                  onUpdateApplication={vi.fn()}
+                  onAddInterviewStage={vi.fn()}
+                  onRemoveInterviewStage={vi.fn()}
+                  onDelete={vi.fn()}
+                  onCommitImport={vi.fn()}
+                  baseCV=""
+                  coverLetterTemplate=""
+                  cvTemplate=""
+                  portfolioUrl=""
+                />
+              }
+            />
+            <Route path="/mock" element={<MockRoute />} />
+          </Routes>
+        </ToastProvider>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Mock for Company 7' }));
+
+    // Closing the drawer rewrites the tracker's own query string; it must not
+    // navigate back over the trip to /mock.
+    expect(await screen.findByText('mock screen ?appId=7')).toBeTruthy();
   });
 });

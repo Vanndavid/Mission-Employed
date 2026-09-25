@@ -195,10 +195,10 @@ export const InterviewPrepDrawer = ({
           </section>
 
           <button
-            onClick={() => {
-              navigate(`/mock?appId=${app.id}`);
-              onClose();
-            }}
+            // No onClose(): leaving the page unmounts the drawer anyway, and
+            // closing it rewrites the tracker's query string, which navigates
+            // straight back over the trip to /mock.
+            onClick={() => navigate(`/mock?appId=${app.id}`)}
             className="w-full py-4 bg-brand-600 hover:bg-brand-500 text-white rounded-xl font-black uppercase tracking-widest transition-all"
           >
             Mock for {app.company}
