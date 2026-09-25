@@ -12,13 +12,14 @@ import { MemoryRouter } from 'react-router-dom';
 const createMockSession = vi.fn();
 const conductMockTurn = vi.fn();
 const fetchSession = vi.fn();
+const textToSpeech = vi.fn();
 
 vi.mock('../services/apiClient', () => ({
   createMockSession: (...args: unknown[]) => createMockSession(...args),
   conductMockTurn: (...args: unknown[]) => conductMockTurn(...args),
   fetchSession: (...args: unknown[]) => fetchSession(...args),
   generateMockReport: vi.fn(),
-  textToSpeech: vi.fn().mockResolvedValue(''),
+  textToSpeech: (...args: unknown[]) => textToSpeech(...args),
 }));
 
 const { MockTest } = await import('./MockTest');
@@ -44,6 +45,7 @@ beforeEach(() => {
   localStorage.clear();
   createMockSession.mockReset().mockResolvedValue({ id: 12, messages: [] });
   conductMockTurn.mockReset().mockResolvedValue({ transcript: '', nextPrompt: 'Tell me about Acme.' });
+  textToSpeech.mockReset().mockResolvedValue('');
   fetchSession.mockReset().mockResolvedValue({
     id: 3,
     messages: [{ role: 'model', content: 'An old generic question.' }],
@@ -97,5 +99,22 @@ describe('MockTest', () => {
     await waitFor(() =>
       expect(JSON.parse(localStorage.getItem(KEY) ?? 'null')).toEqual({ id: 12, appId: 7 }),
     );
+  });
+
+  it('requests the voice for each part of the question at once, and says it is preparing', async () => {
+    conductMockTurn.mockResolvedValue({
+      transcript: '',
+      nextPrompt: 'Welcome to Acme. Could you walk me through a bug you fixed recently?',
+    });
+    // Neither clip arrives, so the screen stays in the waiting state.
+    textToSpeech.mockReturnValue(new Promise(() => {}));
+
+    renderAt('/mock?appId=7');
+    fireEvent.click(screen.getByRole('button', { name: 'Begin Session' }));
+
+    await waitFor(() => expect(textToSpeech).toHaveBeenCalledTimes(2));
+    expect(textToSpeech).toHaveBeenNthCalledWith(1, 'Welcome to Acme.');
+    expect(textToSpeech).toHaveBeenNthCalledWith(2, 'Could you walk me through a bug you fixed recently?');
+    expect(screen.getByRole('button', { name: /preparing voice/i })).toBeTruthy();
   });
 });

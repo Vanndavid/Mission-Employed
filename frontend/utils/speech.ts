@@ -44,3 +44,28 @@ export function playSpokenClip(base64Wav: string, signal?: AbortSignal): Promise
     audio.play().catch(reject);
   });
 }
+
+/** Below this, the remainder is spoken with the first sentence rather than as its own clip. */
+const MIN_REMAINDER_WORDS = 4;
+
+/**
+ * Split text into the first sentence and everything after it, so the two can
+ * be synthesised in parallel and played in order.
+ *
+ * Gemini's TTS builds a whole clip before it answers, so the silence before
+ * playback grows with the length of the text. The first sentence is usually
+ * short ("Yes, that's correct!"), so its clip comes back quickly, and the rest
+ * is ready by the time it has been spoken.
+ */
+export function splitForSpeech(text: string): string[] {
+  const trimmed = text.trim();
+  if (trimmed === '') return [];
+
+  const match = /^(.+?[.!?])\s+(.+)$/s.exec(trimmed);
+  if (!match) return [trimmed];
+
+  const [, first, rest] = match;
+  if (rest.split(/\s+/).length < MIN_REMAINDER_WORDS) return [trimmed];
+
+  return [first, rest];
+}

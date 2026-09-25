@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { playSpokenClip } from './speech';
+import { playSpokenClip, splitForSpeech } from './speech';
 
 /**
  * The API returns a complete WAV -- PcmWavEncoder prepends the 44-byte RIFF
@@ -99,5 +99,36 @@ describe('playSpokenClip', () => {
     FakeAudio.last?.onerror?.();
 
     await expect(playing).rejects.toThrow('could not be played');
+  });
+});
+
+/**
+ * Gemini's TTS builds the whole clip before answering, so a long question means
+ * seconds of silence. Speaking the first sentence on its own gets the voice
+ * started sooner while the rest is synthesised in parallel.
+ */
+describe('splitForSpeech', () => {
+  it('splits off the first sentence', () => {
+    expect(
+      splitForSpeech("Yes, that's correct! This is the interview for the role. Could you share an example?"),
+    ).toEqual(["Yes, that's correct!", 'This is the interview for the role. Could you share an example?']);
+  });
+
+  it('keeps a single sentence whole', () => {
+    expect(splitForSpeech('Tell me about a time you failed.')).toEqual(['Tell me about a time you failed.']);
+  });
+
+  it('does not split when the rest is only a few words', () => {
+    expect(splitForSpeech('Tell me about a hard bug you fixed recently. Why?')).toEqual([
+      'Tell me about a hard bug you fixed recently. Why?',
+    ]);
+  });
+
+  it('does not split on a decimal or an abbreviation without a following space', () => {
+    expect(splitForSpeech('You used Node.js at v2.5 for that')).toEqual(['You used Node.js at v2.5 for that']);
+  });
+
+  it('returns nothing for blank text', () => {
+    expect(splitForSpeech('   ')).toEqual([]);
   });
 });

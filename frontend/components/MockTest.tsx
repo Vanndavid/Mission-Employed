@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { conductMockTurn, createMockSession, fetchSession, generateMockReport, textToSpeech } from '../services/apiClient';
-import { playSpokenClip } from '../utils/speech';
+import { playSpokenClip, splitForSpeech } from '../utils/speech';
 import { BehavioralAnswer, InterviewTurn, JobApplication } from '../types';
 
 /**
@@ -98,7 +98,10 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
   const [history, setHistory] = useState<InterviewTurn[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isInterviewerSpeaking, setIsInterviewerSpeaking] = useState(false);
+  // 'preparing' while the clip is synthesised, which takes seconds: Gemini's
+  // TTS builds the whole clip before answering.
+  const [voice, setVoice] = useState<'idle' | 'preparing' | 'speaking'>('idle');
+  const isInterviewerSpeaking = voice !== 'idle';
   const [sessionReport, setSessionReport] = useState<string | null>(null);
   const [generatingReport, setGeneratingReport] = useState(false);
 
@@ -148,16 +151,29 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
   }, [history, isProcessing]);
 
   const speak = async (text: string) => {
-    setIsInterviewerSpeaking(true);
+    setVoice('preparing');
     try {
-      // The API answers with a complete WAV, so this goes straight to an
+      // Every part is requested at once and played in order: the short first
+      // sentence comes back quickly, and the rest is synthesised while it plays.
+      // The API answers with a complete WAV, so each clip goes straight to an
       // <audio> element -- no PCM decoding, no hand-built header.
-      const base64Audio = await textToSpeech(text);
-      if (base64Audio) await playSpokenClip(base64Audio);
+      // A part that fails is skipped rather than left as an unhandled rejection
+      // while an earlier part is still playing; the text is on screen anyway.
+      const clips = splitForSpeech(text).map(part =>
+        textToSpeech(part).catch(e => {
+          console.error('Speech Error:', e);
+          return '';
+        }),
+      );
+      for (const clip of clips) {
+        const base64Audio = await clip;
+        setVoice('speaking');
+        if (base64Audio) await playSpokenClip(base64Audio);
+      }
     } catch (e) {
       console.error('Speech Error:', e);
     } finally {
-      setIsInterviewerSpeaking(false);
+      setVoice('idle');
     }
   };
 
@@ -177,7 +193,8 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
         ? `Hello. Thank you for interviewing for the ${companyApp.role} position at ${companyApp.company}. To start, could you tell me about a time you dealt with a significant technical challenge relevant to this role?`
         : 'Hello. Thank you for joining us today. To start off, could you tell me about a time you had to deal with a significant technical challenge in a professional setting?');
       setHistory([{ role: 'interviewer', text: initialPrompt }]);
-      await speak(initialPrompt);
+      setIsProcessing(false);
+      void speak(initialPrompt);
     } catch (e) {
       console.error(e);
       setSessionActive(false);
@@ -252,7 +269,7 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
         { role: 'candidate', text: result.transcript },
         { role: 'interviewer', text: result.nextPrompt },
       ]);
-      setTimeout(() => speak(result.nextPrompt), 100);
+      void speak(result.nextPrompt);
     } catch (e) {
       // Before, a failed turn threw inside onloadend, outside this try, and
       // left the screen on "PROCESSING..." for good. Now the answer can be re-recorded.
@@ -325,7 +342,7 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
               </div>
             )}
           </div>
-          <div className="p-8 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 text-center">
+          <div className="p-8 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex flex-col items-center">
             {isRecording ? (
               <button onClick={stopRecording} className="w-full max-w-sm py-6 bg-rose-600 text-white rounded-2xl font-black uppercase animate-pulse">
                 STOP RECORDING
@@ -340,7 +357,7 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
                     : 'bg-brand-600 text-white hover:bg-brand-500'
                 }`}
               >
-                {isInterviewerSpeaking ? 'INTERVIEWER SPEAKING...' : isProcessing ? 'PROCESSING...' : 'RECORD YOUR ANSWER'}
+                {voice === 'preparing' ? 'PREPARING VOICE...' : voice === 'speaking' ? 'INTERVIEWER SPEAKING...' : isProcessing ? 'PROCESSING...' : 'RECORD YOUR ANSWER'}
               </button>
             )}
             <button
