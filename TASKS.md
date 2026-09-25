@@ -615,6 +615,60 @@ you saw. Tick the 3.5 box in TASKS.md with a one-line note. Do not commit.
 
 ---
 
+### 3.6 Mock interview over the Gemini Live API
+
+Not started. Paused at the user's request after research; nothing written yet.
+
+Why: the mock interviewer's voice lags its text. `gemini-2.5-flash-preview-tts`
+builds a whole clip before answering, and it can only be asked once the turn's
+text exists. Commit `bd9a2cf` shortened the wait (first sentence synthesised on
+its own, "Preparing voice..." while waiting). Live streams audio as it is
+generated, so the lag goes away.
+
+Cost, from the pricing page in September 2026: `gemini-3.8-live` bills
+$0.018/min of interviewer audio and $0.005/min of candidate audio, roughly 20
+cents for a 20-minute interview against about 10 cents for the current TTS.
+Each Live turn bills the context accumulated so far.
+
+Design agreed:
+
+- Laravel mints a single-use **ephemeral token**:
+  `POST https://generativelanguage.googleapis.com/v1beta/auth_tokens` with
+  `x-goog-api-key`. The token carries a full `bidiGenerateContentSetup` and no
+  `fieldMask`: the docs say the connection's own setup message is then ignored,
+  so the interviewer instruction and model cannot be changed from the browser.
+  Short `expireTime` and `newSessionExpireTime`, `uses: 1`. The API key never
+  reaches the browser.
+- New route `POST /api/ai/mock/sessions/{session}/live` behind the premium gate
+  and `ownedSession()`. It returns the token and the setup, and goes through
+  `GeminiClient` (with a `FakeGeminiService` counterpart) so tests never hit the
+  network. Upstream errors go through `geminiFailure()` as usual.
+- The browser opens
+  `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContentConstrained?access_token=...`
+  and streams 16 kHz 16-bit PCM from an AudioWorklet. It plays the 24 kHz PCM
+  it receives through a scheduled AudioContext queue.
+- Push-to-talk stays: `realtimeInputConfig.automaticActivityDetection.disabled`,
+  with `activityStart` / `activityEnd` on record / stop, so the interviewer
+  never cuts in mid-answer.
+- `inputAudioTranscription` and `outputAudioTranscription` are on. Each
+  completed exchange is POSTed to Laravel and appended to `ai_messages`, so
+  resume and the written report keep working. On resume, the stored transcript
+  is replayed with `historyConfig.initialHistoryInClientContent` and
+  `clientContent` turns.
+- `POST /mock/sessions/{session}/turns` stays: the MCP `mock_interview_turn`
+  tool uses it. Live is browser-only, like the other audio routes. Say so in
+  `mcp/README.md`.
+- Model id from config (`GEMINI_LIVE_MODEL`, default `gemini-3.8-live`) with a
+  default, so no new required key in the server `.env`.
+
+Unverified, and to be checked with one real call before building on it:
+
+- whether `responseModalities` and `speechConfig` sit under `generationConfig`
+  in `BidiGenerateContentSetup`. The docs' examples disagree.
+- whether the constrained endpoint still wants a setup message from the client.
+  If it does, send the same one the server returned.
+- nginx CSP, if any, must allow `wss://generativelanguage.googleapis.com`.
+
 ## Wave 4 — Close out
 
 Needs Wave 3. **Read the Deployment section below before starting any of these** —
