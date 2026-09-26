@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Services\Ai\UsageRecorder;
 use App\Services\GeminiClient;
 use App\Services\GeminiException;
 use App\Services\GeminiService;
@@ -36,7 +37,22 @@ class GeminiServiceTest extends TestCase
         // No test may ever touch the network, and retries must not really sleep.
         Http::preventStrayRequests();
         Sleep::fake();
+
+        // Capture usage in memory: these are transport tests, with no database.
+        $this->usage = new class implements UsageRecorder
+        {
+            /** @var list<array{0: string, 1: array<string, mixed>}> */
+            public array $recorded = [];
+
+            public function record(string $model, array $usageMetadata, ?string $feature = null, string $source = 'server'): void
+            {
+                $this->recorded[] = [$model, $usageMetadata];
+            }
+        };
+        $this->app->instance(UsageRecorder::class, $this->usage);
     }
+
+    private UsageRecorder $usage;
 
     private function gemini(): GeminiService
     {
@@ -533,5 +549,20 @@ class GeminiServiceTest extends TestCase
         } catch (GeminiException $exception) {
             $this->assertStringNotContainsString('secret upstream detail', $exception->getMessage());
         }
+    }
+
+    public function test_each_replys_usage_metadata_goes_to_the_recorder(): void
+    {
+        $metadata = ['promptTokenCount' => 12, 'candidatesTokenCount' => 3, 'totalTokenCount' => 15];
+
+        Http::fake([self::ENDPOINT => Http::sequence()
+            ->push($this->textReply('one') + ['usageMetadata' => $metadata])
+            ->push($this->textReply('two'))]);
+
+        $this->gemini()->generateText('ping');
+        $this->gemini()->generateText('ping again');
+
+        // The second reply carried no usage, so nothing was reported for it.
+        $this->assertSame([['gemini-2.0-flash', $metadata]], $this->usage->recorded);
     }
 }

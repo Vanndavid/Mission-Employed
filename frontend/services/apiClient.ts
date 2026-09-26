@@ -16,7 +16,7 @@
  */
 
 import { ApiError, apiRequest } from './http';
-import type { LiveTicket } from './geminiLive';
+import type { LiveTicket, LiveUsage } from './geminiLive';
 
 export { ApiError, errorMessage } from './http';
 
@@ -180,7 +180,7 @@ export async function openMockLive(sessionId: string | number): Promise<LiveTick
  */
 export async function saveMockExchange(
   sessionId: string | number,
-  exchange: { answer: string | null; reply: string | null },
+  exchange: { answer: string | null; reply: string | null; usage?: LiveUsage },
 ): Promise<void> {
   await apiRequest(`/ai/mock/sessions/${sessionId}/exchanges`, { method: 'POST', body: exchange });
 }

@@ -33,6 +33,51 @@ export interface LiveTicket {
   history: LiveTurn[];
 }
 
+interface ModalityCount {
+  modality: string;
+  tokenCount: number;
+}
+
+/**
+ * Live's `usageMetadata`, sent once per turn: that turn's billed tokens, not a
+ * running total. Every turn re-bills the conversation so far as its prompt.
+ * The server never sees Live traffic, so this is forwarded to it with each
+ * exchange for the admin usage screen.
+ */
+export interface LiveUsage {
+  promptTokenCount?: number;
+  responseTokenCount?: number;
+  thoughtsTokenCount?: number;
+  totalTokenCount?: number;
+  promptTokensDetails?: ModalityCount[];
+  responseTokensDetails?: ModalityCount[];
+}
+
+const mergeDetails = (a: ModalityCount[] = [], b: ModalityCount[] = []): ModalityCount[] => {
+  const merged: ModalityCount[] = a.map(detail => ({ ...detail }));
+  for (const detail of b) {
+    const existing = merged.find(item => item.modality === detail.modality);
+    if (existing) existing.tokenCount += detail.tokenCount;
+    else merged.push({ ...detail });
+  }
+  return merged;
+};
+
+/** Add one turn's usage to a running total. */
+export function sumUsage(total: LiveUsage | null, turn: LiveUsage): Required<LiveUsage> {
+  const add = (key: 'promptTokenCount' | 'responseTokenCount' | 'thoughtsTokenCount' | 'totalTokenCount') =>
+    (total?.[key] ?? 0) + (turn[key] ?? 0);
+
+  return {
+    promptTokenCount: add('promptTokenCount'),
+    responseTokenCount: add('responseTokenCount'),
+    thoughtsTokenCount: add('thoughtsTokenCount'),
+    totalTokenCount: add('totalTokenCount'),
+    promptTokensDetails: mergeDetails(total?.promptTokensDetails, turn.promptTokensDetails),
+    responseTokensDetails: mergeDetails(total?.responseTokensDetails, turn.responseTokensDetails),
+  };
+}
+
 export interface LiveHandlers {
   /** Base64 16-bit PCM at 24 kHz, a chunk at a time, as it is generated. */
   onAudio(base64: string): void;
@@ -46,6 +91,8 @@ export interface LiveHandlers {
   onInterrupted(): void;
   /** The connection ended without {@link LiveConnection.close} being called. */
   onClose(): void;
+  /** One turn's token usage. */
+  onUsage(usage: LiveUsage): void;
 }
 
 export interface LiveConnection {
@@ -59,6 +106,7 @@ export interface LiveConnection {
 
 interface ServerMessage {
   setupComplete?: unknown;
+  usageMetadata?: LiveUsage;
   serverContent?: {
     modelTurn?: { parts?: { inlineData?: { data?: string } }[] };
     inputTranscription?: { text?: string };
@@ -137,6 +185,8 @@ export function connectLive(
         resolve(connection);
         return;
       }
+
+      if (message.usageMetadata) handlers.onUsage(message.usageMetadata);
 
       const content = message.serverContent;
       if (!content) return;

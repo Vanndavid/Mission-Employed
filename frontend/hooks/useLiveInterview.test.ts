@@ -354,4 +354,26 @@ describe('useLiveInterview', () => {
     expect(result.current.status).toBe('offline');
     expect(result.current.error).toBeNull();
   });
+
+  it('sends each exchange with the token usage Live reported for it', async () => {
+    const { result } = render();
+    await act(() => result.current.begin());
+
+    act(() => handlers.onUsage({ promptTokenCount: 500, responseTokenCount: 100, totalTokenCount: 600 }));
+    await interviewerSays('Tell me about a bug.');
+
+    expect(deps.saveExchange).toHaveBeenLastCalledWith(12, {
+      answer: null,
+      reply: 'Tell me about a bug.',
+      usage: expect.objectContaining({ promptTokenCount: 500, responseTokenCount: 100, totalTokenCount: 600 }),
+    });
+
+    // The next exchange starts its count from zero.
+    await act(() => result.current.startAnswer());
+    act(() => result.current.endAnswer());
+    act(() => handlers.onAnswerText('I fixed a race.'));
+    await interviewerSays('Which lock?');
+
+    expect(deps.saveExchange).toHaveBeenLastCalledWith(12, { answer: 'I fixed a race.', reply: 'Which lock?' });
+  });
 });

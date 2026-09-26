@@ -47,7 +47,7 @@ export const Sidebar = ({
   ];
 
   if (isAdmin) {
-    tabs.push({ path: '/account/admin', label: 'Admin', sub: 'Unlock plans', icon: '🔑', end: true });
+    tabs.push({ path: '/account/admin', label: 'Admin', sub: 'Plans & usage', icon: '🔑', end: true });
   }
 
   const navContent = (

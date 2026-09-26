@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Services\Ai\UsageRecorder;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
@@ -42,6 +43,12 @@ class GeminiService implements GeminiClient
 
     /** Statuses worth a second attempt. Everything else in 4xx is our fault. */
     private const RETRYABLE_STATUSES = [408, 429, 500, 502, 503, 504];
+
+    /**
+     * @param  UsageRecorder|null  $usage  Told about every reply's token usage.
+     *                                     The transport never stores it itself.
+     */
+    public function __construct(private readonly ?UsageRecorder $usage = null) {}
 
     public function generateText(string $prompt, ?string $systemInstruction = null, ?string $model = null): string
     {
@@ -363,7 +370,15 @@ class GeminiService implements GeminiClient
             throw GeminiException::fromStatus($response->status(), $model, $response->body());
         }
 
-        return $this->decodeEnvelope($response, $model);
+        $data = $this->decodeEnvelope($response, $model);
+
+        // Only the reply that succeeded is counted, not the attempts before it.
+        $metadata = $data['usageMetadata'] ?? null;
+        if ($this->usage !== null && is_array($metadata)) {
+            $this->usage->record($model, $metadata);
+        }
+
+        return $data;
     }
 
     /**

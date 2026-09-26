@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Http\Controllers\Ai\AiController;
 use App\Models\AiMessage;
 use App\Models\AiSession;
+use App\Models\AiUsage;
 use App\Models\User;
+use App\Services\Ai\UsageRecorder;
 use App\Services\FakeGeminiService;
 use App\Services\GeminiException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -209,5 +211,89 @@ class AiMockLiveTest extends TestCase
         $this->postJson("/api/ai/mock/sessions/{$session->id}/live")->assertForbidden();
 
         $gemini->assertNothingSent();
+    }
+
+    public function test_an_exchange_records_the_live_usage_the_browser_reports(): void
+    {
+        FakeGeminiService::swap();
+        $session = $this->mockSession();
+
+        // The shape Gemini Live sends, once per turn (a probe confirmed it is
+        // per turn, not cumulative).
+        $this->postJson("/api/ai/mock/sessions/{$session->id}/exchanges", [
+            'answer' => 'I fixed a race.',
+            'reply' => 'Which lock?',
+            'usage' => [
+                'promptTokenCount' => 727,
+                'responseTokenCount' => 147,
+                'thoughtsTokenCount' => 73,
+                'totalTokenCount' => 874,
+                'promptTokensDetails' => [
+                    ['modality' => 'TEXT', 'tokenCount' => 368],
+                    ['modality' => 'AUDIO', 'tokenCount' => 327],
+                ],
+                'responseTokensDetails' => [['modality' => 'AUDIO', 'tokenCount' => 147]],
+            ],
+        ])->assertCreated();
+
+        $usage = AiUsage::sole();
+
+        $this->assertSame($this->user->id, $usage->user_id);
+        $this->assertSame('ai/mock/live', $usage->feature);
+        $this->assertSame('gemini-3.8-live', $usage->model);
+        $this->assertSame('live', $usage->source);
+        $this->assertSame([727, 147, 73, 874], [
+            $usage->prompt_tokens, $usage->output_tokens, $usage->thought_tokens, $usage->total_tokens,
+        ]);
+        // Audio in at $3, the rest of the prompt at $0.75, audio out at $12,
+        // thinking at the $4.50 text output rate.
+        $this->assertSame(327 * 3.00 + (727 - 327) * 0.75 + 147 * 12.00 + 73 * 4.50, (float) $usage->cost_micros);
+    }
+
+    public function test_an_exchange_without_usage_records_none(): void
+    {
+        FakeGeminiService::swap();
+        $session = $this->mockSession();
+
+        $this->postJson("/api/ai/mock/sessions/{$session->id}/exchanges", ['reply' => 'Hello.'])->assertCreated();
+
+        $this->assertSame(0, AiUsage::count());
+    }
+
+    public function test_reported_usage_must_be_plausible_counts(): void
+    {
+        FakeGeminiService::swap();
+        $session = $this->mockSession();
+
+        foreach ([-5, 'lots', 50_000_000] as $bad) {
+            $this->postJson("/api/ai/mock/sessions/{$session->id}/exchanges", [
+                'reply' => 'Hello.',
+                'usage' => ['promptTokenCount' => $bad, 'totalTokenCount' => 10],
+            ])->assertUnprocessable()->assertJsonValidationErrors('usage.promptTokenCount');
+        }
+
+        $this->assertSame(0, AiUsage::count());
+        $this->assertSame(0, AiMessage::count());
+    }
+
+    public function test_the_transcript_is_saved_even_when_usage_cannot_be_recorded(): void
+    {
+        FakeGeminiService::swap();
+        $this->app->instance(UsageRecorder::class, new class implements UsageRecorder
+        {
+            public function record(string $model, array $usageMetadata, ?string $feature = null, string $source = 'server'): void
+            {
+                throw new \RuntimeException('recorder broken');
+            }
+        });
+        $session = $this->mockSession();
+
+        $this->postJson("/api/ai/mock/sessions/{$session->id}/exchanges", [
+            'answer' => 'I fixed a race.',
+            'reply' => 'Which lock?',
+            'usage' => ['promptTokenCount' => 10, 'totalTokenCount' => 10],
+        ])->assertCreated();
+
+        $this->assertSame(2, $session->messages()->count());
     }
 }

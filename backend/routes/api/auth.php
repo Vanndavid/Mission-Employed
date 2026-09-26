@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\AdminUsageController;
 use App\Http\Controllers\Auth\AdminUserController;
 use App\Http\Controllers\Auth\AuthController;
 use Illuminate\Support\Facades\Route;
@@ -23,4 +24,7 @@ Route::prefix('auth')->group(function (): void {
 Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function (): void {
     Route::get('/users', [AdminUserController::class, 'index']);
     Route::patch('/users/{user}/plan', [AdminUserController::class, 'updatePlan']);
+
+    // Gemini token usage and estimated cost per user, over ?days= (default 30).
+    Route::get('/usage', [AdminUsageController::class, 'index']);
 });

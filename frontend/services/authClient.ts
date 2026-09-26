@@ -48,6 +48,38 @@ export async function listAdminUsers(): Promise<{ users: AuthUser[] }> {
   return apiRequest<{ users: AuthUser[] }>('/admin/users');
 }
 
+/** One user's usage over a period, from ai_usage. Cost counts priced calls only. */
+export interface UsageSummary {
+  calls: number;
+  promptTokens: number;
+  outputTokens: number;
+  thoughtTokens: number;
+  totalTokens: number;
+  costUsd: number;
+  /** Calls to a model with no known price, left out of `costUsd`. */
+  unpricedCalls: number;
+  lastUsedAt: string | null;
+}
+
+export interface UserUsage {
+  userId: number;
+  window: UsageSummary;
+  allTime: UsageSummary;
+  /** The window, by route pattern. `source: 'live'` was reported by the browser. */
+  byFeature: (UsageSummary & { feature: string; source: 'server' | 'live' })[];
+}
+
+export interface UsageReport {
+  days: number;
+  since: string;
+  /** Only users who have used anything, ever. */
+  users: UserUsage[];
+}
+
+export async function fetchAdminUsage(days: number): Promise<UsageReport> {
+  return apiRequest<UsageReport>(`/admin/usage?days=${days}`);
+}
+
 export async function setUserPlan(userId: number, plan: AccountPlan): Promise<{ user: AuthUser }> {
   return apiRequest<{ user: AuthUser }>(`/admin/users/${userId}/plan`, {
     method: 'PATCH',

@@ -716,6 +716,36 @@ Unverified, and to be checked with one real call before building on it:
   If it does, send the same one the server returned.
 - nginx CSP, if any, must allow `wss://generativelanguage.googleapis.com`.
 
+### 3.7 Per-user AI usage for admins ✅
+
+- [x] Done. `/account/admin` shows each user's Gemini tokens and estimated cost
+  over 7, 30 or 90 days, plus all-time cost and when they last used AI. A
+  per-feature breakdown opens from the token count, and users are sorted
+  heaviest first. Counting starts from this deploy, with no backfill.
+  - Server calls: `GeminiService::post()` hands each reply's `usageMetadata`
+    to `UsageRecorder`. `DatabaseUsageRecorder` writes an `ai_usage` row with
+    the signed-in user and the route pattern (`ai/job/parse`). MCP calls are
+    attributed the same way. Only the successful attempt of a retried call
+    counts. A failed write is logged and never fails the feature.
+  - Voice interview: Live sends one `usageMetadata` per turn, confirmed by
+    probe to be that turn's billed tokens and not a running total. The
+    browser sums it per exchange and posts it with `/exchanges`, where it is
+    stored as `source = live` and labelled "reported by browser". A tampered
+    client could under-report its own usage.
+  - Cost: `config/ai_pricing.php`, USD per 1M tokens (equivalently
+    micro-dollars per token), audio priced separately, thinking at the text
+    output rate. It is fixed when recorded. A model with no price stores
+    `cost_micros = null` and shows as "+n unpriced", never $0. Several prices
+    rise on 2027-01-01.
+  - Endpoint: `GET /api/admin/usage?days=` (1–365, default 30).
+  - Found by the end-to-end run: binding `UsageRecorder` in the *deferred*
+    `GeminiServiceProvider` made it unresolvable behind a stale
+    `bootstrap/cache/services.php`. The exchange endpoint then returned 500
+    and lost the transcript. It is now bound in `AppServiceProvider`, and
+    `/exchanges` records usage inside a try/catch.
+  - Measured locally: one voice exchange costs about $0.005, and a
+    three-exchange interview with its report about $0.02.
+
 ## Wave 4 — Close out
 
 Needs Wave 3. **Read the Deployment section below before starting any of these** —

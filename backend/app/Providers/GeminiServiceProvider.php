@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\Ai\UsageRecorder;
 use App\Services\GeminiClient;
 use App\Services\GeminiService;
 use Illuminate\Contracts\Support\DeferrableProvider;
@@ -20,7 +21,7 @@ class GeminiServiceProvider extends ServiceProvider implements DeferrableProvide
 {
     public function register(): void
     {
-        $this->app->singleton(GeminiService::class, fn () => new GeminiService);
+        $this->app->singleton(GeminiService::class, fn ($app) => new GeminiService($app->make(UsageRecorder::class)));
 
         $this->app->singleton(GeminiClient::class, fn ($app) => $app->make(GeminiService::class));
     }

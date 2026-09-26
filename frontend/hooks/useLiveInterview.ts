@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { openMockLive, saveMockExchange } from '../services/apiClient';
-import { connectLive, LiveConnection, LiveHandlers } from '../services/geminiLive';
+import { connectLive, LiveConnection, LiveHandlers, LiveUsage, sumUsage } from '../services/geminiLive';
 import { errorMessage } from '../services/http';
 import { createLivePlayer, LivePlayer, Microphone, MicrophoneTake, startMicrophone } from '../utils/liveAudio';
 
@@ -85,6 +85,8 @@ export function useLiveInterview(sessionId: number | null, deps: LiveDeps = defa
   const generationRef = useRef(0);
   const savingRef = useRef<Promise<void>>(Promise.resolve());
   const draftRef = useRef(EMPTY_DRAFT);
+  /** Tokens Live has billed since the last stored exchange. */
+  const usageRef = useRef<LiveUsage | null>(null);
   const micRef = useRef<Microphone | null>(null);
   /** Smoothed input level, 0–1, for the meter. Changes too often to be state. */
   const levelRef = useRef(0);
@@ -122,9 +124,14 @@ export function useLiveInterview(sessionId: number | null, deps: LiveDeps = defa
     const id = sessionRef.current;
     if ((!exchange.answer && !exchange.reply) || id === null) return;
 
+    // Usage rides along with the exchange it paid for. With nothing said, it
+    // is kept and goes with the next one instead.
+    const usage = usageRef.current;
+    usageRef.current = null;
+
     setExchanges(previous => [...previous, exchange]);
     savingRef.current = savingRef.current
-      .then(() => depsRef.current.saveExchange(id, exchange))
+      .then(() => depsRef.current.saveExchange(id, usage ? { ...exchange, usage } : exchange))
       .catch(() => setError('Part of the interview could not be saved. The report may be missing it.'));
   }, []);
 
@@ -206,6 +213,9 @@ export function useLiveInterview(sessionId: number | null, deps: LiveDeps = defa
         awaitingRef.current = false;
         flushExchange();
         refresh();
+      },
+      onUsage: usage => {
+        if (current()) usageRef.current = sumUsage(usageRef.current, usage);
       },
       onInterrupted: () => {
         if (current()) playerRef.current?.stop();

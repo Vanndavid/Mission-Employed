@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { connectLive, LIVE_URL, LiveHandlers } from './geminiLive';
+import { connectLive, LIVE_URL, LiveHandlers, sumUsage } from './geminiLive';
 
 /**
  * The Live protocol as the probe against the real service found it: the
@@ -51,6 +51,7 @@ const handlers = (): LiveHandlers & Record<string, ReturnType<typeof vi.fn>> => 
   onTurnComplete: vi.fn(),
   onInterrupted: vi.fn(),
   onClose: vi.fn(),
+  onUsage: vi.fn(),
 });
 
 const connect = (history: { role: 'user' | 'model'; content: string }[] = [], h = handlers()) => {
@@ -188,5 +189,56 @@ describe('connectLive', () => {
     await second.pending;
     second.socket.drop();
     expect(second.h.onClose).toHaveBeenCalled();
+  });
+
+  it('hands each turn\'s usage report to the handler', async () => {
+    const { pending, socket, h } = connect();
+    socket.receive({ setupComplete: {} });
+    await pending;
+
+    const usage = { promptTokenCount: 727, responseTokenCount: 147, totalTokenCount: 874 };
+    socket.receive({ usageMetadata: usage });
+
+    await vi.waitFor(() => expect(h.onUsage).toHaveBeenCalledWith(usage));
+  });
+});
+
+describe('sumUsage', () => {
+  it('adds counts and merges the per-modality details', () => {
+    const total = sumUsage(
+      {
+        promptTokenCount: 700,
+        responseTokenCount: 100,
+        totalTokenCount: 800,
+        promptTokensDetails: [{ modality: 'TEXT', tokenCount: 400 }, { modality: 'AUDIO', tokenCount: 300 }],
+        responseTokensDetails: [{ modality: 'AUDIO', tokenCount: 100 }],
+      },
+      {
+        promptTokenCount: 50,
+        thoughtsTokenCount: 5,
+        totalTokenCount: 55,
+        promptTokensDetails: [{ modality: 'AUDIO', tokenCount: 50 }],
+      },
+    );
+
+    expect(total).toEqual({
+      promptTokenCount: 750,
+      responseTokenCount: 100,
+      thoughtsTokenCount: 5,
+      totalTokenCount: 855,
+      promptTokensDetails: [{ modality: 'TEXT', tokenCount: 400 }, { modality: 'AUDIO', tokenCount: 350 }],
+      responseTokensDetails: [{ modality: 'AUDIO', tokenCount: 100 }],
+    });
+  });
+
+  it('starts from nothing', () => {
+    expect(sumUsage(null, { totalTokenCount: 5 })).toEqual({
+      promptTokenCount: 0,
+      responseTokenCount: 0,
+      thoughtsTokenCount: 0,
+      totalTokenCount: 5,
+      promptTokensDetails: [],
+      responseTokensDetails: [],
+    });
   });
 });

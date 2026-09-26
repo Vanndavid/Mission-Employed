@@ -158,5 +158,10 @@ the emergency modal.
   before they reach nullable date columns. `Application::recruiter_contact` already
   handles this for the flattened recruiter fields — use it rather than
   reimplementing the check.
+- Every Gemini call's token usage lands in `ai_usage` through `UsageRecorder`,
+  so a new AI route is counted automatically. Give it a readable name in
+  `frontend/utils/usageFormat.ts` for the admin breakdown, and a price in
+  `backend/config/ai_pricing.php` if it uses a new model. A model with no
+  price records its tokens with no cost.
 - `server/` is the retired Express backend, kept only as a reference for porting
   prompts out of `aiHandlers.js`. It is deleted in the final wave. Do not add to it.

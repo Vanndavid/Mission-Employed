@@ -7,11 +7,15 @@ use App\Http\Requests\Ai\MockSessionRequest;
 use App\Http\Requests\Ai\MockTurnRequest;
 use App\Models\AiSession;
 use App\Services\Ai\MockInterviewPrompts;
+use App\Services\Ai\UsageRecorder;
 use App\Services\GeminiClient;
 use App\Services\GeminiException;
+use App\Services\GeminiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * The full mock interview: multi-turn, spoken, ending in a written report.
@@ -148,7 +152,29 @@ class MockInterviewController extends AiController
             }
         });
 
+        $usage = $request->usage();
+        if ($usage !== null) {
+            $this->recordLiveUsage($usage);
+        }
+
         return response()->json(['session' => $this->sessionPayload($session->fresh())], 201);
+    }
+
+    /**
+     * Resolved and called here, never injected: the transcript above is what
+     * resume and the report depend on, and nothing about usage may stop it
+     * being saved.
+     *
+     * @param  array<string, mixed>  $usage
+     */
+    private function recordLiveUsage(array $usage): void
+    {
+        try {
+            $model = (string) config('services.gemini.live_model') ?: GeminiService::DEFAULT_LIVE_MODEL;
+            app(UsageRecorder::class)->record($model, $usage, 'ai/mock/live', 'live');
+        } catch (Throwable $exception) {
+            Log::warning('Could not record live AI usage: '.$exception->getMessage());
+        }
     }
 
     /**
