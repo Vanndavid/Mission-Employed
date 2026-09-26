@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { LiveDeps, useLiveInterview } from './useLiveInterview';
 import type { LiveConnection, LiveHandlers, LiveTicket } from '../services/geminiLive';
@@ -75,6 +75,8 @@ beforeEach(() => {
     };
   });
 });
+
+afterEach(() => vi.useRealTimers());
 
 const render = () => renderHook(() => useLiveInterview(12, liveDeps()));
 
@@ -286,6 +288,70 @@ describe('useLiveInterview', () => {
     await act(() => result.current.startAnswer());
     act(() => result.current.endAnswer());
 
+    expect(result.current.error).toBeNull();
+  });
+
+  it('gives up on a reply that never comes, and reconnects on the next answer', async () => {
+    const { result } = render();
+    await act(() => result.current.begin());
+    await interviewerSays('Tell me about a bug.');
+
+    vi.useFakeTimers();
+    await act(() => result.current.startAnswer());
+    act(() => result.current.endAnswer());
+    expect(result.current.status).toBe('thinking');
+
+    act(() => vi.advanceTimersByTime(15_000));
+
+    expect(result.current.status).toBe('offline');
+    expect(result.current.error).toMatch(/didn't answer/i);
+    expect(connection.close).toHaveBeenCalled();
+
+    vi.useRealTimers();
+    await act(() => result.current.startAnswer());
+    expect(deps.openLive).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps waiting while the reply is arriving', async () => {
+    const { result } = render();
+    await act(() => result.current.begin());
+    await interviewerSays('Tell me about a bug.');
+
+    vi.useFakeTimers();
+    await act(() => result.current.startAnswer());
+    act(() => result.current.endAnswer());
+
+    act(() => vi.advanceTimersByTime(10_000));
+    act(() => handlers.onAnswerText('I fixed a race.'));
+    act(() => vi.advanceTimersByTime(10_000));
+    act(() => handlers.onAudio('QUJD'));
+    act(() => vi.advanceTimersByTime(10_000));
+
+    expect(result.current.error).toBeNull();
+    expect(connection.close).not.toHaveBeenCalled();
+  });
+
+  it('explains a connection that drops while waiting for the interviewer', async () => {
+    const { result } = render();
+    await act(() => result.current.begin());
+    await interviewerSays('Tell me about a bug.');
+
+    await act(() => result.current.startAnswer());
+    act(() => result.current.endAnswer());
+    await act(async () => handlers.onClose());
+
+    expect(result.current.status).toBe('offline');
+    expect(result.current.error).toMatch(/connection to the interviewer dropped/i);
+  });
+
+  it('says nothing when an idle connection closes between answers', async () => {
+    const { result } = render();
+    await act(() => result.current.begin());
+    await interviewerSays('Tell me about a bug.');
+
+    await act(async () => handlers.onClose());
+
+    expect(result.current.status).toBe('offline');
     expect(result.current.error).toBeNull();
   });
 });

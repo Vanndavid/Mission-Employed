@@ -50,6 +50,19 @@ const EMPTY_DRAFT = { answer: '', reply: '' };
  */
 const QUIET_LEVEL = 0.006;
 
+/**
+ * How long to wait for any sign of a reply before calling the connection dead.
+ * A reply normally starts within about 1.5 s of the answer ending, whatever the
+ * answer's length. A connection that dies without closing (a network change, a
+ * laptop waking) would otherwise leave the screen on "thinking" for good.
+ */
+const REPLY_TIMEOUT_MS = 15_000;
+
+const NO_REPLY_MESSAGE = "The interviewer didn't answer. Record your answer again to reconnect.";
+
+const DROPPED_MESSAGE =
+  'The connection to the interviewer dropped. Record your answer again to reconnect.';
+
 const QUIET_MESSAGE =
   'We barely heard you. Check that the right microphone is selected and not muted, then answer again.';
 
@@ -83,6 +96,7 @@ export function useLiveInterview(sessionId: number | null, deps: LiveDeps = defa
   const heardAudioRef = useRef(false);
   /** The last take was near-silent, so its transcript would be invented. */
   const ignoreAnswerRef = useRef(false);
+  const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refresh = useCallback(() => {
     const speaking = playerRef.current?.isPlaying() ?? false;
@@ -122,6 +136,33 @@ export function useLiveInterview(sessionId: number | null, deps: LiveDeps = defa
     return take;
   };
 
+  const clearWatchdog = () => {
+    if (watchdogRef.current !== null) clearTimeout(watchdogRef.current);
+    watchdogRef.current = null;
+  };
+
+  /** Drop a connection that has gone quiet mid-turn; the next answer reconnects. */
+  const giveUpOnReply = () => {
+    watchdogRef.current = null;
+    if (!awaitingRef.current) return;
+    generationRef.current++;
+    liveRef.current?.close();
+    liveRef.current = null;
+    connectingRef.current = null;
+    outboxRef.current = [];
+    awaitingRef.current = false;
+    playerRef.current?.stop();
+    flushExchange();
+    setError(NO_REPLY_MESSAGE);
+    refresh();
+  };
+
+  /** (Re)start the wait for a reply. Any sign of life from the server resets it. */
+  const armWatchdog = () => {
+    clearWatchdog();
+    if (awaitingRef.current) watchdogRef.current = setTimeout(giveUpOnReply, REPLY_TIMEOUT_MS);
+  };
+
   const withLive = (call: (live: LiveConnection) => void) => {
     if (liveRef.current) call(liveRef.current);
     else outboxRef.current.push(call);
@@ -143,19 +184,25 @@ export function useLiveInterview(sessionId: number | null, deps: LiveDeps = defa
       onAudio: audio => {
         if (!current()) return;
         heardAudioRef.current = true;
+        armWatchdog();
         ensurePlayer().play(audio);
         refresh();
       },
       onAnswerText: text => {
-        if (current() && !ignoreAnswerRef.current) {
+        if (!current()) return;
+        armWatchdog();
+        if (!ignoreAnswerRef.current) {
           updateDraft({ ...draftRef.current, answer: draftRef.current.answer + text });
         }
       },
       onReplyText: text => {
-        if (current()) updateDraft({ ...draftRef.current, reply: draftRef.current.reply + text });
+        if (!current()) return;
+        armWatchdog();
+        updateDraft({ ...draftRef.current, reply: draftRef.current.reply + text });
       },
       onTurnComplete: () => {
         if (!current()) return;
+        clearWatchdog();
         awaitingRef.current = false;
         flushExchange();
         refresh();
@@ -165,11 +212,16 @@ export function useLiveInterview(sessionId: number | null, deps: LiveDeps = defa
       },
       onClose: () => {
         if (!current()) return;
+        // Closing between answers is routine (idle limits) and the next answer
+        // reconnects. Mid-answer or mid-reply, something was lost: say so.
+        const busy = awaitingRef.current || recordingRef.current;
+        clearWatchdog();
         liveRef.current = null;
         outboxRef.current = [];
         awaitingRef.current = false;
         stopMicrophone();
         flushExchange();
+        if (busy) setError(DROPPED_MESSAGE);
         refresh();
       },
     };
@@ -202,6 +254,7 @@ export function useLiveInterview(sessionId: number | null, deps: LiveDeps = defa
   }, [flushExchange, refresh]);
 
   const fail = (cause: unknown) => {
+    clearWatchdog();
     generationRef.current++;
     connectingRef.current = null;
     outboxRef.current = [];
@@ -221,6 +274,7 @@ export function useLiveInterview(sessionId: number | null, deps: LiveDeps = defa
     ensurePlayer();
     awaitingRef.current = true;
     heardAudioRef.current = false;
+    armWatchdog();
     withLive(live => live.begin());
     try {
       await ensureLive();
@@ -278,12 +332,14 @@ export function useLiveInterview(sessionId: number | null, deps: LiveDeps = defa
     if (ignoreAnswerRef.current) setError(QUIET_MESSAGE);
     awaitingRef.current = true;
     heardAudioRef.current = false;
+    armWatchdog();
     withLive(live => live.endAnswer());
     refresh();
   }, [refresh]);
 
   /** End the interview's connection. Anything said so far is still saved. */
   const disconnect = useCallback(() => {
+    clearWatchdog();
     generationRef.current++;
     stopMicrophone();
     flushExchange();
@@ -302,6 +358,7 @@ export function useLiveInterview(sessionId: number | null, deps: LiveDeps = defa
   const settled = useCallback(() => savingRef.current, []);
 
   useEffect(() => () => {
+    clearWatchdog();
     generationRef.current++;
     micRef.current?.stop();
     liveRef.current?.close();

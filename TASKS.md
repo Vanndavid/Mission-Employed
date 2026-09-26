@@ -652,6 +652,19 @@ you saw. Tick the 3.5 box in TASKS.md with a one-line note. Do not commit.
   - There is a level meter while recording (`LevelMeter`, moved out of `PrepRoom`).
   - The Live instruction pins English and asks the interviewer to have an
     unclear answer repeated.
+- [x] Follow-up. A user's screen stuck on "Interviewer thinking..." for good. The
+  cause is unconfirmed: the tab was probably on the pre-fix build, and the
+  server logs were lost in the deploy restart. Measured and ruled out: answer
+  length (a 60 s streamed answer replies in 1.2 s) and silence (Gemini
+  replies even to zeros). An answer with no audio at all makes Gemini close
+  with 1007, which was already recovered from, but silently. The fix is a
+  guarantee rather than a diagnosis:
+  - `useLiveInterview` gives up after 15 s with no sign of a reply. It drops
+    the connection and says so, and the next answer reconnects and replays.
+    Any server message resets the wait.
+  - A connection that closes mid-answer or mid-reply now shows a message.
+  - `geminiLive` logs the close code and reason to the console
+    (`Interview connection closed: 1007 ...`) for the next report.
 
 Why: the mock interviewer's voice lags its text. `gemini-2.5-flash-preview-tts`
 builds a whole clip before answering, and it can only be asked once the turn's

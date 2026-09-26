@@ -111,9 +111,13 @@ export function connectLive(
 
     socket.onopen = () => send({ setup: { model: ticket.model } });
 
-    socket.onclose = () => {
+    socket.onclose = event => {
+      if (closedByUs) return;
+      // The close code says why (1007 is a rejected message, 1011 a server
+      // fault), so keep it where a user reporting a problem can find it.
+      console.warn(`Interview connection closed: ${event?.code ?? '?'} ${event?.reason ?? ''}`.trim());
       if (!ready) reject(new Error('The interview connection closed before it was ready.'));
-      else if (!closedByUs) handlers.onClose();
+      else handlers.onClose();
     };
 
     socket.onmessage = async event => {
