@@ -90,8 +90,10 @@ It is a **thin client** — ownership checks, validation, the status timeline an
 the premium gate stay in Laravel, and no rule is reimplemented there. When an
 endpoint changes shape, the matching tool in `mcp/src/tools/` changes with it.
 
-Audio round trips (`/api/ai/behavioral/evaluate`, `/api/ai/tts`) are deliberately
-not exposed: they only make sense in the browser. See `mcp/README.md`.
+Audio round trips (`/api/ai/behavioral/evaluate`, `/api/ai/tts`, and the Gemini
+Live mock interview's `/live` and `/exchanges`) are deliberately not exposed:
+they only make sense in the browser. The typed mock `/turns` route stays for the
+MCP tools. See `mcp/README.md`.
 
 It is deployed as the `mcp` compose service. It serves OAuth plus `/mcp`, so
 Claude and Cowork can add it as a custom connector. All of its OAuth state is

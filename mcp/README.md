@@ -122,9 +122,11 @@ the local modes: over OAuth the connector owns the token.
 Everything under **AI** is premium-gated by the API; a free account gets a
 readable refusal rather than an error. `whoami` reports the effective plan.
 
-Two API features are deliberately not exposed: evaluating a spoken behavioral
-answer, and text-to-speech. Both are audio round trips that only make sense in
-the browser.
+Three API features are deliberately not exposed: evaluating a spoken behavioral
+answer, text-to-speech, and the spoken mock interview over Gemini Live
+(`/mock/sessions/{id}/live` and `/exchanges`). All three are audio that only
+makes sense in the browser. The mock interview tools here use the typed
+`/turns` route, which the browser no longer calls but which stays for them.
 
 ### Two conveniences worth knowing
 

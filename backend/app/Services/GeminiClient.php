@@ -81,4 +81,16 @@ interface GeminiClient
      * @throws GeminiException
      */
     public function textToSpeech(string $text): string;
+
+    /**
+     * Mint a single-use ephemeral token for one Gemini Live connection, with
+     * the whole session setup — this instruction, the model, the voice, push-to-
+     * talk — locked into it. The browser connects with the token and never sees
+     * the API key. `model` is what the browser names in its own setup message.
+     *
+     * @return array{token: string, model: string}
+     *
+     * @throws GeminiException
+     */
+    public function createLiveToken(string $systemInstruction): array;
 }

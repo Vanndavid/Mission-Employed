@@ -45,6 +45,11 @@ Route::prefix('ai')->middleware(['auth:sanctum', 'premium'])->group(function ():
     Route::post('/mock/sessions', [MockInterviewController::class, 'store']);
     Route::post('/mock/sessions/{session}/turns', [MockInterviewController::class, 'turn']);
     Route::post('/mock/sessions/{session}/report', [MockInterviewController::class, 'report']);
+    // The spoken interview runs over Gemini Live from the browser: mint its
+    // token, then store each exchange it transcribes. The /turns route above
+    // stays for typed turns, which the MCP server uses.
+    Route::post('/mock/sessions/{session}/live', [MockInterviewController::class, 'live']);
+    Route::post('/mock/sessions/{session}/exchanges', [MockInterviewController::class, 'exchange']);
 
     // Tracker: paste a job description, get fields back.
     Route::post('/job/parse', [JobController::class, 'parse']);

@@ -5,6 +5,7 @@ namespace App\Services;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
@@ -23,6 +24,14 @@ class GeminiService implements GeminiClient
     public const DEFAULT_MODEL = 'gemini-3.7-flash';
 
     public const DEFAULT_TTS_MODEL = 'gemini-2.5-flash-preview-tts';
+
+    public const DEFAULT_LIVE_MODEL = 'gemini-3.8-live';
+
+    /** How long a minted Live token may take to open its connection. */
+    private const LIVE_CONNECT_WINDOW_SECONDS = 60;
+
+    /** How long that connection may then run — comfortably one interview. */
+    private const LIVE_SESSION_SECONDS = 3600;
 
     /** Prebuilt voice used by the Node implementation. */
     public const TTS_VOICE = 'Kore';
@@ -109,6 +118,52 @@ class GeminiService implements GeminiClient
         ];
 
         return $this->extractAudio($this->send($model, $payload), $model);
+    }
+
+    public function createLiveToken(string $systemInstruction): array
+    {
+        $model = 'models/'.$this->liveModel();
+        $now = Carbon::now();
+
+        // No fieldMask: with the whole setup present, the Live connection's own
+        // setup message is ignored, so the browser holding this token cannot
+        // change the instructions, the model or anything else configured here.
+        $payload = [
+            'uses' => 1,
+            'newSessionExpireTime' => $now->copy()->addSeconds(self::LIVE_CONNECT_WINDOW_SECONDS)->toJSON(),
+            'expireTime' => $now->copy()->addSeconds(self::LIVE_SESSION_SECONDS)->toJSON(),
+            'bidiGenerateContentSetup' => [
+                'model' => $model,
+                'systemInstruction' => ['parts' => [['text' => $systemInstruction]]],
+                'generationConfig' => [
+                    'responseModalities' => ['AUDIO'],
+                    'speechConfig' => [
+                        'voiceConfig' => [
+                            'prebuiltVoiceConfig' => ['voiceName' => self::TTS_VOICE],
+                        ],
+                    ],
+                ],
+                // Push-to-talk: the client sends activityStart/activityEnd around
+                // each answer, so a pause for thought is not taken as the end of it.
+                'realtimeInputConfig' => ['automaticActivityDetection' => ['disabled' => true]],
+                // The transcript of both sides is what gets stored in ai_messages.
+                'inputAudioTranscription' => new \stdClass,
+                'outputAudioTranscription' => new \stdClass,
+                // A resumed interview replays its stored turns before going live.
+                'historyConfig' => ['initialHistoryInClientContent' => true],
+                // Audio sessions otherwise end at around fifteen minutes.
+                'contextWindowCompression' => ['slidingWindow' => new \stdClass],
+            ],
+        ];
+
+        $url = rtrim($this->baseUrl(), '/').'/auth_tokens';
+        $name = data_get($this->post($url, $model, $payload), 'name');
+
+        if (! is_string($name) || $name === '') {
+            throw GeminiException::emptyResponse($model);
+        }
+
+        return ['token' => $name, 'model' => $model];
     }
 
     /*
@@ -270,13 +325,20 @@ class GeminiService implements GeminiClient
      */
     private function send(string $model, array $payload): array
     {
+        return $this->post(rtrim($this->baseUrl(), '/')."/models/{$model}:generateContent", $model, $payload);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<array-key, mixed>
+     */
+    private function post(string $url, string $model, array $payload): array
+    {
         $key = $this->apiKey();
 
         if ($key === null) {
             throw GeminiException::missingApiKey();
         }
-
-        $url = rtrim($this->baseUrl(), '/')."/models/{$model}:generateContent";
 
         try {
             $response = Http::withHeaders([
@@ -456,6 +518,13 @@ class GeminiService implements GeminiClient
         $model = (string) $this->config('tts_model', self::DEFAULT_TTS_MODEL);
 
         return $model !== '' ? $model : self::DEFAULT_TTS_MODEL;
+    }
+
+    private function liveModel(): string
+    {
+        $model = (string) $this->config('live_model', self::DEFAULT_LIVE_MODEL);
+
+        return $model !== '' ? $model : self::DEFAULT_LIVE_MODEL;
     }
 
     private function baseUrl(): string

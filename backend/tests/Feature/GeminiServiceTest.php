@@ -6,6 +6,7 @@ use App\Services\GeminiClient;
 use App\Services\GeminiException;
 use App\Services\GeminiService;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
 use Tests\TestCase;
@@ -24,6 +25,7 @@ class GeminiServiceTest extends TestCase
             'key' => 'test-api-key',
             'model' => 'gemini-2.0-flash',
             'tts_model' => 'gemini-2.5-flash-preview-tts',
+            'live_model' => 'gemini-3.8-live',
             'base_url' => 'https://generativelanguage.googleapis.com/v1beta',
             'timeout' => 60,
             'connect_timeout' => 10,
@@ -454,5 +456,82 @@ class GeminiServiceTest extends TestCase
         $this->assertSame('ok', $this->gemini()->generateText('ping', null, 'gemini-2.5-pro'));
 
         Http::assertSent(fn (Request $request) => $request->url() === $url);
+    }
+
+    private const TOKEN_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/auth_tokens';
+
+    public function test_a_live_token_locks_the_whole_session_setup_server_side(): void
+    {
+        Carbon::setTestNow('2026-09-26T10:00:00Z');
+
+        Http::fake([self::TOKEN_ENDPOINT => Http::response(['name' => 'auth_tokens/abc123'])]);
+
+        $token = $this->gemini()->createLiveToken('You are a Senior Recruiter.');
+
+        $this->assertSame(['token' => 'auth_tokens/abc123', 'model' => 'models/gemini-3.8-live'], $token);
+
+        Http::assertSent(fn (Request $request) => $request->url() === self::TOKEN_ENDPOINT
+            && $request->hasHeader('x-goog-api-key', 'test-api-key'));
+
+        $payload = $this->payload();
+
+        // One connection, opened within a minute, usable for an hour of interview.
+        $this->assertSame(1, $payload['uses']);
+        $this->assertSame('2026-09-26T10:01:00.000000Z', $payload['newSessionExpireTime']);
+        $this->assertSame('2026-09-26T11:00:00.000000Z', $payload['expireTime']);
+
+        // No fieldMask: the whole setup comes from here and whatever the browser
+        // sends in its own setup message is ignored, so it cannot swap the
+        // interviewer's instructions or the model.
+        $this->assertArrayNotHasKey('fieldMask', $payload);
+
+        $setup = $payload['bidiGenerateContentSetup'];
+        $this->assertSame('models/gemini-3.8-live', $setup['model']);
+        $this->assertSame([['text' => 'You are a Senior Recruiter.']], $setup['systemInstruction']['parts']);
+        $this->assertSame(['AUDIO'], $setup['generationConfig']['responseModalities']);
+        $this->assertSame(
+            ['voiceConfig' => ['prebuiltVoiceConfig' => ['voiceName' => 'Kore']]],
+            $setup['generationConfig']['speechConfig'],
+        );
+        // Push-to-talk: the client marks where each answer starts and ends.
+        $this->assertTrue($setup['realtimeInputConfig']['automaticActivityDetection']['disabled']);
+        $this->assertTrue($setup['historyConfig']['initialHistoryInClientContent']);
+        $this->assertArrayHasKey('inputAudioTranscription', $setup);
+        $this->assertArrayHasKey('outputAudioTranscription', $setup);
+        $this->assertArrayHasKey('slidingWindow', $setup['contextWindowCompression']);
+    }
+
+    public function test_the_live_model_comes_from_config(): void
+    {
+        config()->set('services.gemini.live_model', 'gemini-3.8-live-extended-thinking');
+
+        Http::fake([self::TOKEN_ENDPOINT => Http::response(['name' => 'auth_tokens/abc123'])]);
+
+        $token = $this->gemini()->createLiveToken('Interview.');
+
+        $this->assertSame('models/gemini-3.8-live-extended-thinking', $token['model']);
+        $this->assertSame('models/gemini-3.8-live-extended-thinking', $this->payload()['bidiGenerateContentSetup']['model']);
+    }
+
+    public function test_a_token_reply_without_a_name_is_an_error(): void
+    {
+        Http::fake([self::TOKEN_ENDPOINT => Http::response(['expireTime' => '2026-09-26T11:00:00Z'])]);
+
+        $this->expectException(GeminiException::class);
+        $this->expectExceptionMessage('returned no usable content');
+
+        $this->gemini()->createLiveToken('Interview.');
+    }
+
+    public function test_a_rejected_token_request_does_not_leak_the_upstream_body(): void
+    {
+        Http::fake([self::TOKEN_ENDPOINT => Http::response(['error' => ['message' => 'secret upstream detail']], 400)]);
+
+        try {
+            $this->gemini()->createLiveToken('Interview.');
+            $this->fail('Expected a GeminiException.');
+        } catch (GeminiException $exception) {
+            $this->assertStringNotContainsString('secret upstream detail', $exception->getMessage());
+        }
     }
 }

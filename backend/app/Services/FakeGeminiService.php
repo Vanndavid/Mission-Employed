@@ -169,6 +169,14 @@ class FakeGeminiService implements GeminiClient
         ], fn () => $this->defaultAudio);
     }
 
+    public function createLiveToken(string $systemInstruction): array
+    {
+        return $this->record('createLiveToken', [
+            'prompt' => $systemInstruction,
+            'systemInstruction' => $systemInstruction,
+        ], fn () => ['token' => 'auth_tokens/fake', 'model' => 'models/'.GeminiService::DEFAULT_LIVE_MODEL]);
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Inspection

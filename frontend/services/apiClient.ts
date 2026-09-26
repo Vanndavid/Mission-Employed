@@ -16,6 +16,7 @@
  */
 
 import { ApiError, apiRequest } from './http';
+import type { LiveTicket } from './geminiLive';
 
 export { ApiError, errorMessage } from './http';
 
@@ -164,20 +165,24 @@ export async function createMockSession(
 }
 
 /**
- * One interview exchange. Send `audioBase64` for a spoken answer or `answer`
- * for a typed one; the opening turn sends neither and gets the first question.
+ * Open a spoken turn of the interview over Gemini Live: a single-use token
+ * locked to this session's interviewer, and the stored turns to replay first.
+ * The typed `/turns` route is left to the MCP server.
  */
-export async function conductMockTurn(
+export async function openMockLive(sessionId: string | number): Promise<LiveTicket> {
+  return apiRequest<LiveTicket>(`/ai/mock/sessions/${sessionId}/live`, { method: 'POST' });
+}
+
+/**
+ * Store one exchange of a Live interview, as Gemini transcribed it. This is
+ * the only way the conversation reaches the server, so resume and the report
+ * depend on it.
+ */
+export async function saveMockExchange(
   sessionId: string | number,
-  input: { audioBase64?: string; answer?: string } = {},
-): Promise<{ transcript: string; nextPrompt: string }> {
-  return apiRequest(`/ai/mock/sessions/${sessionId}/turns`, {
-    method: 'POST',
-    body: {
-      audioBase64: input.audioBase64 ?? null,
-      answer: input.answer ?? null,
-    },
-  });
+  exchange: { answer: string | null; reply: string | null },
+): Promise<void> {
+  await apiRequest(`/ai/mock/sessions/${sessionId}/exchanges`, { method: 'POST', body: exchange });
 }
 
 /** Close the interview with a hiring-decision report over the whole transcript. */

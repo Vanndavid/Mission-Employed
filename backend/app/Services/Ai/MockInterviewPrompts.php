@@ -29,6 +29,31 @@ class MockInterviewPrompts
     }
 
     /**
+     * The instruction a Gemini Live interview is locked to: the session's
+     * stored persona plus the same follow-up logic as a text turn, restated
+     * for a conversation that is spoken rather than answered in JSON.
+     *
+     * @param  string  $instruction  {@see self::interviewerInstruction()}
+     */
+    public static function liveInstruction(string $instruction): string
+    {
+        return <<<PROMPT
+            {$instruction}
+
+            This interview is spoken. Ask one question at a time and keep each
+            turn short enough to say aloud comfortably.
+
+            When asked to begin, greet the candidate in a sentence and ask the
+            first question.
+
+            After each answer:
+            1. Assess it.
+            2. If there is a "big hole" (missing STAR components, vague actions, no clear result), ask a specific follow-up.
+            3. If the answer is solid, acknowledge briefly and move to a new topic.
+            PROMPT;
+    }
+
+    /**
      * @param  string  $instruction  {@see self::interviewerInstruction()}
      * @param  string  $historyText  {@see self::transcript()}
      */

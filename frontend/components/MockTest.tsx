@@ -1,8 +1,8 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { conductMockTurn, createMockSession, fetchSession, generateMockReport, textToSpeech } from '../services/apiClient';
-import { playSpokenClip, splitForSpeech } from '../utils/speech';
+import { createMockSession, fetchSession, generateMockReport } from '../services/apiClient';
+import { LiveStatus, useLiveInterview } from '../hooks/useLiveInterview';
 import { BehavioralAnswer, InterviewTurn, JobApplication } from '../types';
 
 /**
@@ -66,6 +66,18 @@ function resumableSession(appId: number | null): number | null {
   return stored !== null && stored.appId === appId ? stored.id : null;
 }
 
+/** While these hold, the interviewer has the floor and recording waits. */
+const BUSY = new Set<LiveStatus>(['connecting', 'thinking', 'speaking']);
+
+const RECORD_LABEL: Record<LiveStatus, string> = {
+  offline: 'RECORD YOUR ANSWER',
+  ready: 'RECORD YOUR ANSWER',
+  recording: 'STOP RECORDING',
+  connecting: 'CONNECTING...',
+  thinking: 'INTERVIEWER THINKING...',
+  speaking: 'INTERVIEWER SPEAKING...',
+};
+
 interface MockTestProps {
   applications: JobApplication[];
   behavioralAnswers: BehavioralAnswer[];
@@ -95,21 +107,34 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
   // The interview now lives in ai_sessions rather than in this component, so
   // every turn is addressed by its server id.
   const [sessionId, setSessionId] = useState<number | null>(null);
+  // What the server had when a refresh resumed the interview. Everything said
+  // since arrives through the Live hook's exchanges.
   const [history, setHistory] = useState<InterviewTurn[]>([]);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  // 'preparing' while the clip is synthesised, which takes seconds: Gemini's
-  // TTS builds the whole clip before answering.
-  const [voice, setVoice] = useState<'idle' | 'preparing' | 'speaking'>('idle');
-  const isInterviewerSpeaking = voice !== 'idle';
+  const [starting, setStarting] = useState(false);
   const [sessionReport, setSessionReport] = useState<string | null>(null);
   const [generatingReport, setGeneratingReport] = useState(false);
 
   const [resuming, setResuming] = useState(() => resumableSession(appId) !== null);
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
+  // The spoken interview runs over Gemini Live, so the voice streams as it is
+  // generated instead of arriving seconds after the text.
+  const live = useLiveInterview(sessionId);
+
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const turns = useMemo(() => {
+    const said: InterviewTurn[] = [...history];
+    for (const exchange of live.exchanges) {
+      if (exchange.answer) said.push({ role: 'candidate', text: exchange.answer });
+      if (exchange.reply) said.push({ role: 'interviewer', text: exchange.reply });
+    }
+    // The exchange in progress, filling in as Gemini transcribes it.
+    if (live.draft.answer.trim()) said.push({ role: 'candidate', text: live.draft.answer });
+    if (live.draft.reply.trim()) said.push({ role: 'interviewer', text: live.draft.reply });
+    return said;
+  }, [history, live.exchanges, live.draft]);
+
+  const waiting = starting || live.status === 'connecting' || live.status === 'thinking';
 
   /**
    * Pick up an interview that a refresh interrupted. The transcript is read
@@ -148,92 +173,33 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [history, isProcessing]);
-
-  const speak = async (text: string) => {
-    setVoice('preparing');
-    try {
-      // Every part is requested at once and played in order: the short first
-      // sentence comes back quickly, and the rest is synthesised while it plays.
-      // The API answers with a complete WAV, so each clip goes straight to an
-      // <audio> element -- no PCM decoding, no hand-built header.
-      // A part that fails is skipped rather than left as an unhandled rejection
-      // while an earlier part is still playing; the text is on screen anyway.
-      const clips = splitForSpeech(text).map(part =>
-        textToSpeech(part).catch(e => {
-          console.error('Speech Error:', e);
-          return '';
-        }),
-      );
-      for (const clip of clips) {
-        const base64Audio = await clip;
-        setVoice('speaking');
-        if (base64Audio) await playSpokenClip(base64Audio);
-      }
-    } catch (e) {
-      console.error('Speech Error:', e);
-    } finally {
-      setVoice('idle');
-    }
-  };
+  }, [turns, waiting]);
 
   const startInterview = async () => {
     setSessionActive(true);
-    setIsProcessing(true);
+    setStarting(true);
     setHistory([]);
     try {
       const session = await createMockSession(companyContext);
       setSessionId(session.id);
       rememberSession({ id: session.id, appId });
-
-      // An opening turn with no audio and no typed answer asks the model for
-      // the first question, and stores it on the session.
-      const { nextPrompt } = await conductMockTurn(session.id);
-      const initialPrompt = nextPrompt || (companyApp
-        ? `Hello. Thank you for interviewing for the ${companyApp.role} position at ${companyApp.company}. To start, could you tell me about a time you dealt with a significant technical challenge relevant to this role?`
-        : 'Hello. Thank you for joining us today. To start off, could you tell me about a time you had to deal with a significant technical challenge in a professional setting?');
-      setHistory([{ role: 'interviewer', text: initialPrompt }]);
-      setIsProcessing(false);
-      void speak(initialPrompt);
+      setStarting(false);
+      await live.begin(session.id);
     } catch (e) {
       console.error(e);
+      setStarting(false);
       setSessionActive(false);
-    } finally {
-      setIsProcessing(false);
     }
-  };
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-      mediaRecorder.ondataavailable = e => audioChunksRef.current.push(e.data);
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        stream.getTracks().forEach(t => t.stop());
-        handleTurn(audioBlob);
-      };
-      mediaRecorder.start();
-      setIsRecording(true);
-    } catch {
-      alert('Microphone required for Mock Test.');
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-    }
-    setIsRecording(false);
   };
 
   const terminateSession = async () => {
-    const hadMeaningfulSession = history.length > 1 && sessionId !== null;
+    const hadMeaningfulSession = turns.length > 1 && sessionId !== null;
+    live.disconnect();
     if (hadMeaningfulSession) {
       setGeneratingReport(true);
       try {
+        // The report reads the stored transcript, so the last exchange has to be in it.
+        await live.settled();
         const report = await generateMockReport(sessionId);
         setSessionReport(report);
       } catch (e) {
@@ -249,35 +215,6 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
   };
 
   const dismissReport = () => setSessionReport(null);
-
-  const readAsBase64 = (blob: Blob) =>
-    new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve((reader.result as string).split(',')[1] ?? '');
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(blob);
-    });
-
-  const handleTurn = async (blob: Blob) => {
-    if (sessionId === null) return;
-    setIsProcessing(true);
-    try {
-      const base64Audio = await readAsBase64(blob);
-      const result = await conductMockTurn(sessionId, { audioBase64: base64Audio });
-      setHistory(prev => [
-        ...prev,
-        { role: 'candidate', text: result.transcript },
-        { role: 'interviewer', text: result.nextPrompt },
-      ]);
-      void speak(result.nextPrompt);
-    } catch (e) {
-      // Before, a failed turn threw inside onloadend, outside this try, and
-      // left the screen on "PROCESSING..." for good. Now the answer can be re-recorded.
-      console.error(e);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
 
   return (
     <div className="max-w-4xl mx-auto h-[calc(100vh-120px)] flex flex-col space-y-8 pb-10">
@@ -318,7 +255,7 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
       ) : (
         <div className="flex-1 flex flex-col min-h-0 bg-slate-50 dark:bg-slate-950/50 rounded-[3rem] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-2xl">
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-10 space-y-8">
-            {history.map((turn, i) => (
+            {turns.map((turn, i) => (
               <div key={i} className={`flex flex-col ${turn.role === 'interviewer' ? 'items-start' : 'items-end'}`}>
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 px-2">
                   {turn.role === 'interviewer' ? '👤 Interviewer' : '🎯 Candidate'}
@@ -332,7 +269,7 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
                 </div>
               </div>
             ))}
-            {isProcessing && (
+            {waiting && (
               <div className="flex items-start">
                 <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl rounded-tl-none flex space-x-2 border border-slate-200 dark:border-slate-800">
                   <div className="w-2 h-2 bg-brand-500 rounded-full animate-bounce" />
@@ -343,22 +280,25 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
             )}
           </div>
           <div className="p-8 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex flex-col items-center">
-            {isRecording ? (
-              <button onClick={stopRecording} className="w-full max-w-sm py-6 bg-rose-600 text-white rounded-2xl font-black uppercase animate-pulse">
+            {live.status === 'recording' ? (
+              <button onClick={live.endAnswer} className="w-full max-w-sm py-6 bg-rose-600 text-white rounded-2xl font-black uppercase animate-pulse">
                 STOP RECORDING
               </button>
             ) : (
               <button
-                onClick={startRecording}
-                disabled={isInterviewerSpeaking || isProcessing}
+                onClick={() => void live.startAnswer()}
+                disabled={starting || BUSY.has(live.status)}
                 className={`w-full max-w-sm py-6 rounded-2xl font-black uppercase ${
-                  isInterviewerSpeaking || isProcessing
+                  starting || BUSY.has(live.status)
                     ? 'bg-slate-100 text-slate-300'
                     : 'bg-brand-600 text-white hover:bg-brand-500'
                 }`}
               >
-                {voice === 'preparing' ? 'PREPARING VOICE...' : voice === 'speaking' ? 'INTERVIEWER SPEAKING...' : isProcessing ? 'PROCESSING...' : 'RECORD YOUR ANSWER'}
+                {starting ? 'CONNECTING...' : RECORD_LABEL[live.status]}
               </button>
+            )}
+            {live.error && (
+              <p role="alert" className="mt-3 text-xs font-bold text-rose-600 dark:text-rose-400">{live.error}</p>
             )}
             <button
               onClick={terminateSession}

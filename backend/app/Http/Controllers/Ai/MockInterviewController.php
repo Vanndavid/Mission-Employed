@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Ai;
 
+use App\Http\Requests\Ai\MockExchangeRequest;
 use App\Http\Requests\Ai\MockSessionRequest;
 use App\Http\Requests\Ai\MockTurnRequest;
 use App\Models\AiSession;
@@ -94,6 +95,60 @@ class MockInterviewController extends AiController
             'transcript' => $transcript,
             'nextPrompt' => $nextPrompt,
         ]);
+    }
+
+    /**
+     * Open a spoken interview over Gemini Live.
+     *
+     * The browser connects to Google directly, so this hands it a single-use
+     * token with the instruction locked in (the API key never leaves the
+     * server) and the stored turns to replay first, so a refresh or a dropped
+     * connection carries on with the same conversation.
+     */
+    public function live(Request $request, AiSession $session, GeminiClient $gemini): JsonResponse
+    {
+        $session = $this->ownedSession($request, $session, self::KIND);
+
+        try {
+            $live = $gemini->createLiveToken(MockInterviewPrompts::liveInstruction($session->system_instruction));
+        } catch (GeminiException $exception) {
+            return $this->geminiFailure($exception, "live token for mock session {$session->id}");
+        }
+
+        return response()->json([
+            'token' => $live['token'],
+            'model' => $live['model'],
+            'history' => $this->history($session)
+                ->map(fn ($message) => ['role' => $message->role, 'content' => $message->content])
+                ->values()
+                ->all(),
+        ]);
+    }
+
+    /**
+     * Store one finished Live exchange, transcribed by Gemini on both sides.
+     *
+     * The conversation itself never passes through here, so this is the only
+     * way it reaches ai_messages, and therefore resume and the report.
+     */
+    public function exchange(MockExchangeRequest $request, AiSession $session): JsonResponse
+    {
+        $session = $this->ownedSession($request, $session, self::KIND);
+
+        $answer = $request->answer();
+        $reply = $request->reply();
+
+        DB::transaction(function () use ($session, $answer, $reply): void {
+            if ($answer !== null) {
+                $this->appendMessage($session, 'user', $answer);
+            }
+
+            if ($reply !== null) {
+                $this->appendMessage($session, 'model', $reply);
+            }
+        });
+
+        return response()->json(['session' => $this->sessionPayload($session->fresh())], 201);
     }
 
     /**

@@ -615,9 +615,29 @@ you saw. Tick the 3.5 box in TASKS.md with a one-line note. Do not commit.
 
 ---
 
-### 3.6 Mock interview over the Gemini Live API
+### 3.6 Mock interview over the Gemini Live API ✅
 
-Not started. Paused at the user's request after research; nothing written yet.
+- [x] Done. The browser runs the spoken interview over Gemini Live with a
+  Laravel-minted ephemeral token. Measured end to end in headless Chromium, with
+  a synthesised answer as the microphone: the interviewer's voice starts
+  **1.0 s** after the candidate stops talking (it used to be several seconds of
+  TTS). Reload mid-interview resumes and the reconnect replays the history. The
+  report reads the transcript stored through `/exchanges`.
+  - Server: `GeminiClient::createLiveToken()`, and
+    `POST /ai/mock/sessions/{id}/live` / `/exchanges` in `MockInterviewController`.
+    `GEMINI_LIVE_MODEL` defaults to `gemini-3.8-live`, so no new `.env` key.
+  - Client: `services/geminiLive.ts` (protocol), `utils/pcm.ts` (conversion),
+    `utils/liveAudio.ts` (mic via AudioWorklet, scheduled playback),
+    `hooks/useLiveInterview.ts` (orchestration), `MockTest.tsx`.
+  - Settled by probing the real service, and asserted in `geminiLive.test.ts`:
+    `responseModalities` / `speechConfig` go under `generationConfig`. The
+    browser must still send `{setup: {model}}`, or nothing starts, but the rest
+    of it is ignored: a probe that tried to swap the instruction was overridden.
+    Typed `realtimeInput.text` inside `activityStart`/`activityEnd` closes the
+    socket with 1007. An empty history needs no `clientContent` at all. There is
+    no CSP to update.
+  - `splitForSpeech` and `conductMockTurn` were removed from the client, since
+    Live replaced them.
 
 Why: the mock interviewer's voice lags its text. `gemini-2.5-flash-preview-tts`
 builds a whole clip before answering, and it can only be asked once the turn's
