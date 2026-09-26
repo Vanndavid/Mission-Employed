@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { createMockSession, fetchSession, generateMockReport } from '../services/apiClient';
 import { LiveStatus, useLiveInterview } from '../hooks/useLiveInterview';
+import { LevelMeter } from './LevelMeter';
 import { BehavioralAnswer, InterviewTurn, JobApplication } from '../types';
 
 /**
@@ -280,6 +281,11 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
             )}
           </div>
           <div className="p-8 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex flex-col items-center">
+            {live.status === 'recording' && (
+              <div className="mb-4">
+                <LevelMeter levelRef={live.levelRef} active />
+              </div>
+            )}
             {live.status === 'recording' ? (
               <button onClick={live.endAnswer} className="w-full max-w-sm py-6 bg-rose-600 text-white rounded-2xl font-black uppercase animate-pulse">
                 STOP RECORDING

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { base64ToFloat32, downsampleToPcm16, int16ToBase64 } from './pcm';
+import { base64ToFloat32, downsampleToPcm16, int16ToBase64, rms } from './pcm';
 
 /**
  * Gemini Live takes 16 kHz 16-bit little-endian PCM and answers in 24 kHz of
@@ -22,10 +22,25 @@ describe('downsampleToPcm16', () => {
     expect(Array.from(out)).toEqual([0, 0x7fff, -0x8000]);
   });
 
+  it('interpolates up from a rate below the target instead of padding with silence', () => {
+    // A Bluetooth headset used as a microphone can run the whole device at
+    // 8 kHz. Treating that like a downsample zeroed every other sample.
+    const out = downsampleToPcm16(Float32Array.from([0, 0.5, 0.5]), 8000, 16000);
+
+    expect(Array.from(out)).toEqual([0, Math.round(0.25 * 0x7fff), Math.round(0.5 * 0x7fff), Math.round(0.5 * 0x7fff), Math.round(0.5 * 0x7fff), Math.round(0.5 * 0x7fff)]);
+  });
+
   it('clips anything outside [-1, 1] instead of wrapping around', () => {
     const out = downsampleToPcm16(Float32Array.from([1.7, -3]), 16000, 16000);
 
     expect(Array.from(out)).toEqual([0x7fff, -0x8000]);
+  });
+});
+
+describe('rms', () => {
+  it('measures how loud a stretch of samples is', () => {
+    expect(rms(Float32Array.from([0.5, -0.5, 0.5, -0.5]))).toBe(0.5);
+    expect(rms(new Float32Array(0))).toBe(0);
   });
 });
 

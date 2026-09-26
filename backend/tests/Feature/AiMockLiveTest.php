@@ -66,6 +66,10 @@ class AiMockLiveTest extends TestCase
         $this->assertStringStartsWith($session->system_instruction, $instruction);
         $this->assertStringContainsString('Ask one question at a time', $instruction);
         $this->assertStringContainsString('ask a specific follow-up', $instruction);
+        // Near-silence gets transcribed as a stray phrase, sometimes in another
+        // language; the interviewer should ask again in English, not follow it.
+        $this->assertStringContainsString('Conduct the interview in English', $instruction);
+        $this->assertStringContainsString("say you didn't catch it and ask them to repeat it", $instruction);
 
         $this->assertSame([], $this->stored($session));
     }

@@ -40,8 +40,12 @@ class MockInterviewPrompts
         return <<<PROMPT
             {$instruction}
 
-            This interview is spoken. Ask one question at a time and keep each
-            turn short enough to say aloud comfortably.
+            This interview is spoken. Conduct the interview in English, whatever
+            language an answer seems to be in. Ask one question at a time and keep
+            each turn short enough to say aloud comfortably.
+
+            If an answer is silent, cut off or makes no sense as a reply,
+            say you didn't catch it and ask them to repeat it rather than responding to it.
 
             When asked to begin, greet the candidate in a sentence and ask the
             first question.

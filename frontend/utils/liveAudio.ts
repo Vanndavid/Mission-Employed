@@ -1,4 +1,4 @@
-import { base64ToFloat32, downsampleToPcm16, int16ToBase64, LIVE_OUTPUT_RATE } from './pcm';
+import { base64ToFloat32, downsampleToPcm16, int16ToBase64, LIVE_INPUT_RATE, LIVE_OUTPUT_RATE, rms } from './pcm';
 
 /**
  * Microphone in and speaker out for the Gemini Live mock interview. Deliberately
@@ -22,25 +22,62 @@ class MicTap extends AudioWorkletProcessor {
 registerProcessor('mic-tap', MicTap);
 `;
 
+/** How long a take ran and how loud it was overall, for spotting a dead microphone. */
+export interface MicrophoneTake {
+  seconds: number;
+  /** Root-mean-square level: about 0.1 for speech, near 0 for silence. */
+  level: number;
+}
+
 export interface Microphone {
   /** Stop recording, send whatever is still buffered, and release the device. */
-  stop(): void;
+  stop(): MicrophoneTake;
 }
 
 /**
- * Start streaming the microphone as base64 16 kHz 16-bit PCM. Rejects if
- * permission is refused.
+ * Capture at 16 kHz where the browser allows it, so it resamples the device
+ * itself. Its default is the output device's rate, and a Bluetooth headset in
+ * call mode drops that to 8 kHz. Firefox refuses to connect a microphone to a
+ * context at another rate, so fall back to the device rate there.
  */
-export async function startMicrophone(onChunk: (base64: string) => void): Promise<Microphone> {
+function openCapture(stream: MediaStream): { context: AudioContext; source: MediaStreamAudioSourceNode } {
+  const context = new AudioContext({ sampleRate: LIVE_INPUT_RATE });
+  try {
+    return { context, source: context.createMediaStreamSource(stream) };
+  } catch {
+    void context.close();
+    const fallback = new AudioContext();
+    return { context: fallback, source: fallback.createMediaStreamSource(stream) };
+  }
+}
+
+/**
+ * Start streaming the microphone as base64 16 kHz 16-bit PCM, reporting the
+ * level of each chunk as it goes. Rejects if permission is refused.
+ */
+export async function startMicrophone(
+  onChunk: (base64: string) => void,
+  onLevel: (level: number) => void = () => {},
+): Promise<Microphone> {
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
   });
 
-  const context = new AudioContext();
+  let capture: ReturnType<typeof openCapture>;
+  try {
+    capture = openCapture(stream);
+  } catch (error) {
+    stream.getTracks().forEach(track => track.stop());
+    throw error;
+  }
+  const { context, source } = capture;
   const moduleUrl = URL.createObjectURL(new Blob([TAP_WORKLET], { type: 'application/javascript' }));
 
   try {
     await context.audioWorklet.addModule(moduleUrl);
+    // Created after an await, so outside the click: a strict autoplay policy
+    // (Safari's) would leave it suspended, and a suspended context captures nothing.
+    await context.resume();
   } catch (error) {
     stream.getTracks().forEach(track => track.stop());
     void context.close();
@@ -49,7 +86,6 @@ export async function startMicrophone(onChunk: (base64: string) => void): Promis
     URL.revokeObjectURL(moduleUrl);
   }
 
-  const source = context.createMediaStreamSource(stream);
   const tap = new AudioWorkletNode(context, 'mic-tap');
   // A node nobody listens to may never be pulled, so route it to the speakers
   // through a gain of zero.
@@ -60,6 +96,8 @@ export async function startMicrophone(onChunk: (base64: string) => void): Promis
   const chunkLength = Math.round(context.sampleRate * CHUNK_SECONDS);
   let pending: Float32Array[] = [];
   let pendingLength = 0;
+  let totalSamples = 0;
+  let totalSquares = 0;
 
   const flush = () => {
     if (pendingLength === 0) return;
@@ -71,6 +109,11 @@ export async function startMicrophone(onChunk: (base64: string) => void): Promis
     }
     pending = [];
     pendingLength = 0;
+
+    const level = rms(joined);
+    totalSamples += joined.length;
+    totalSquares += level * level * joined.length;
+    onLevel(level);
     onChunk(int16ToBase64(downsampleToPcm16(joined, context.sampleRate)));
   };
 
@@ -89,6 +132,10 @@ export async function startMicrophone(onChunk: (base64: string) => void): Promis
       tap.disconnect();
       stream.getTracks().forEach(track => track.stop());
       void context.close();
+      return {
+        seconds: totalSamples / context.sampleRate,
+        level: totalSamples ? Math.sqrt(totalSquares / totalSamples) : 0,
+      };
     },
   };
 }

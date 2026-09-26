@@ -17,10 +17,19 @@ function toInt16(sample: number): number {
   return clipped < 0 ? Math.round(clipped * 0x8000) : Math.round(clipped * 0x7fff);
 }
 
+/** Root-mean-square level of the samples: 0 for silence, about 0.1 for speech. */
+export function rms(samples: Float32Array): number {
+  if (samples.length === 0) return 0;
+  let sum = 0;
+  for (const sample of samples) sum += sample * sample;
+  return Math.sqrt(sum / samples.length);
+}
+
 /**
- * Downsample Float32 samples to 16-bit PCM by averaging each window. Averaging
- * is a crude low-pass filter, but enough for speech, which carries little
- * above the 8 kHz the target rate keeps.
+ * Resample Float32 samples to 16-bit PCM at the target rate. Going down,
+ * each window is averaged, a crude low-pass filter but enough for speech,
+ * which carries little above the 8 kHz the target rate keeps. Going up, it
+ * interpolates.
  */
 export function downsampleToPcm16(
   input: Float32Array,
@@ -30,6 +39,18 @@ export function downsampleToPcm16(
   const ratio = inputRate / outputRate;
   const length = Math.floor(input.length / ratio);
   const out = new Int16Array(length);
+
+  // Below the target rate (a Bluetooth headset in call mode runs at 8 kHz)
+  // there is nothing to average, so interpolate between neighbours instead.
+  if (ratio < 1) {
+    for (let i = 0; i < length; i++) {
+      const position = i * ratio;
+      const index = Math.floor(position);
+      const next = input[Math.min(index + 1, input.length - 1)];
+      out[i] = toInt16(input[index] + (next - input[index]) * (position - index));
+    }
+    return out;
+  }
 
   for (let i = 0; i < length; i++) {
     const start = Math.floor(i * ratio);

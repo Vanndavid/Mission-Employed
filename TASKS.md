@@ -638,6 +638,20 @@ you saw. Tick the 3.5 box in TASKS.md with a one-line note. Do not commit.
     no CSP to update.
   - `splitForSpeech` and `conductMockTurn` were removed from the client, since
     Live replaced them.
+- [x] Follow-up. A user's long spoken answer came out as "I'm not a robot.", which
+  is what the transcriber invents for near-silence. A headless run with a
+  silent microphone reproduced it ("¿Qué tal?", after which the interviewer
+  switched to Spanish). Changes:
+  - Capture runs at 16 kHz, so the browser resamples the device itself. Before,
+    it used the output device's rate, and a Bluetooth headset in call mode runs
+    at 8 kHz, which the converter zero-padded into noise. `downsampleToPcm16`
+    now interpolates below 16 kHz too. Firefox falls back to the device rate.
+  - The mic context is explicitly resumed.
+  - Each take reports its level. Below 0.006 RMS the screen says "We barely
+    heard you" and the invented transcript is not stored.
+  - There is a level meter while recording (`LevelMeter`, moved out of `PrepRoom`).
+  - The Live instruction pins English and asks the interviewer to have an
+    unclear answer repeated.
 
 Why: the mock interviewer's voice lags its text. `gemini-2.5-flash-preview-tts`
 builds a whole clip before answering, and it can only be asked once the turn's

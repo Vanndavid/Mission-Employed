@@ -13,6 +13,7 @@ import type { LiveConnection, LiveHandlers, LiveTicket } from '../services/gemin
 let handlers: LiveHandlers;
 let connection: Record<keyof LiveConnection, ReturnType<typeof vi.fn>>;
 let micChunk: (base64: string) => void;
+let micLevel: (level: number) => void;
 let playerIdle: () => void;
 let playing: boolean;
 
@@ -55,8 +56,10 @@ beforeEach(() => {
     return connection;
   });
   deps.saveExchange.mockResolvedValue(undefined);
-  deps.startMicrophone.mockImplementation(async (onChunk: (b: string) => void) => {
+  deps.micStop.mockReturnValue({ seconds: 6, level: 0.1 });
+  deps.startMicrophone.mockImplementation(async (onChunk: (b: string) => void, onLevel: (l: number) => void) => {
     micChunk = onChunk;
+    micLevel = onLevel;
     return { stop: deps.micStop };
   });
   deps.createPlayer.mockImplementation((onIdle: () => void) => {
@@ -241,5 +244,48 @@ describe('useLiveInterview', () => {
     expect(deps.micStop).toHaveBeenCalled();
     expect(connection.close).toHaveBeenCalled();
     expect(result.current.status).toBe('offline');
+  });
+
+  it('drives the level meter from the microphone while recording', async () => {
+    const { result } = render();
+    await act(() => result.current.begin());
+    await interviewerSays('Tell me about a bug.');
+
+    await act(() => result.current.startAnswer());
+    act(() => micLevel(0.2));
+
+    expect(result.current.levelRef.current).toBeGreaterThan(0);
+
+    act(() => result.current.endAnswer());
+    expect(result.current.levelRef.current).toBe(0);
+  });
+
+  it('warns when an answer arrived nearly silent, instead of trusting its transcript', async () => {
+    const { result } = render();
+    await act(() => result.current.begin());
+    await interviewerSays('Tell me about a bug.');
+
+    deps.micStop.mockReturnValue({ seconds: 20, level: 0.001 });
+    await act(() => result.current.startAnswer());
+    act(() => result.current.endAnswer());
+
+    expect(result.current.error).toMatch(/barely heard you/i);
+
+    // What the transcriber makes of silence is invented, so it is not kept.
+    act(() => handlers.onAnswerText("I'm not a robot."));
+    expect(result.current.draft.answer).toBe('');
+    await interviewerSays('Could you share an example?');
+    expect(deps.saveExchange).toHaveBeenLastCalledWith(12, { answer: null, reply: 'Could you share an example?' });
+  });
+
+  it('says nothing about a normal answer', async () => {
+    const { result } = render();
+    await act(() => result.current.begin());
+    await interviewerSays('Tell me about a bug.');
+
+    await act(() => result.current.startAnswer());
+    act(() => result.current.endAnswer());
+
+    expect(result.current.error).toBeNull();
   });
 });

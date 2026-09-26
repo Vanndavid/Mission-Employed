@@ -70,6 +70,7 @@ beforeEach(() => {
     error: null,
     draft: { answer: '', reply: '' },
     exchanges: [],
+    levelRef: { current: 0 },
     begin: vi.fn().mockResolvedValue(undefined),
     startAnswer: vi.fn().mockResolvedValue(undefined),
     endAnswer: vi.fn(),
