@@ -746,6 +746,20 @@ Unverified, and to be checked with one real call before building on it:
   - Measured locally: one voice exchange costs about $0.005, and a
     three-exchange interview with its report about $0.02.
 
+### 3.8 Mock interview history ✅
+
+- [x] Done. The mock screen lists past interviews under "Begin Session", newest
+  first, with company, role, date, message count and whether a report exists.
+  Opening one shows its report and full transcript read-only; an interview
+  that ended without a report can have one generated there, and one can be
+  deleted after a confirm.
+  - Endpoints: `GET /api/ai/mock/sessions` (summaries only; sessions with no
+    messages are left out as abandoned) and `DELETE /api/ai/mock/sessions/{id}`
+    (messages cascade). `GET /api/ai/sessions/{id}` now includes `report`.
+  - Components: `MockHistory.tsx` (`MockHistoryList`, `MockReview`, and the
+    `TurnBubble` shared with the live view).
+  - MCP: `list_mock_interviews`; `get_session` reads one back with its report.
+
 ## Wave 4 — Close out
 
 Needs Wave 3. **Read the Deployment section below before starting any of these** —

@@ -13,6 +13,8 @@ use App\Services\GeminiException;
 use App\Services\GeminiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -31,6 +33,33 @@ class MockInterviewController extends AiController
 {
     private const KIND = 'mock';
 
+    /**
+     * Past interviews, newest first, for the history list.
+     *
+     * A summary only: transcripts are read one at a time through
+     * SessionController. A session with no messages was opened and abandoned
+     * before the interviewer spoke, and has nothing to review.
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $sessions = AiSession::query()
+            ->whereBelongsTo($request->user())
+            ->where('kind', self::KIND)
+            ->has('messages')
+            ->withCount('messages')
+            ->latest()
+            ->latest('id')
+            ->get();
+
+        return response()->json([
+            'sessions' => $sessions->map(fn (AiSession $session) => [
+                ...Arr::except($this->sessionPayload($session, withMessages: false), 'report'),
+                'hasReport' => filled($session->report['text'] ?? null),
+                'messageCount' => $session->messages_count,
+            ])->all(),
+        ]);
+    }
+
     public function store(MockSessionRequest $request): JsonResponse
     {
         $context = $request->companyContext();
@@ -43,6 +72,14 @@ class MockInterviewController extends AiController
         ]);
 
         return response()->json(['session' => $this->sessionPayload($session)], 201);
+    }
+
+    /** Remove an interview from the history. Its messages cascade with it. */
+    public function destroy(Request $request, AiSession $session): Response
+    {
+        $this->ownedSession($request, $session, self::KIND)->delete();
+
+        return response()->noContent();
     }
 
     public function turn(MockTurnRequest $request, AiSession $session, GeminiClient $gemini): JsonResponse

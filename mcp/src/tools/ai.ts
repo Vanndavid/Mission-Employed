@@ -275,6 +275,21 @@ export function registerAiTools(server: McpServer, api: ApiClient): void {
   );
 
   server.registerTool(
+    "list_mock_interviews",
+    {
+      title: "List past mock interviews",
+      description:
+        "Past mock interviews, newest first, with company, role, message count and whether a " +
+        "report was written. Read one back in full with `get_session`, which includes its report.",
+      inputSchema: {},
+      annotations: { readOnlyHint: true },
+    },
+    guarded(async () =>
+      ok((await api.request<{ sessions: unknown[] }>("/ai/mock/sessions")).sessions),
+    ),
+  );
+
+  server.registerTool(
     "mock_interview_report",
     {
       title: "Close a mock interview with a report",

@@ -113,6 +113,7 @@ describe("the MCP server", () => {
       "track_job_from_description",
       "generate_cover_letter",
       "mock_interview_turn",
+      "list_mock_interviews",
     ]) {
       assert.ok(names.includes(expected), `missing tool ${expected}`);
     }

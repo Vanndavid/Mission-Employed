@@ -114,7 +114,7 @@ running the sync again is a no-op. In Cowork this can run on a schedule.
 | **AI — jobs** | `parse_job_description`, `track_job_from_description` |
 | **AI — documents** | `generate_cover_letter`, `generate_tailored_cv` |
 | **AI — coding** | `generate_coding_problem`, `start_coding_tutor`, `send_session_message`, `get_session` |
-| **AI — interviews** | `behavioral_practice_question`, `start_mock_interview`, `mock_interview_turn`, `mock_interview_report` |
+| **AI — interviews** | `behavioral_practice_question`, `start_mock_interview`, `mock_interview_turn`, `mock_interview_report`, `list_mock_interviews` |
 
 Prompt: `sync_job_emails`, described above. `login` and `logout` exist only in
 the local modes: over OAuth the connector owns the token.

@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { createMockSession, fetchSession, generateMockReport } from '../services/apiClient';
 import { LiveStatus, useLiveInterview } from '../hooks/useLiveInterview';
 import { LevelMeter } from './LevelMeter';
+import { MockHistoryList, MockReview, TurnBubble, toTurns } from './MockHistory';
 import { BehavioralAnswer, InterviewTurn, JobApplication } from '../types';
 
 /**
@@ -114,6 +115,8 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
   const [starting, setStarting] = useState(false);
   const [sessionReport, setSessionReport] = useState<string | null>(null);
   const [generatingReport, setGeneratingReport] = useState(false);
+  // A past interview opened from the history, read-only.
+  const [reviewId, setReviewId] = useState<number | null>(null);
 
   const [resuming, setResuming] = useState(() => resumableSession(appId) !== null);
 
@@ -154,10 +157,7 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
         if (cancelled) return;
 
         setSessionId(session.id);
-        setHistory(session.messages.map(message => ({
-          role: message.role === 'model' ? 'interviewer' : 'candidate',
-          text: message.content,
-        })));
+        setHistory(toTurns(session));
         setSessionActive(true);
       } catch {
         // Finished, deleted, or belonging to someone else: drop the pointer
@@ -230,17 +230,22 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
         </p>
       </header>
 
-      {!sessionActive && !sessionReport ? (
-        <div className="flex-1 flex flex-col items-center justify-center bg-white dark:bg-slate-900 rounded-[3rem] border-4 border-dashed border-slate-200 dark:border-slate-800 p-10">
-          <div className="w-24 h-24 bg-brand-600 rounded-full flex items-center justify-center text-4xl mb-8">👔</div>
-          <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 uppercase italic mb-4">Interview Mode</h3>
-          <button
-            onClick={startInterview}
-            disabled={resuming}
-            className="px-12 py-5 bg-brand-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-2xl hover:scale-105 transition-all text-lg disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
-          >
-            {resuming ? 'Resuming…' : 'Begin Session'}
-          </button>
+      {!sessionActive && !sessionReport && reviewId !== null ? (
+        <MockReview sessionId={reviewId} onBack={() => setReviewId(null)} />
+      ) : !sessionActive && !sessionReport ? (
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-6">
+          <div className="flex flex-col items-center justify-center bg-white dark:bg-slate-900 rounded-[3rem] border-4 border-dashed border-slate-200 dark:border-slate-800 p-10">
+            <div className="w-24 h-24 bg-brand-600 rounded-full flex items-center justify-center text-4xl mb-8">👔</div>
+            <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 uppercase italic mb-4">Interview Mode</h3>
+            <button
+              onClick={startInterview}
+              disabled={resuming}
+              className="px-12 py-5 bg-brand-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-2xl hover:scale-105 transition-all text-lg disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
+            >
+              {resuming ? 'Resuming…' : 'Begin Session'}
+            </button>
+          </div>
+          <MockHistoryList onOpen={setReviewId} />
         </div>
       ) : sessionReport ? (
         <div className="flex-1 bg-slate-900 text-brand-50 rounded-[3rem] p-10 overflow-y-auto">
@@ -256,20 +261,7 @@ export const MockTest = ({ applications, behavioralAnswers }: MockTestProps) => 
       ) : (
         <div className="flex-1 flex flex-col min-h-0 bg-slate-50 dark:bg-slate-950/50 rounded-[3rem] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-2xl">
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-10 space-y-8">
-            {turns.map((turn, i) => (
-              <div key={i} className={`flex flex-col ${turn.role === 'interviewer' ? 'items-start' : 'items-end'}`}>
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 px-2">
-                  {turn.role === 'interviewer' ? '👤 Interviewer' : '🎯 Candidate'}
-                </span>
-                <div className={`p-6 rounded-3xl max-w-[80%] text-sm leading-relaxed ${
-                  turn.role === 'interviewer'
-                    ? 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-tl-none'
-                    : 'bg-brand-600 text-white rounded-tr-none'
-                }`}>
-                  {turn.text}
-                </div>
-              </div>
-            ))}
+            {turns.map((turn, i) => <TurnBubble key={i} turn={turn} />)}
             {waiting && (
               <div className="flex items-start">
                 <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl rounded-tl-none flex space-x-2 border border-slate-200 dark:border-slate-800">

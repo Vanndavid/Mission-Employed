@@ -41,8 +41,11 @@ Route::prefix('ai')->middleware(['auth:sanctum', 'premium'])->group(function ():
     Route::post('/behavioral/prompt', [BehavioralController::class, 'prompt']);
     Route::post('/behavioral/evaluate', [BehavioralController::class, 'evaluate']);
 
-    // Full mock interview.
+    // Full mock interview. The index and destroy routes are the history: past
+    // interviews to review, each read back through /sessions/{session} above.
+    Route::get('/mock/sessions', [MockInterviewController::class, 'index']);
     Route::post('/mock/sessions', [MockInterviewController::class, 'store']);
+    Route::delete('/mock/sessions/{session}', [MockInterviewController::class, 'destroy']);
     Route::post('/mock/sessions/{session}/turns', [MockInterviewController::class, 'turn']);
     Route::post('/mock/sessions/{session}/report', [MockInterviewController::class, 'report']);
     // The spoken interview runs over Gemini Live from the browser: mint its

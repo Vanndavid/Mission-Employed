@@ -12,11 +12,14 @@ import { MemoryRouter } from 'react-router-dom';
 const createMockSession = vi.fn();
 const fetchSession = vi.fn();
 const generateMockReport = vi.fn();
+const listMockSessions = vi.fn();
 
 vi.mock('../services/apiClient', () => ({
   createMockSession: (...args: unknown[]) => createMockSession(...args),
   fetchSession: (...args: unknown[]) => fetchSession(...args),
   generateMockReport: (...args: unknown[]) => generateMockReport(...args),
+  listMockSessions: (...args: unknown[]) => listMockSessions(...args),
+  deleteMockSession: vi.fn(),
 }));
 
 type Live = ReturnType<typeof import('../hooks/useLiveInterview').useLiveInterview>;
@@ -65,6 +68,7 @@ beforeEach(() => {
   localStorage.clear();
   createMockSession.mockReset().mockResolvedValue({ id: 12, messages: [] });
   generateMockReport.mockReset().mockResolvedValue('**FINAL VERDICT**: Hire');
+  listMockSessions.mockReset().mockResolvedValue([]);
   live = {
     status: 'offline',
     error: null,
@@ -202,5 +206,36 @@ describe('MockTest', () => {
 
     expect(generateMockReport).toHaveBeenCalledWith(3);
     expect(await screen.findByText('**FINAL VERDICT**: Hire')).toBeTruthy();
+  });
+
+  it('opens a past interview from the history and returns to the start screen', async () => {
+    listMockSessions.mockResolvedValue([{
+      id: 3,
+      context: { company: 'Acme', role: 'Backend Engineer' },
+      messageCount: 1,
+      hasReport: true,
+      createdAt: '2026-09-20T10:00:00.000Z',
+      updatedAt: '2026-09-20T10:30:00.000Z',
+    }]);
+    fetchSession.mockResolvedValue({
+      id: 3,
+      context: { company: 'Acme' },
+      report: { text: 'FINAL VERDICT: Hire', generatedAt: '2026-09-20T10:31:00.000Z' },
+      messages: [{ role: 'model', content: 'An old generic question.' }],
+      createdAt: '2026-09-20T10:00:00.000Z',
+    });
+
+    renderAt('/mock');
+
+    fireEvent.click(await screen.findByRole('button', { name: /Acme/ }));
+
+    expect(await screen.findByText('An old generic question.')).toBeTruthy();
+    expect(screen.getByText('FINAL VERDICT: Hire')).toBeTruthy();
+    // Reviewing is read-only: nothing reconnects to the interviewer.
+    expect(live.begin).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /Back/ }));
+
+    expect(await screen.findByRole('button', { name: 'Begin Session' })).toBeTruthy();
   });
 });

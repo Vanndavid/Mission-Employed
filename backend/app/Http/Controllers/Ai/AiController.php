@@ -105,6 +105,7 @@ abstract class AiController extends Controller
             'id' => $session->id,
             'kind' => $session->kind,
             'context' => $session->context,
+            'report' => $session->report,
             'createdAt' => $session->created_at?->toJSON(),
             'updatedAt' => $session->updated_at?->toJSON(),
         ];

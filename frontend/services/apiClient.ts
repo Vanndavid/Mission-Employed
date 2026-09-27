@@ -35,6 +35,8 @@ export interface AiSessionPayload {
   kind: string;
   /** Whatever the session was opened with; null when it was opened blank. */
   context: Record<string, unknown> | null;
+  /** Set once a mock interview has been closed with a report. */
+  report?: { text: string; generatedAt: string } | null;
   messages: AiMessagePayload[];
   createdAt: string;
   updatedAt: string;
@@ -183,6 +185,27 @@ export async function saveMockExchange(
   exchange: { answer: string | null; reply: string | null; usage?: LiveUsage },
 ): Promise<void> {
   await apiRequest(`/ai/mock/sessions/${sessionId}/exchanges`, { method: 'POST', body: exchange });
+}
+
+/** One past interview in the history list. Its transcript comes from `fetchSession`. */
+export interface MockSessionSummary {
+  id: number;
+  context: { company?: string; role?: string } | null;
+  messageCount: number;
+  hasReport: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Past mock interviews, newest first. Ones abandoned before the first question are left out. */
+export async function listMockSessions(): Promise<MockSessionSummary[]> {
+  const { sessions } = await apiRequest<{ sessions: MockSessionSummary[] }>('/ai/mock/sessions');
+  return sessions;
+}
+
+/** Remove a past interview and its transcript. */
+export async function deleteMockSession(sessionId: string | number): Promise<void> {
+  await apiRequest<void>(`/ai/mock/sessions/${sessionId}`, { method: 'DELETE' });
 }
 
 /** Close the interview with a hiring-decision report over the whole transcript. */
