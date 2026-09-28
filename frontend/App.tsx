@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Sidebar, MobileHeader } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
@@ -11,8 +11,10 @@ import { ToastProvider } from './components/ToastProvider';
 import { AuthScreen } from './components/AuthScreen';
 import { AccountPage } from './components/AccountPage';
 import { AdminUsersPage } from './components/AdminUsersPage';
+import { SettingsPage } from './components/SettingsPage';
 import { PremiumGate } from './components/PremiumGate';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import {
   DataProvider,
   useApplications,
@@ -20,13 +22,6 @@ import {
   useCodingHistory,
   useProfile,
 } from './contexts/DataProvider';
-import {
-  applyTheme,
-  ColorMode,
-  loadStoredMode,
-  loadStoredPalette,
-  ThemePalette,
-} from './themes';
 
 /**
  * Routes and the data they are given.
@@ -119,23 +114,14 @@ function AppRoutes() {
       />
       <Route path="/account" element={<AccountPage />} />
       <Route path="/account/admin" element={<AdminUsersPage />} />
+      <Route path="/settings" element={<SettingsPage />} />
     </Routes>
   );
 }
 
 function AppShell() {
   const { user, loading: authLoading } = useAuth();
-  const [mode, setMode] = useState<ColorMode>(() => loadStoredMode());
-  const [palette, setPalette] = useState<ThemePalette>(() => loadStoredPalette());
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-
-  // Theme is a device preference, not account data, so it stays in
-  // localStorage. Nothing else does — the application state blob is gone.
-  useEffect(() => {
-    localStorage.setItem('theme', mode);
-    localStorage.setItem('theme_palette', palette);
-    applyTheme(palette, mode);
-  }, [mode, palette]);
 
   if (authLoading) {
     return (
@@ -156,10 +142,6 @@ function AppShell() {
       <BrowserRouter>
         <div className="min-h-screen text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
           <Sidebar
-            mode={mode}
-            palette={palette}
-            onModeChange={setMode}
-            onPaletteChange={setPalette}
             mobileOpen={mobileNavOpen}
             onMobileClose={() => setMobileNavOpen(false)}
           />
@@ -180,10 +162,13 @@ function AppShell() {
 
 export default function App() {
   return (
-    <ToastProvider>
-      <AuthProvider>
-        <AppShell />
-      </AuthProvider>
-    </ToastProvider>
+    // Outside the auth gate so the sign-in screen is themed too.
+    <ThemeProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <AppShell />
+        </AuthProvider>
+      </ToastProvider>
+    </ThemeProvider>
   );
 }

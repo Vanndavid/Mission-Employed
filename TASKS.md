@@ -760,6 +760,14 @@ Unverified, and to be checked with one real call before building on it:
     `TurnBubble` shared with the live view).
   - MCP: `list_mock_interviews`; `get_session` reads one back with its report.
 
+### 3.9 Settings page for appearance ✅
+
+- [x] Done. The colour theme and light/dark toggle moved off the sidebar onto
+  a new `/settings` page (sidebar entry "Settings"). Still a per-device
+  preference in localStorage (`theme`, `theme_palette`), not account data.
+  Theme state lives in `contexts/ThemeContext.tsx`, wrapped outside the auth
+  gate so the sign-in screen is themed too.
+
 ## Wave 4 — Close out
 
 Needs Wave 3. **Read the Deployment section below before starting any of these** —

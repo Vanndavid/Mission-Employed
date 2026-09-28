@@ -2,30 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { checkHealth } from '../services/apiClient';
 import { useAuth } from '../contexts/AuthContext';
-import {
-  ColorMode,
-  ThemePalette,
-  THEME_PALETTE_IDS,
-  THEME_PALETTES,
-} from '../themes';
 
 interface SidebarProps {
-  mode: ColorMode;
-  palette: ThemePalette;
-  onModeChange: (mode: ColorMode) => void;
-  onPaletteChange: (palette: ThemePalette) => void;
   mobileOpen: boolean;
   onMobileClose: () => void;
 }
 
-export const Sidebar = ({
-  mode,
-  palette,
-  onModeChange,
-  onPaletteChange,
-  mobileOpen,
-  onMobileClose,
-}: SidebarProps) => {
+export const Sidebar = ({ mobileOpen, onMobileClose }: SidebarProps) => {
   const { user, isPremium, isAdmin, logout } = useAuth();
   const [aiStatus, setAiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
 
@@ -49,6 +32,8 @@ export const Sidebar = ({
   if (isAdmin) {
     tabs.push({ path: '/account/admin', label: 'Admin', sub: 'Plans & usage', icon: '🔑', end: true });
   }
+
+  tabs.push({ path: '/settings', label: 'Settings', sub: 'Theme & display', icon: '⚙️', end: true });
 
   const navContent = (
     <>
@@ -110,63 +95,6 @@ export const Sidebar = ({
       </nav>
 
       <div className="px-4 py-2 space-y-3">
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-900/60 p-3 space-y-3">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Theme</p>
-            <div className="grid grid-cols-4 gap-2">
-              {THEME_PALETTE_IDS.map(id => {
-                const cfg = THEME_PALETTES[id];
-                const selected = palette === id;
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    title={`${cfg.label} — ${cfg.description}`}
-                    onClick={() => onPaletteChange(id)}
-                    className={`flex flex-col items-center gap-1 rounded-lg p-1.5 border transition-all ${
-                      selected
-                        ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10'
-                        : 'border-transparent hover:border-slate-200 dark:hover:border-slate-600'
-                    }`}
-                  >
-                    <span
-                      className="w-6 h-6 rounded-full border border-black/10 shadow-sm"
-                      style={{ backgroundColor: cfg.swatch }}
-                    />
-                    <span className="text-[9px] font-bold uppercase tracking-wide text-slate-500">
-                      {cfg.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          <div className="flex rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
-            <button
-              type="button"
-              onClick={() => onModeChange('light')}
-              className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-widest ${
-                mode === 'light'
-                  ? 'bg-brand-600 text-white'
-                  : 'bg-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
-              }`}
-            >
-              Light
-            </button>
-            <button
-              type="button"
-              onClick={() => onModeChange('dark')}
-              className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-widest ${
-                mode === 'dark'
-                  ? 'bg-brand-600 text-white'
-                  : 'bg-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
-              }`}
-            >
-              Dark
-            </button>
-          </div>
-        </div>
-
         <button
           onClick={() => {
             onMobileClose();
