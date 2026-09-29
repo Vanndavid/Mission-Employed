@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AtsSource, BehavioralAnswer, JobApplication } from '../types';
 import { BEHAVIORAL_THEMES } from '../constants';
@@ -56,12 +56,7 @@ export const InterviewPrepDrawer = ({
         <div className="p-6 space-y-8">
           <RejectionFeedbackSection app={app} onUpdate={onUpdate} />
 
-          <section>
-            <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Job Description Recap</h4>
-            <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap max-h-40 overflow-y-auto bg-slate-50 dark:bg-slate-800 p-4 rounded-xl">
-              {app.jobDescription || app.notes || 'No job description saved.'}
-            </p>
-          </section>
+          <JobDescriptionSection key={app.id} app={app} onUpdate={onUpdate} />
 
           <section>
             <div className="flex justify-between items-center mb-2">
@@ -196,5 +191,93 @@ export const InterviewPrepDrawer = ({
         </div>
       </div>
     </div>
+  );
+};
+
+/**
+ * The job description, editable in place. An application tracked from a Seek
+ * listing only carries the listing's teaser, and imported rows often carry
+ * nothing, so this is where the full ad gets pasted in — the ATS check and the
+ * tailored documents all read it.
+ *
+ * Notes used to be shown here as a fallback when there was no description.
+ * They still are when they say something the description does not (the email
+ * sync writes to them); when they were only a copy of the old description, as
+ * the add form and Seek tracking make them, they follow the new one.
+ */
+const JobDescriptionSection = ({
+  app,
+  onUpdate,
+}: {
+  app: JobApplication;
+  onUpdate: (partial: Partial<JobApplication>) => void;
+}) => {
+  const [draft, setDraft] = useState<string | null>(null);
+  const saved = app.jobDescription.trim();
+  const notes = app.notes.trim();
+  const headingId = `job-description-heading-${app.id}`;
+
+  const save = () => {
+    const next = (draft ?? '').trim();
+    if (next !== saved) {
+      onUpdate(notes !== '' && notes === saved ? { jobDescription: next, notes: next } : { jobDescription: next });
+    }
+    setDraft(null);
+  };
+
+  return (
+    <section aria-labelledby={headingId}>
+      <div className="flex justify-between items-center mb-2">
+        <h4 id={headingId} className="text-xs font-bold uppercase tracking-widest text-slate-400">
+          Job Description
+        </h4>
+        {draft === null && (
+          <button
+            onClick={() => setDraft(app.jobDescription)}
+            aria-label={saved ? 'Edit job description' : 'Add job description'}
+            className="text-xs font-bold text-brand-600 hover:underline"
+          >
+            {saved ? 'Edit' : 'Add'}
+          </button>
+        )}
+      </div>
+
+      {draft !== null ? (
+        <div className="space-y-2">
+          <textarea
+            aria-label="Job description"
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            rows={12}
+            autoFocus
+            placeholder="Paste the full job ad here..."
+            className="w-full p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm resize-y"
+          />
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setDraft(null)}
+              aria-label="Cancel editing job description"
+              className="px-4 py-2 rounded-lg text-xs font-bold text-slate-500 border border-slate-200 dark:border-slate-700"
+            >
+              Cancel
+            </button>
+            <button onClick={save} aria-label="Save job description" className="px-4 py-2 rounded-lg text-xs font-bold bg-brand-600 hover:bg-brand-500 text-white">
+              Save
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap max-h-40 overflow-y-auto bg-slate-50 dark:bg-slate-800 p-4 rounded-xl">
+          {saved ? app.jobDescription : 'No job description saved. Add the full ad to check the ATS score and tailor documents.'}
+        </p>
+      )}
+
+      {notes !== '' && notes !== saved && (
+        <div className="mt-3">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Notes</p>
+          <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap max-h-32 overflow-y-auto">{app.notes}</p>
+        </div>
+      )}
+    </section>
   );
 };

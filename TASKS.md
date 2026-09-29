@@ -790,6 +790,12 @@ Unverified, and to be checked with one real call before building on it:
   - Components: `AtsScore.tsx` (`AtsScorePanel`, `AtsBadge`), and
     `checkAtsScore` in `ApplicationsContext`, which flushes queued edits first.
   - MCP: `check_ats_score`.
+  - Follow-up, 2026-09-30: the drawer's job description is now editable
+    (Add / Edit, then Save), because there was no way to supply one after
+    creation. Seek-tracked rows carry only the listing teaser, and imported rows
+    often carry nothing. Notes still show under it when they differ. Notes that
+    were only a copy of the old description, as the add form and Seek tracking
+    make them, follow the new one.
 
 ## Wave 4 — Close out
 

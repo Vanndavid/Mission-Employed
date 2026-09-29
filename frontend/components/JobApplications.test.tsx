@@ -255,6 +255,64 @@ describe('JobApplications', () => {
     await waitFor(() => expect(onCheckAts).toHaveBeenCalledWith(2, 'tailored'));
   });
 
+  describe('the job description in the drawer', () => {
+    const openDrawer = (overrides: Record<string, unknown>, onUpdate = vi.fn()) => {
+      renderPage(vi.fn(), [tracked(1, overrides)], onUpdate);
+      fireEvent.click(within(screen.getByRole('table')).getByText('Company 1'));
+      return { onUpdate, section: screen.getByRole('region', { name: 'Job Description' }) };
+    };
+
+    it('can be added to an application that has none', () => {
+      const { onUpdate, section } = openDrawer({});
+
+      expect(within(section).getByText(/No job description saved/)).toBeTruthy();
+      fireEvent.click(within(section).getByRole('button', { name: 'Add job description' }));
+      fireEvent.change(within(section).getByLabelText('Job description'), {
+        target: { value: '  Build payment services in PHP.  ' },
+      });
+      fireEvent.click(within(section).getByRole('button', { name: 'Save job description' }));
+
+      expect(onUpdate).toHaveBeenCalledWith(1, { jobDescription: 'Build payment services in PHP.' });
+      expect(within(section).queryByLabelText('Job description')).toBeNull();
+    });
+
+    it('edits from what is saved, and Cancel changes nothing', () => {
+      const { onUpdate, section } = openDrawer({ jobDescription: 'Seek teaser' });
+
+      fireEvent.click(within(section).getByRole('button', { name: 'Edit job description' }));
+      const box = within(section).getByLabelText('Job description') as HTMLTextAreaElement;
+      expect(box.value).toBe('Seek teaser');
+
+      fireEvent.change(box, { target: { value: 'The full ad' } });
+      fireEvent.click(within(section).getByRole('button', { name: 'Cancel editing job description' }));
+      expect(onUpdate).not.toHaveBeenCalled();
+      expect(within(section).getByText('Seek teaser')).toBeTruthy();
+    });
+
+    it('carries notes along when they were only a copy of the old description', () => {
+      // The add form and Seek tracking both write the description into notes.
+      const { onUpdate, section } = openDrawer({ jobDescription: 'Seek teaser', notes: 'Seek teaser' });
+
+      fireEvent.click(within(section).getByRole('button', { name: 'Edit job description' }));
+      fireEvent.change(within(section).getByLabelText('Job description'), { target: { value: 'The full ad' } });
+      fireEvent.click(within(section).getByRole('button', { name: 'Save job description' }));
+
+      expect(onUpdate).toHaveBeenCalledWith(1, { jobDescription: 'The full ad', notes: 'The full ad' });
+    });
+
+    it('keeps real notes visible and untouched', () => {
+      const { onUpdate, section } = openDrawer({ jobDescription: '', notes: 'Referred by Sam.' });
+
+      expect(within(section).getByText('Referred by Sam.')).toBeTruthy();
+
+      fireEvent.click(within(section).getByRole('button', { name: 'Add job description' }));
+      fireEvent.change(within(section).getByLabelText('Job description'), { target: { value: 'The full ad' } });
+      fireEvent.click(within(section).getByRole('button', { name: 'Save job description' }));
+
+      expect(onUpdate).toHaveBeenCalledWith(1, { jobDescription: 'The full ad' });
+    });
+  });
+
   it('has an Insights tab beside the tracker', () => {
     renderPage(vi.fn(), [tracked(1, { status: JobStatus.REJECTED, rejectionReasons: REASONS })]);
 
