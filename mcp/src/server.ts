@@ -35,7 +35,7 @@ export function createServer(
         "When updating the tracker from email or any other source, record what happened with " +
         "append_application_note and a `ref` so it is never applied twice; the sync_job_emails " +
         "prompt describes the whole routine. " +
-        "The AI tools (parsing, cover letters, CVs, problems, interviews) need a premium or admin " +
+        "The AI tools (parsing, cover letters, CVs, ATS scores, problems, interviews) need a premium or admin " +
         "account; whoami says which. Ask before deleting anything.",
     },
   );

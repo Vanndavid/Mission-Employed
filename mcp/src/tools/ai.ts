@@ -33,6 +33,16 @@ type Application = {
 
 type Profile = { baseCV: string; portfolioUrl: string; coverLetterTemplate: string; cvTemplate: string };
 
+type AtsKeyword = { term: string; kind: string; required: boolean };
+
+type AtsReport = {
+  score: number;
+  keywords: { matched: number; total: number };
+  missing: AtsKeyword[];
+  source: "tailored" | "base";
+  stale: boolean;
+};
+
 /** The document generators take the same four inputs, gathered the same way. */
 const documentInput = {
   applicationId: z
@@ -132,6 +142,38 @@ export function registerAiTools(server: McpServer, api: ApiClient): void {
       inputSchema: documentInput,
     },
     guarded(async (args) => generateDocument(api, "cv", args)),
+  );
+
+  server.registerTool(
+    "check_ats_score",
+    {
+      title: "Check an application's ATS score",
+      description:
+        "Score a tracked application's CV against its job description the way an applicant " +
+        "tracking system's keyword screen would: 0-100, with the keywords matched and missing " +
+        "(required first) and five format checks. The report is stored on the application and " +
+        "shows in `get_application` as atsReport. Only the first check of a job costs a model " +
+        "call; re-checking after editing the CV is free. Suggest adding only missing keywords " +
+        "that are true of the candidate.",
+      inputSchema: {
+        applicationId: z.number().int(),
+        source: z
+          .enum(["tailored", "base"])
+          .optional()
+          .describe("Which CV to score. Defaults to the tailored CV if there is one, else the base CV."),
+      },
+    },
+    guarded(async ({ applicationId, source }) => {
+      const report = await api.request<AtsReport>(`/ai/applications/${applicationId}/ats`, {
+        method: "POST",
+        body: present({ source }),
+      });
+
+      const required = report.missing.filter((keyword) => keyword.required).map((keyword) => keyword.term);
+      const gaps = required.length > 0 ? ` Missing required: ${required.join(", ")}.` : "";
+
+      return ok(report, `Scored ${report.score}/100 against the ${report.source} CV.${gaps}`);
+    }),
   );
 
   server.registerTool(

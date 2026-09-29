@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Ai\AtsController;
 use App\Http\Controllers\Ai\BehavioralController;
 use App\Http\Controllers\Ai\CodingController;
 use App\Http\Controllers\Ai\DocumentController;
@@ -65,6 +66,11 @@ Route::prefix('ai')->middleware(['auth:sanctum', 'premium'])->group(function ():
     // Tailored application documents.
     Route::post('/cover-letter/generate', [DocumentController::class, 'coverLetter']);
     Route::post('/cv/generate', [DocumentController::class, 'cv']);
+
+    // Tracker: score a tracked application's CV against its job description.
+    // The model only lists the job's keywords, once per job; the score itself
+    // is computed by App\Services\Ats\AtsScorer, so a re-check is free.
+    Route::post('/applications/{application}/ats', [AtsController::class, 'check']);
 
     // Spoken playback. Returns base64 WAV, not the raw PCM Gemini gives us.
     Route::post('/tts', [TtsController::class, 'speak']);

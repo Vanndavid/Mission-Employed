@@ -115,7 +115,9 @@ reintroduce it or build features that depend on it:
    parsing, tailored CV and cover letter, and **spreadsheet import**: drop in an
    `.xlsx`/`.xls`/`.csv` whose columns are named anything at all, an AI proposes
    the column mapping, you correct it and review the rows, and committing fills
-   blanks on applications already tracked rather than duplicating them.
+   blanks on applications already tracked rather than duplicating them. Plus an
+   **ATS score check**: the application's CV scored against its job description
+   for keywords and format, as an applicant tracking system's screen would.
 4. **Interview practice** — one question at a time: prompt, answer, AI feedback,
    spoken playback.
 5. **Full mock interview** — multi-turn session ending in a written report.
@@ -129,6 +131,9 @@ the emergency modal.
 > import — exact header match, a POST per row, no dedupe. Spreadsheet import as
 > described in 3 above replaces it and is a first-class feature; CSV export
 > stays as it is.
+
+> The ATS check is not "criteria scoring". That scored a job against the user's
+> own wish-list and never read the CV; this scores the CV against the job.
 
 > `system_design` is still a valid **interview stage type** in the tracker — people
 > get scheduled for one. Only the practice drill was cut.
@@ -148,6 +153,12 @@ the emergency modal.
   The AI only maps the sheet's *vocabulary* (`POST /api/ai/import/plan`); the
   rows are applied deterministically client-side, and its answer is treated as
   untrusted input.
+- **The ATS score is computed, not generated.** Same split as the import: the AI
+  only lists the job description's keywords (`App\Services\Ats\AtsCheck`,
+  sanitised as untrusted input), and `AtsScorer` matches them against the CV
+  deterministically. Keywords are cached on the application under a hash of
+  role + JD, so re-checking an edited CV makes no model call. `ats_keywords` and
+  `ats_report` are server-owned: never fillable, never in `COLUMN_MAP`.
 - `statusDate` is accepted on create and update but is **not a column**. It
   backdates the status event, which is why it is absent from
   `ApplicationRequest::COLUMN_MAP`.

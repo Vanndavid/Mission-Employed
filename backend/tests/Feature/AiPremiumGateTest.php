@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\AiSession;
+use App\Models\Application;
 use App\Models\User;
 use App\Services\FakeGeminiService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -15,9 +16,9 @@ use Tests\TestCase;
  * courtesy. A free user must bounce on every AI route, not just the ones that
  * happened to get a dedicated test when the endpoint was ported.
  *
- * Session-bound routes need a real row: SubstituteBindings runs with the api
- * group, before `premium`, so a missing `{session}` is a 404 that never proves
- * the gate.
+ * Session- and application-bound routes need a real row: SubstituteBindings
+ * runs with the api group, before `premium`, so a missing `{session}` or
+ * `{application}` is a 404 that never proves the gate.
  */
 class AiPremiumGateTest extends TestCase
 {
@@ -55,6 +56,7 @@ class AiPremiumGateTest extends TestCase
             'job parse' => ['POST', '/api/ai/job/parse', ['text' => 'Acme is hiring a Senior SWE.'], null],
             'cover letter' => ['POST', '/api/ai/cover-letter/generate', $document, null],
             'cv' => ['POST', '/api/ai/cv/generate', $document, null],
+            'ats check' => ['POST', '/api/ai/applications/{application}/ats', [], null],
             'tts' => ['POST', '/api/ai/tts', ['text' => 'hello'], null],
         ];
     }
@@ -72,6 +74,11 @@ class AiPremiumGateTest extends TestCase
         if ($sessionKind !== null) {
             $session = AiSession::factory()->for($user)->kind($sessionKind)->create();
             $uri = str_replace('{session}', (string) $session->id, $uri);
+        }
+
+        if (str_contains($uri, '{application}')) {
+            $application = Application::factory()->for($user)->create(['tailored_cv' => 'Ten years of PHP.']);
+            $uri = str_replace('{application}', (string) $application->id, $uri);
         }
 
         $gemini = FakeGeminiService::swap();

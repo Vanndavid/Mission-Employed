@@ -1,10 +1,11 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BehavioralAnswer, JobApplication } from '../types';
+import { AtsSource, BehavioralAnswer, JobApplication } from '../types';
 import { BEHAVIORAL_THEMES } from '../constants';
 import { InterviewStageEditor } from './InterviewStageEditor';
 import { RejectionFeedbackSection } from './RejectionFeedback';
+import { AtsScorePanel } from './AtsScore';
 import { InterviewStage, TakeHomeStatus } from '../types';
 
 interface InterviewPrepDrawerProps {
@@ -16,6 +17,9 @@ interface InterviewPrepDrawerProps {
   onRemoveStage: (stageId: number) => void;
   onOpenCoverLetter: () => void;
   onOpenCV: () => void;
+  /** Whether the profile has a base CV the ATS check can fall back on. */
+  hasBaseCv: boolean;
+  onCheckAts: (source: AtsSource) => Promise<unknown>;
 }
 
 export const InterviewPrepDrawer = ({
@@ -27,6 +31,8 @@ export const InterviewPrepDrawer = ({
   onRemoveStage,
   onOpenCoverLetter,
   onOpenCV,
+  hasBaseCv,
+  onCheckAts,
 }: InterviewPrepDrawerProps) => {
   const navigate = useNavigate();
 
@@ -68,6 +74,8 @@ export const InterviewPrepDrawer = ({
               {app.tailoredCV || 'No tailored CV yet.'}
             </p>
           </section>
+
+          <AtsScorePanel key={app.id} app={app} hasBaseCv={hasBaseCv} onCheck={onCheckAts} />
 
           <section>
             <div className="flex justify-between items-center mb-2">

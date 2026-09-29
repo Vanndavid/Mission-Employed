@@ -1,12 +1,15 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import {
   ApplicationInput,
+  AtsReport,
+  AtsSource,
   InterviewStage,
   JobApplication,
   JobStatus,
   NewInterviewStage,
 } from '../types';
 import * as tracker from '../services/trackerClient';
+import { checkAtsScore as requestAtsScore } from '../services/apiClient';
 import { ApiError, errorMessage, isAbortError } from '../services/http';
 import { RowPlan, RowVerdict } from '../utils/importMerge';
 import { useDebouncedQueue } from '../hooks/useDebouncedQueue';
@@ -45,6 +48,11 @@ export interface ApplicationsContextValue {
    * that fails says why instead of being counted and forgotten.
    */
   commitImport: (plans: RowPlan[]) => Promise<ImportOutcome[]>;
+  /**
+   * Run an ATS score check and keep the report on the application. Throws on
+   * failure rather than setting `error`: the ATS panel shows its own message.
+   */
+  checkAtsScore: (id: number, source?: AtsSource) => Promise<AtsReport>;
 }
 
 /** What happened to one row of a committed import. */
@@ -310,6 +318,20 @@ export function ApplicationsProvider({ children }: { children: React.ReactNode }
     return outcomes;
   }, []);
 
+  const checkAtsScore = useCallback(
+    async (id: number, source?: AtsSource) => {
+      // The server scores what it has stored. A tailored CV saved a moment ago
+      // may still be sitting in the edit queue, so send it first.
+      await flushNow();
+
+      const report = await requestAtsScore(id, source);
+      setApplications(prev => prev.map(app => (app.id === id ? { ...app, atsReport: report } : app)));
+
+      return report;
+    },
+    [flushNow],
+  );
+
   return (
     <ApplicationsContext.Provider
       value={{
@@ -325,6 +347,7 @@ export function ApplicationsProvider({ children }: { children: React.ReactNode }
         addInterviewStage,
         removeInterviewStage,
         commitImport,
+        checkAtsScore,
       }}
     >
       {children}

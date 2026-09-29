@@ -768,6 +768,29 @@ Unverified, and to be checked with one real call before building on it:
   Theme state lives in `contexts/ThemeContext.tsx`, wrapped outside the auth
   gate so the sign-in screen is themed too.
 
+### 3.10 ATS score check ✅
+
+- [x] Done, 2026-09-29. Each application can have its CV scored against its job
+  description out of 100, the way an ATS keyword screen reads it. The drawer
+  has an "ATS Score" section below Tailored CV. It picks the tailored or base
+  CV and shows missing keywords (required first), the matched ones, and five
+  format checks: contact details, standard sections, job title, length and
+  measurable results. It flags a report as stale when the CV or JD has changed
+  since. The tracker table shows an "ATS 82" pill.
+  - Design: the model only lists the JD's keywords (term, aliases, kind,
+    required), and `AtsScorer` matches them deterministically. The score is 80
+    points of weighted coverage (required ×2, soft skills ×½) plus 4 points per
+    passed format check. Keywords are cached in `applications.ats_keywords`
+    under a hash of role + JD, so re-checking after editing the CV makes no
+    model call. The report lives in `ats_report`, with JD and CV hashes that the
+    API turns into `stale`. Both columns are server-owned.
+  - Endpoint: `POST /api/ai/applications/{id}/ats` `{ source?: 'tailored'|'base' }`,
+    premium. A blank JD or CV is a 422, and so is a JD with no readable keywords.
+    `atsReport` rides along on every application payload.
+  - Components: `AtsScore.tsx` (`AtsScorePanel`, `AtsBadge`), and
+    `checkAtsScore` in `ApplicationsContext`, which flushes queued edits first.
+  - MCP: `check_ats_score`.
+
 ## Wave 4 — Close out
 
 Needs Wave 3. **Read the Deployment section below before starting any of these** —

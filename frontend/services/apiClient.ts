@@ -17,6 +17,7 @@
 
 import { ApiError, apiRequest } from './http';
 import type { LiveTicket, LiveUsage } from './geminiLive';
+import type { AtsReport, AtsSource } from '../types';
 
 export { ApiError, errorMessage } from './http';
 
@@ -267,6 +268,22 @@ export async function requestImportPlan(
   return apiRequest<unknown>('/ai/import/plan', {
     method: 'POST',
     body: { headers, sampleRows, columnValues },
+  });
+}
+
+// --- Tracker: ATS score check ---------------------------------------------
+
+/**
+ * Score an application's CV against its job description. The server stores
+ * the report on the application and answers with it. Only the first check of
+ * a job costs a model call; re-checking an edited CV is free.
+ *
+ * Omit `source` to score the tailored CV when there is one, else the base CV.
+ */
+export async function checkAtsScore(applicationId: number, source?: AtsSource): Promise<AtsReport> {
+  return apiRequest<AtsReport>(`/ai/applications/${applicationId}/ats`, {
+    method: 'POST',
+    body: source ? { source } : {},
   });
 }
 

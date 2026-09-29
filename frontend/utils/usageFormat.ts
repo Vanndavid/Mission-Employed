@@ -16,6 +16,7 @@ const FEATURE_LABELS: Record<string, string> = {
   'ai/import/plan': 'Spreadsheet import',
   'ai/cover-letter/generate': 'Cover letter',
   'ai/cv/generate': 'Tailored CV',
+  'ai/applications/{application}/ats': 'ATS score check',
   'ai/tts': 'Spoken playback',
 };
 

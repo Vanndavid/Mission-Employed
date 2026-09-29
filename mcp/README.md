@@ -112,7 +112,7 @@ running the sync again is a no-op. In Cowork this can run on a schedule.
 | **CV profile** | `get_profile`, `update_profile` |
 | **Practice history** | `list_coding_attempts`, `log_coding_attempt`, `list_behavioral_answers`, `save_behavioral_answer` |
 | **AI — jobs** | `parse_job_description`, `track_job_from_description` |
-| **AI — documents** | `generate_cover_letter`, `generate_tailored_cv` |
+| **AI — documents** | `generate_cover_letter`, `generate_tailored_cv`, `check_ats_score` |
 | **AI — coding** | `generate_coding_problem`, `start_coding_tutor`, `send_session_message`, `get_session` |
 | **AI — interviews** | `behavioral_practice_question`, `start_mock_interview`, `mock_interview_turn`, `mock_interview_report`, `list_mock_interviews` |
 
@@ -128,7 +128,7 @@ answer, text-to-speech, and the spoken mock interview over Gemini Live
 makes sense in the browser. The mock interview tools here use the typed
 `/turns` route, which the browser no longer calls but which stays for them.
 
-### Two conveniences worth knowing
+### Three conveniences worth knowing
 
 `track_job_from_description` parses a pasted posting and creates the application
 in one call — the usual "track this job" request. Use `parse_job_description`
@@ -137,6 +137,11 @@ instead when the fields should be reviewed before anything is saved.
 `generate_cover_letter` and `generate_tailored_cv` take an `applicationId` and
 read the company, role and job description from the tracker and the CV from the
 profile, so a normal call is just `{ applicationId: 12, save: true }`.
+
+`check_ats_score` scores an application's tailored CV (or, with
+`source: "base"`, the profile's) against its job description and stores the
+report on the application. The API does the scoring; the model only lists the
+job's keywords, once per job, so checking again after an edit is free.
 
 ## Tests
 

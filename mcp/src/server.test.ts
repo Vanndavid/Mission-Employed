@@ -77,6 +77,29 @@ describe("the MCP server", () => {
           jobDescription: "Build things.",
         },
       }))
+      .route("POST", "/ai/applications/1/ats", () => ({
+        json: {
+          score: 64,
+          keywords: { matched: 3, total: 6 },
+          matched: [],
+          missing: [
+            { term: "Kubernetes", kind: "skill", required: true },
+            { term: "AWS", kind: "qualification", required: true },
+            { term: "GraphQL", kind: "skill", required: false },
+          ],
+          checks: [],
+          source: "base",
+          checkedAt: "2026-09-29T10:00:00.000Z",
+          stale: false,
+        },
+      }))
+      .route("POST", "/ai/applications/2/ats", () => ({
+        status: 422,
+        json: {
+          message: "Add the job description to this application first.",
+          errors: { jobDescription: ["Add the job description to this application first."] },
+        },
+      }))
       .route("POST", "/ai/coding/problem", () => ({
         status: 403,
         json: { message: "Your plan does not include this." },
@@ -112,6 +135,7 @@ describe("the MCP server", () => {
       "parse_job_description",
       "track_job_from_description",
       "generate_cover_letter",
+      "check_ats_score",
       "mock_interview_turn",
       "list_mock_interviews",
     ]) {
@@ -206,6 +230,35 @@ describe("the MCP server", () => {
 
     assert.equal(result.isError, true);
     assert.match(text(result), /Your plan does not include this/);
+  });
+
+  it("checks an application's ATS score and leads with the required gaps", async () => {
+    const result = (await client.callTool({
+      name: "check_ats_score",
+      arguments: { applicationId: 1, source: "base" },
+    })) as CallToolResult;
+
+    assert.notEqual(result.isError, true);
+    assert.equal(api.requests.at(-1)?.path, "/ai/applications/1/ats");
+    assert.deepEqual(api.requests.at(-1)?.body, { source: "base" });
+    assert.match(text(result), /^Scored 64\/100 against the base CV\. Missing required: Kubernetes, AWS\./);
+    assert.match(text(result), /"score": 64/);
+  });
+
+  it("lets the API pick the CV when no source is given", async () => {
+    await client.callTool({ name: "check_ats_score", arguments: { applicationId: 1 } });
+
+    assert.deepEqual(api.requests.at(-1)?.body, {});
+  });
+
+  it("reports why an application could not be scored", async () => {
+    const result = (await client.callTool({
+      name: "check_ats_score",
+      arguments: { applicationId: 2 },
+    })) as CallToolResult;
+
+    assert.equal(result.isError, true);
+    assert.match(text(result), /Add the job description/);
   });
 
   it("appends a dated note tagged with its source, keeping what was there", async () => {

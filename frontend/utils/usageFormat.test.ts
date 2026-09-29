@@ -14,6 +14,7 @@ describe('usage formatting', () => {
 
   it('names known features and passes unknown ones through', () => {
     expect(featureLabel('ai/mock/live')).toBe('Mock interview (voice)');
+    expect(featureLabel('ai/applications/{application}/ats')).toBe('ATS score check');
     expect(featureLabel('ai/something/new')).toBe('ai/something/new');
   });
 });

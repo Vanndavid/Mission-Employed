@@ -9,6 +9,13 @@ vi.mock('../services/seekClient', () => ({
   searchSeekJobs: (...args: unknown[]) => searchSeekJobs(...args),
 }));
 
+// The drawer's ATS panel reads the plan.
+vi.mock('../contexts/AuthContext', () => ({
+  useAuth: () => ({ isPremium: true, user: null, isAdmin: false, logout: vi.fn(), refreshUser: vi.fn() }),
+}));
+
+const onCheckAts = vi.fn(async () => undefined);
+
 const { JobApplications } = await import('./JobApplications');
 const { ToastProvider } = await import('./ToastProvider');
 
@@ -53,6 +60,7 @@ const pageWith = (applications: unknown[], onUpdateApplication = vi.fn(), onAdd 
         onRemoveInterviewStage={vi.fn()}
         onDelete={vi.fn()}
         onCommitImport={vi.fn()}
+        onCheckAts={onCheckAts}
         baseCV=""
         coverLetterTemplate=""
         cvTemplate=""
@@ -66,6 +74,7 @@ const renderPage = (onAdd = vi.fn(), applications: unknown[] = [], onUpdateAppli
   render(pageWith(applications, onUpdateApplication, onAdd));
 
 beforeEach(() => {
+  onCheckAts.mockClear();
   searchSeekJobs.mockReset().mockResolvedValue({
     jobs: [],
     totalCount: 0,
@@ -212,6 +221,38 @@ describe('JobApplications', () => {
 
     fireEvent.click(screen.getByRole('button', { name: `Remove reason: ${REASONS[0]}` }));
     expect(onUpdate).toHaveBeenLastCalledWith(1, { rejectionReasons: [REASONS[1]] });
+  });
+
+  it('badges a checked application with its ATS score', () => {
+    renderPage(vi.fn(), [
+      tracked(1, {
+        atsReport: {
+          score: 81,
+          keywords: { matched: 9, total: 10 },
+          matched: [],
+          missing: [],
+          checks: [],
+          source: 'tailored',
+          checkedAt: '2026-09-29T10:00:00.000Z',
+          stale: false,
+        },
+      }),
+      tracked(2),
+    ]);
+
+    const table = within(screen.getByRole('table'));
+    expect(table.getAllByText(/^ATS \d+$/)).toHaveLength(1);
+    expect(table.getByText('ATS 81')).toBeTruthy();
+  });
+
+  it('checks the ATS score of the application open in the drawer', async () => {
+    renderPage(vi.fn(), [tracked(1), tracked(2, { jobDescription: 'PHP and Go.', tailoredCV: 'PHP CV' })]);
+
+    fireEvent.click(within(screen.getByRole('table')).getByText('Company 2'));
+    const panel = screen.getByRole('region', { name: 'ATS Score' });
+    fireEvent.click(within(panel).getByRole('button', { name: 'Check score' }));
+
+    await waitFor(() => expect(onCheckAts).toHaveBeenCalledWith(2, 'tailored'));
   });
 
   it('has an Insights tab beside the tracker', () => {

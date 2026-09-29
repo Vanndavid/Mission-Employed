@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { BehavioralAnswer, InterviewStage, JobApplication, JobStatus } from '../types';
+import { AtsSource, BehavioralAnswer, InterviewStage, JobApplication, JobStatus } from '../types';
 import { parseJobApplication } from '../services/apiClient';
 import { SeekJobs } from './SeekJobs';
 import { InterviewPrepDrawer } from './InterviewPrepDrawer';
@@ -13,6 +13,7 @@ import { exportApplicationsCsv } from '../utils/csv';
 import { rejectionReasonsOf } from '../utils/rejectionInsights';
 import { RejectionFlagsBadge } from './RejectionFeedback';
 import { RejectionInsights } from './RejectionInsights';
+import { AtsBadge } from './AtsScore';
 import {
   ApplicationFilters,
   ApplicationSort,
@@ -38,6 +39,7 @@ interface JobApplicationsProps {
   onRemoveInterviewStage: (appId: number, stageId: number) => void;
   onDelete: (id: number) => void;
   onCommitImport: (plans: RowPlan[]) => Promise<ImportOutcome[]>;
+  onCheckAts: (id: number, source?: AtsSource) => Promise<unknown>;
   baseCV: string;
   coverLetterTemplate: string;
   cvTemplate: string;
@@ -165,6 +167,7 @@ export const JobApplications = ({
   onRemoveInterviewStage,
   onDelete,
   onCommitImport,
+  onCheckAts,
   baseCV,
   coverLetterTemplate,
   cvTemplate,
@@ -564,7 +567,10 @@ export const JobApplications = ({
                       </td>
                       <td className="px-6 py-4">
                         <div className="font-bold text-slate-800 dark:text-slate-200">{app.company}</div>
-                        <div className="text-sm text-slate-500">{app.role}</div>
+                        <div className="text-sm text-slate-500 flex items-center gap-2">
+                          {app.role}
+                          <AtsBadge report={app.atsReport} />
+                        </div>
                         {hasRejectionFlags(app) && (
                           <div>
                             <RejectionFlagsBadge reasons={rejectionReasonsOf(app)} />
@@ -641,7 +647,10 @@ export const JobApplications = ({
                   <div className="flex justify-between items-start gap-2">
                     <div>
                       <p className="font-bold text-slate-800 dark:text-slate-200">{app.company}</p>
-                      <p className="text-sm text-slate-500">{app.role}</p>
+                      <p className="text-sm text-slate-500 flex items-center gap-2">
+                        {app.role}
+                        <AtsBadge report={app.atsReport} />
+                      </p>
                       {hasRejectionFlags(app) && (
                         <RejectionFlagsBadge reasons={rejectionReasonsOf(app)} />
                       )}
@@ -715,6 +724,8 @@ export const JobApplications = ({
           onRemoveStage={stageId => onRemoveInterviewStage(prepApp.id, stageId)}
           onOpenCoverLetter={() => setCoverLetterApp(prepApp)}
           onOpenCV={() => setCvApp(prepApp)}
+          hasBaseCv={baseCV.trim() !== ''}
+          onCheckAts={source => onCheckAts(prepApp.id, source)}
         />
       )}
 

@@ -57,6 +57,44 @@ export interface StatusHistoryEntry {
   date: string;
 }
 
+/** Which CV an ATS check measured: the application's own, or the profile's. */
+export type AtsSource = 'tailored' | 'base';
+
+export interface AtsKeyword {
+  term: string;
+  kind: 'skill' | 'qualification' | 'soft_skill';
+  required: boolean;
+}
+
+export interface AtsCheck {
+  id: 'contact' | 'sections' | 'title' | 'length' | 'measurable';
+  label: string;
+  passed: boolean;
+  detail: string;
+}
+
+/**
+ * The last ATS score check of an application. Written only by
+ * POST /api/ai/applications/{id}/ats — never sent back in a PATCH.
+ *
+ * The score is 80 points of keyword coverage (required keywords count double,
+ * soft skills half) plus 4 points per passed format check. It is computed by
+ * the server, not the model, so the same CV and job always score the same.
+ */
+export interface AtsReport {
+  score: number;
+  keywords: { matched: number; total: number };
+  matched: AtsKeyword[];
+  /** Required ones first. */
+  missing: AtsKeyword[];
+  checks: AtsCheck[];
+  source: AtsSource;
+  /** ISO timestamp. */
+  checkedAt: string;
+  /** The CV or the job description has changed since this check. */
+  stale: boolean;
+}
+
 export interface JobApplication {
   /** Auto-increment from the database — see the note on InterviewStage.id. */
   id: number;
@@ -87,11 +125,13 @@ export interface JobApplication {
    * questions a Seek rejection lists. Filled by the MCP email sync.
    */
   rejectionReasons?: string[];
+  /** The last ATS score check, or null when there has not been one. */
+  atsReport?: AtsReport | null;
 }
 
 /**
  * The fields a client may send when creating or patching an application.
- * `id`, `interviewStages` and `statusHistory` are server-owned and ignored.
+ * `id`, `interviewStages`, `statusHistory` and `atsReport` are server-owned.
  *
  * `statusDate` is write-only, which is why it is added here rather than to
  * JobApplication: it is not a column, it dates the status event the server
@@ -100,7 +140,7 @@ export interface JobApplication {
  * rather than when the row was imported.
  */
 export type ApplicationInput = Partial<
-  Omit<JobApplication, 'id' | 'interviewStages' | 'statusHistory'>
+  Omit<JobApplication, 'id' | 'interviewStages' | 'statusHistory' | 'atsReport'>
 > & { statusDate?: string };
 
 export interface BehavioralAnswer {

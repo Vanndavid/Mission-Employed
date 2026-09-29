@@ -34,6 +34,17 @@ const APPLICATION = {
   statusHistory: [],
 };
 
+const ATS_REPORT = {
+  score: 72,
+  keywords: { matched: 2, total: 3 },
+  matched: [],
+  missing: [],
+  checks: [],
+  source: 'tailored',
+  checkedAt: '2026-09-29T10:00:00.000Z',
+  stale: false,
+};
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -62,6 +73,7 @@ function stubApi() {
       const current = { ...APPLICATION, interviewStages: stages };
 
       if (method === 'GET') return json({ data: [current] });
+      if (method === 'POST' && url.endsWith('/ats')) return json(ATS_REPORT);
       if (method === 'PATCH') return json({ data: { ...current, ...body } });
       if (method === 'POST' && url.endsWith('/stages')) {
         const stage = { id: 21, type: body.type, scheduledAt: '', notes: '' };
@@ -283,5 +295,47 @@ describe('commitImport', () => {
     });
 
     expect(result.current.applications).toHaveLength(3);
+  });
+});
+
+describe('checkAtsScore', () => {
+  it('lets a pending edit land before scoring, then keeps the report', async () => {
+    const { result } = renderHook(() => useApplications(), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    requests = [];
+
+    // Saving a tailored CV and checking it straight away must score the new
+    // CV, not whatever the server still has while the PATCH waits to go.
+    act(() => result.current.updateApplication(5, { tailoredCV: 'New CV' }));
+
+    await act(async () => {
+      await result.current.checkAtsScore(5, 'tailored');
+    });
+
+    expect(requests.map(r => `${r.method} ${r.url}`)).toEqual([
+      'PATCH /api/applications/5',
+      'POST /api/ai/applications/5/ats',
+    ]);
+    expect(requests[1].body).toEqual({ source: 'tailored' });
+    expect(result.current.applications[0].atsReport).toEqual(ATS_REPORT);
+    expect(result.current.applications[0].tailoredCV).toBe('New CV');
+  });
+
+  it('throws a failure for the caller to show, and changes nothing', async () => {
+    const { result } = renderHook(() => useApplications(), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => json({ message: 'Add the job description first.', errors: { jobDescription: ['Add the job description first.'] } }, 422)),
+    );
+
+    await act(async () => {
+      await expect(result.current.checkAtsScore(5)).rejects.toMatchObject({ status: 422 });
+    });
+
+    expect(result.current.applications[0].atsReport).toBeUndefined();
+    // The panel shows it; the page-wide banner is for list reads and writes.
+    expect(result.current.error).toBeNull();
   });
 });

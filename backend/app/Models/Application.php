@@ -51,6 +51,10 @@ class Application extends Model
             'offer' => 'array',
             'take_home' => 'array',
             'rejection_reasons' => 'array',
+            // Server-owned: written by AtsCheck, never fillable, never in
+            // ApplicationRequest::COLUMN_MAP, so a PATCH cannot set a score.
+            'ats_keywords' => 'array',
+            'ats_report' => 'array',
         ];
     }
 

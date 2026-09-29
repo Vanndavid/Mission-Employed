@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Application;
+use App\Services\Ats\AtsCheck;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -34,6 +35,9 @@ class ApplicationResource extends JsonResource
             'jobDescription' => $this->job_description ?? '',
             'coverLetter' => $this->cover_letter ?? '',
             'tailoredCV' => $this->tailored_cv ?? '',
+            // The last ATS score check, or null. Its staleness depends on the
+            // base CV too; the owner's profile is loaded once per request.
+            'atsReport' => AtsCheck::present($this->resource, $request->user()?->profile?->base_cv),
             // Read directly rather than through whenLoaded(): the client types
             // these keys as always present, so they must never be omitted.
             // Controllers eager load both to keep the list endpoint flat.
