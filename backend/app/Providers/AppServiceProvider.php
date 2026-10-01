@@ -5,6 +5,8 @@ namespace App\Providers;
 use App\Services\Ai\DatabaseUsageRecorder;
 use App\Services\Ai\UsageRecorder;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Sanctum\PersonalAccessToken;
+use Laravel\Sanctum\Sanctum;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -24,6 +26,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Deactivating an account deletes its tokens, but refusing them here
+        // as well means a token that outlived the delete -- a login racing
+        // the admin's click -- still answers 401 rather than serving data.
+        Sanctum::authenticateAccessTokensUsing(
+            fn (PersonalAccessToken $token, bool $isValid): bool => $isValid && ! $token->tokenable?->isDeactivated(),
+        );
     }
 }

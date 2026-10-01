@@ -6,19 +6,22 @@ import { MemoryRouter } from 'react-router-dom';
 /**
  * The admin screen's usage columns: each user's tokens and estimated cost over
  * the chosen window, all-time cost, and a per-feature breakdown on request.
+ * Plus deactivating and reactivating an account.
  */
 
 const listAdminUsers = vi.fn();
 const fetchAdminUsage = vi.fn();
+const setUserActive = vi.fn();
 
 vi.mock('../services/authClient', () => ({
   listAdminUsers: (...args: unknown[]) => listAdminUsers(...args),
   fetchAdminUsage: (...args: unknown[]) => fetchAdminUsage(...args),
   setUserPlan: vi.fn(),
+  setUserActive: (...args: unknown[]) => setUserActive(...args),
 }));
 
 vi.mock('../contexts/AuthContext', () => ({
-  useAuth: () => ({ isAdmin: true }),
+  useAuth: () => ({ isAdmin: true, user: { id: 9, email: 'me@example.com', role: 'admin' } }),
 }));
 
 const { AdminUsersPage } = await import('./AdminUsersPage');
@@ -48,8 +51,8 @@ const renderPage = () =>
 beforeEach(() => {
   listAdminUsers.mockReset().mockResolvedValue({
     users: [
-      { id: 1, email: 'quiet@example.com', role: 'user', plan: 'free', createdAt: '' },
-      { id: 2, email: 'heavy@example.com', role: 'user', plan: 'premium', createdAt: '' },
+      { id: 1, email: 'quiet@example.com', role: 'user', plan: 'free', createdAt: '', deactivatedAt: null },
+      { id: 2, email: 'heavy@example.com', role: 'user', plan: 'premium', createdAt: '', deactivatedAt: null },
     ],
   });
   fetchAdminUsage.mockReset().mockResolvedValue({
@@ -104,5 +107,67 @@ describe('AdminUsersPage usage', () => {
     fireEvent.change(screen.getByLabelText('Usage window'), { target: { value: '7' } });
 
     await waitFor(() => expect(fetchAdminUsage).toHaveBeenLastCalledWith(7));
+  });
+});
+
+describe('AdminUsersPage deactivation', () => {
+  const confirm = vi.spyOn(window, 'confirm');
+
+  beforeEach(() => {
+    confirm.mockReset().mockReturnValue(true);
+    setUserActive.mockReset();
+    listAdminUsers.mockResolvedValue({
+      users: [
+        { id: 1, email: 'quiet@example.com', role: 'user', plan: 'free', createdAt: '', deactivatedAt: null },
+        { id: 3, email: 'locked@example.com', role: 'user', plan: 'free', createdAt: '', deactivatedAt: '2026-09-30T08:00:00+00:00' },
+        { id: 9, email: 'me@example.com', role: 'admin', plan: 'premium', createdAt: '', deactivatedAt: null },
+      ],
+    });
+  });
+
+  it('deactivates an account after confirming, and marks the row', async () => {
+    setUserActive.mockResolvedValue({
+      user: { id: 1, email: 'quiet@example.com', role: 'user', plan: 'free', createdAt: '', deactivatedAt: '2026-10-01T09:00:00+00:00' },
+    });
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Deactivate quiet@example.com' }));
+
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('quiet@example.com'));
+    expect(setUserActive).toHaveBeenCalledWith(1, false);
+    const row = (await screen.findByRole('button', { name: 'Reactivate quiet@example.com' })).closest('tr')!;
+    expect(within(row).getByText('Deactivated')).toBeTruthy();
+  });
+
+  it('does nothing when the confirmation is cancelled', async () => {
+    confirm.mockReturnValue(false);
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Deactivate quiet@example.com' }));
+
+    expect(setUserActive).not.toHaveBeenCalled();
+  });
+
+  it('reactivates a deactivated account without asking', async () => {
+    setUserActive.mockResolvedValue({
+      user: { id: 3, email: 'locked@example.com', role: 'user', plan: 'free', createdAt: '', deactivatedAt: null },
+    });
+    renderPage();
+
+    const row = (await screen.findByText('locked@example.com')).closest('tr')!;
+    expect(within(row).getByText('Deactivated')).toBeTruthy();
+
+    fireEvent.click(within(row).getByRole('button', { name: 'Reactivate locked@example.com' }));
+
+    expect(confirm).not.toHaveBeenCalled();
+    expect(setUserActive).toHaveBeenCalledWith(3, true);
+    await screen.findByRole('button', { name: 'Deactivate locked@example.com' });
+  });
+
+  it('offers no way to deactivate your own account', async () => {
+    renderPage();
+    await screen.findByText('me@example.com');
+
+    expect(screen.queryByRole('button', { name: 'Deactivate me@example.com' })).toBeNull();
   });
 });

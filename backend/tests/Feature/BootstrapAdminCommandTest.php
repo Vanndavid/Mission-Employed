@@ -63,6 +63,20 @@ class BootstrapAdminCommandTest extends TestCase
         $this->assertSame('Renamed By Hand', $admin->name);
     }
 
+    /**
+     * The environment is the way back in, so a deactivated admin account is
+     * recovered by a restart like any other drift.
+     */
+    public function test_it_reactivates_a_deactivated_admin_account(): void
+    {
+        User::factory()->admin()->deactivated()->create(['email' => 'admin@example.test']);
+
+        $this->configureAdmin();
+        $this->artisan('admin:bootstrap')->assertSuccessful();
+
+        $this->assertFalse(User::query()->where('email', 'admin@example.test')->sole()->isDeactivated());
+    }
+
     public function test_it_does_nothing_when_the_environment_is_not_configured(): void
     {
         config(['admin.email' => null, 'admin.password' => null]);

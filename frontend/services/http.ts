@@ -7,7 +7,8 @@
  *    ways and {@link ApiError} normalizes all of them, so a screen can ask
  *    `err.isPremiumRequired` instead of pattern-matching bodies:
  *      - 401                              → the token is dead, log the user out
- *      - 403 `{message, code}`            → `premium_required` / `admin_required`
+ *      - 403 `{message, code}`            → `premium_required` / `admin_required`,
+ *                                           or `account_deactivated` from login
  *      - 422 `{message, errors}`          → standard validation failure
  *      - 502 `{code: 'ai_unavailable'}`   → Gemini failed, contained server-side
       - 502 `{code: 'seek_unavailable'}` → Seek's jobsearch JSON failed, contained server-side

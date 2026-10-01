@@ -349,6 +349,42 @@ describe("the hosted server's OAuth flow", () => {
 });
 
 describe("the hosted login form", () => {
+  it("says a deactivated account is deactivated rather than unreachable", async () => {
+    const api = new FakeApi();
+
+    await api.start();
+    api.route("POST", "/auth/login", () => ({
+      status: 403,
+      json: { message: "This account has been deactivated.", code: "account_deactivated" },
+    }));
+
+    const hosted = await host(api);
+
+    try {
+      const { client_id } = await register(hosted.url);
+      const query = new URLSearchParams({
+        response_type: "code",
+        client_id: client_id!,
+        redirect_uri: REDIRECT,
+        code_challenge: pkce().challenge,
+        code_challenge_method: "S256",
+      });
+      const page = await (await fetch(`${hosted.url}/authorize?${query}`)).text();
+      const response = await fetch(
+        `${hosted.url}/oauth/login`,
+        form({ request: pendingRequest(page), email: "a@b.test", password: "password123" }),
+      );
+      const html = await response.text();
+
+      assert.equal(response.status, 403);
+      assert.match(html, /deactivated/);
+      assert.doesNotMatch(html, /Could not reach/);
+    } finally {
+      await hosted.stop();
+      await api.stop();
+    }
+  });
+
   it("rate-limits password attempts per address", async () => {
     const api = new FakeApi();
 

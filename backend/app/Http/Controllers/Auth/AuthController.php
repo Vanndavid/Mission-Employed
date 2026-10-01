@@ -68,6 +68,15 @@ class AuthController extends Controller
             ]);
         }
 
+        // Checked after the password, so only someone who already knows it
+        // learns that the account exists and is locked.
+        if ($user->isDeactivated()) {
+            return response()->json([
+                'message' => 'This account has been deactivated. Contact an administrator to restore it.',
+                'code' => 'account_deactivated',
+            ], 403);
+        }
+
         return response()->json([
             'user' => new UserResource($user),
             'token' => $user->createToken(self::TOKEN_NAME)->plainTextToken,

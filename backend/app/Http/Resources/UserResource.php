@@ -8,7 +8,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * The client-facing shape of a user, matching AuthUser in
- * frontend/types/auth.ts: id, email, role, plan, createdAt.
+ * frontend/types/auth.ts: id, email, role, plan, createdAt, deactivatedAt.
  *
  * The password hash is never a key here — this resource, not $hidden, is the
  * only thing that decides what a user serializes to.
@@ -30,6 +30,7 @@ class UserResource extends JsonResource
             'role' => $this->role->value,
             'plan' => $this->effectivePlan()->value,
             'createdAt' => $this->created_at?->toIso8601String(),
+            'deactivatedAt' => $this->deactivated_at?->toIso8601String(),
         ];
     }
 }

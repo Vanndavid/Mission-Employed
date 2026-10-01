@@ -3,13 +3,14 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\UpdateUserActiveRequest;
 use App\Http\Requests\Auth\UpdateUserPlanRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 
 /**
- * The admin user list and the manual plan switch.
+ * The admin user list, the manual plan switch, and deactivation.
  *
  * Both routes sit behind auth:sanctum + the `admin` middleware, so nothing here
  * re-checks the role — the boundary lives in exactly one place.
@@ -35,6 +36,28 @@ class AdminUserController extends Controller
         }
 
         $user->update(['plan' => $request->plan()]);
+
+        return response()->json([
+            'user' => new UserResource($user),
+        ]);
+    }
+
+    /**
+     * Deactivating locks the account and revokes its tokens; nothing is
+     * deleted, so reactivating gives it back as it was.
+     */
+    public function updateActive(UpdateUserActiveRequest $request, User $user): JsonResponse
+    {
+        // Refusing self-deactivation means whoever is acting is always an
+        // active admin, so the admin screen can never lock its last user out.
+        if (! $request->active() && $request->user()->is($user)) {
+            return response()->json([
+                'message' => 'You cannot deactivate your own account.',
+                'code' => 'self_deactivation',
+            ], 403);
+        }
+
+        $request->active() ? $user->reactivate() : $user->deactivate();
 
         return response()->json([
             'user' => new UserResource($user),

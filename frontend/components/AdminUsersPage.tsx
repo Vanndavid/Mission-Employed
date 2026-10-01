@@ -2,7 +2,7 @@ import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { AuthUser, AccountPlan } from '../types/auth';
-import { fetchAdminUsage, listAdminUsers, setUserPlan, UsageReport, UsageSummary } from '../services/authClient';
+import { fetchAdminUsage, listAdminUsers, setUserActive, setUserPlan, UsageReport, UsageSummary } from '../services/authClient';
 import { featureLabel, formatCost, formatTokens } from '../utils/usageFormat';
 import { useToast } from './ToastProvider';
 
@@ -24,7 +24,7 @@ function formatDate(iso: string | null): string {
 }
 
 export function AdminUsersPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user: me } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<AuthUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,12 +101,33 @@ export function AdminUsersPage() {
     }
   };
 
+  const changeActive = async (target: AuthUser, active: boolean) => {
+    if (
+      !active &&
+      !window.confirm(
+        `Deactivate ${target.email}? They are signed out everywhere and cannot sign in until reactivated. Their data is kept.`,
+      )
+    ) {
+      return;
+    }
+    setBusyId(target.id);
+    try {
+      const res = await setUserActive(target.id, active);
+      setUsers(prev => prev.map(u => (u.id === target.id ? res.user : u)));
+      toast(active ? `Reactivated ${target.email}` : `Deactivated ${target.email}`, 'success');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Update failed', 'error');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Admin · Users & usage</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Unlock Premium for any account, and see who is using how much AI. Costs are estimates at list price.
+          Unlock Premium for any account, deactivate one, and see who is using how much AI. Costs are estimates at list price.
         </p>
       </div>
 
@@ -157,8 +178,18 @@ export function AdminUsersPage() {
                 const open = openId === user.id;
                 return (
                 <Fragment key={user.id}>
-                <tr>
-                  <td className="px-4 py-3 text-slate-800 dark:text-slate-100 break-all">{user.email}</td>
+                <tr className={user.deactivatedAt ? 'opacity-60' : undefined}>
+                  <td className="px-4 py-3 text-slate-800 dark:text-slate-100 break-all">
+                    {user.email}
+                    {user.deactivatedAt && (
+                      <span
+                        title={`Since ${formatDate(user.deactivatedAt)}`}
+                        className="ml-2 inline-block rounded bg-rose-100 dark:bg-rose-900/40 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-rose-700 dark:text-rose-300"
+                      >
+                        Deactivated
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-slate-500">{user.role}</td>
                   <td className="px-4 py-3">
                     <span
@@ -195,28 +226,45 @@ export function AdminUsersPage() {
                   <td className="px-4 py-3 text-right tabular-nums text-slate-500">{formatCost(ever.costUsd)}</td>
                   <td className="px-4 py-3 text-slate-500">{formatDate(ever.lastUsedAt)}</td>
                   <td className="px-4 py-3">
-                    {user.role === 'admin' ? (
-                      <span className="text-xs text-slate-400">Always premium</span>
-                    ) : (
-                      <div className="flex gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {user.role === 'admin' ? (
+                        <span className="text-xs text-slate-400">Always premium</span>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            disabled={busyId === user.id || user.plan === 'free'}
+                            onClick={() => void changePlan(user.id, 'free')}
+                            className="px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-[10px] font-bold uppercase tracking-widest disabled:opacity-40"
+                          >
+                            Free
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busyId === user.id || user.plan === 'premium'}
+                            onClick={() => void changePlan(user.id, 'premium')}
+                            className="px-2 py-1 rounded bg-brand-600 text-white text-[10px] font-bold uppercase tracking-widest disabled:opacity-40"
+                          >
+                            Premium
+                          </button>
+                        </>
+                      )}
+                      {user.id !== me?.id && (
                         <button
                           type="button"
-                          disabled={busyId === user.id || user.plan === 'free'}
-                          onClick={() => void changePlan(user.id, 'free')}
-                          className="px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-[10px] font-bold uppercase tracking-widest disabled:opacity-40"
+                          aria-label={`${user.deactivatedAt ? 'Reactivate' : 'Deactivate'} ${user.email}`}
+                          disabled={busyId === user.id}
+                          onClick={() => void changeActive(user, Boolean(user.deactivatedAt))}
+                          className={
+                            user.deactivatedAt
+                              ? 'px-2 py-1 rounded border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold uppercase tracking-widest disabled:opacity-40'
+                              : 'px-2 py-1 rounded border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-[10px] font-bold uppercase tracking-widest disabled:opacity-40'
+                          }
                         >
-                          Free
+                          {user.deactivatedAt ? 'Reactivate' : 'Deactivate'}
                         </button>
-                        <button
-                          type="button"
-                          disabled={busyId === user.id || user.plan === 'premium'}
-                          onClick={() => void changePlan(user.id, 'premium')}
-                          className="px-2 py-1 rounded bg-brand-600 text-white text-[10px] font-bold uppercase tracking-widest disabled:opacity-40"
-                        >
-                          Premium
-                        </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </td>
                 </tr>
                 {open && used && (

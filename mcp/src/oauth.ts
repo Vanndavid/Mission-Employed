@@ -184,15 +184,20 @@ export class MissionEmployedOAuthProvider implements OAuthServerProvider {
       }>("/auth/login", { method: "POST", body: { email, password }, anonymous: true }));
     } catch (error) {
       const wrongPassword = error instanceof ApiError && error.status === 422;
+      // Laravel only answers 403 from login once the password is right and
+      // an admin has deactivated the account.
+      const deactivated = error instanceof ApiError && error.status === 403;
 
       return {
-        status: wrongPassword ? 401 : 502,
+        status: wrongPassword ? 401 : deactivated ? 403 : 502,
         page: loginPage(
           pending,
           request,
           wrongPassword
             ? "That email and password do not match."
-            : "Could not reach Mission-Employed. Try again in a moment.",
+            : deactivated
+              ? "This account has been deactivated. Contact an administrator to restore it."
+              : "Could not reach Mission-Employed. Try again in a moment.",
           email,
         ),
       };

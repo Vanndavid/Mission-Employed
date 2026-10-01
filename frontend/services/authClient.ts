@@ -1,5 +1,5 @@
 /**
- * Accounts: register, sign in, sign out, and the admin plan switch.
+ * Accounts: register, sign in, sign out, and the admin plan and deactivation switches.
  *
  * Auth responses are deliberately NOT wrapped in a `data` envelope — register
  * and login answer with a flat `{ user, token }`, and `me` with `{ user }`.
@@ -84,6 +84,17 @@ export async function setUserPlan(userId: number, plan: AccountPlan): Promise<{ 
   return apiRequest<{ user: AuthUser }>(`/admin/users/${userId}/plan`, {
     method: 'PATCH',
     body: { plan },
+  });
+}
+
+/**
+ * `false` locks the account and signs it out everywhere; `true` restores it.
+ * The server refuses an admin deactivating themselves (`self_deactivation`).
+ */
+export async function setUserActive(userId: number, active: boolean): Promise<{ user: AuthUser }> {
+  return apiRequest<{ user: AuthUser }>(`/admin/users/${userId}/active`, {
+    method: 'PATCH',
+    body: { active },
   });
 }
 

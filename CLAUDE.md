@@ -108,7 +108,8 @@ reintroduce it or build features that depend on it:
 
 1. **SaaS shell** — register/login, `free` and `premium` plans, `user` and `admin`
    roles. An admin upgrades a plan by hand; there is no payment integration and
-   none is planned right now.
+   none is planned right now. An admin can also deactivate an account, which
+   locks it and revokes its tokens but keeps its data, and reactivate it later.
 2. **Coding practice** — software engineering only. Problem generation, AI tutor
    chat, attempt history.
 3. **Job application tracker** — CRUD, statuses, interview stages, paste-a-JD

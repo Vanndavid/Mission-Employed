@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -70,6 +71,8 @@ class User extends Authenticatable
             'password' => 'hashed',
             'role' => AccountRole::class,
             'plan' => AccountPlan::class,
+            // Deliberately not fillable: only the admin route sets it.
+            'deactivated_at' => 'datetime',
         ];
     }
 
@@ -115,6 +118,34 @@ class User extends Authenticatable
     public function isPremium(): bool
     {
         return $this->plan === AccountPlan::Premium || $this->isAdmin();
+    }
+
+    /**
+     * A deactivated account keeps its data but cannot sign in, and any token
+     * it holds is refused (see AppServiceProvider::boot).
+     */
+    public function isDeactivated(): bool
+    {
+        return $this->deactivated_at !== null;
+    }
+
+    /**
+     * Lock the account and sign it out everywhere, MCP connectors included.
+     * Deactivating again keeps the original date.
+     */
+    public function deactivate(): void
+    {
+        DB::transaction(function (): void {
+            $this->deactivated_at ??= now();
+            $this->save();
+            $this->tokens()->delete();
+        });
+    }
+
+    public function reactivate(): void
+    {
+        $this->deactivated_at = null;
+        $this->save();
     }
 
     /** The plan the client should see — admins read back as premium. */

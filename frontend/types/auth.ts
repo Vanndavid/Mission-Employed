@@ -7,6 +7,8 @@ export interface AuthUser {
   role: AccountRole;
   plan: AccountPlan;
   createdAt: string;
+  /** Set while an admin has the account locked; null means active. */
+  deactivatedAt: string | null;
 }
 
 export const PREMIUM_FEATURES = [

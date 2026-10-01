@@ -52,6 +52,8 @@ class BootstrapAdmin extends Command
         $user->password = $password;
         $user->role = AccountRole::Admin;
         $user->plan = AccountPlan::Premium;
+        // Recovers an admin account that was deactivated from the admin screen.
+        $user->deactivated_at = null;
         $user->save();
 
         $this->components->info(sprintf(

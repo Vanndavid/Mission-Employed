@@ -48,4 +48,11 @@ class UserFactory extends Factory
             'plan' => AccountPlan::Premium,
         ]);
     }
+
+    public function deactivated(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'deactivated_at' => now(),
+        ]);
+    }
 }

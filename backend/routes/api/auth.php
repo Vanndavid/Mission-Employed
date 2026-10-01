@@ -24,6 +24,8 @@ Route::prefix('auth')->group(function (): void {
 Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function (): void {
     Route::get('/users', [AdminUserController::class, 'index']);
     Route::patch('/users/{user}/plan', [AdminUserController::class, 'updatePlan']);
+    // {active: false} deactivates and signs the account out; {active: true} restores it.
+    Route::patch('/users/{user}/active', [AdminUserController::class, 'updateActive']);
 
     // Gemini token usage and estimated cost per user, over ?days= (default 30).
     Route::get('/usage', [AdminUsageController::class, 'index']);

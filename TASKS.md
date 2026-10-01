@@ -797,6 +797,33 @@ Unverified, and to be checked with one real call before building on it:
     were only a copy of the old description, as the add form and Seek tracking
     make them, follow the new one.
 
+### 3.11 Admins can deactivate accounts ✅
+
+- [x] Done, 2026-10-01. `/account/admin` has a Deactivate button on every row
+  except your own. It asks for confirmation first. Deactivated rows are dimmed,
+  carry a "Deactivated" badge and offer Reactivate instead. Deactivation is a
+  lock, not a delete: the account's applications, CVs and history are kept, and
+  reactivating restores it as it was.
+  - Column: `users.deactivated_at`, nullable, where null means active. It is
+    server-owned and not fillable. `UserResource` sends it as `deactivatedAt`.
+  - Endpoint: `PATCH /api/admin/users/{id}/active` `{ active: bool }`, admin
+    only. Deactivating deletes every Sanctum token the account holds, so the
+    browser, the phone and any MCP connector are all signed out at once.
+    Deactivating twice keeps the original date.
+  - Self-deactivation is a 403 `self_deactivation`. Because of that, the admin
+    acting is always active, so deactivating *another* admin is allowed.
+    `admin:bootstrap` also clears `deactivated_at` on the env admin, so a
+    restart still recovers that account.
+  - Login: the password is checked first. A wrong one gets the usual 422, so a
+    guess does not reveal the account's state. A right one on a deactivated
+    account gets 403 `account_deactivated`, and the sign-in screen shows that
+    message. The MCP connector's hosted login page now says the account is
+    deactivated instead of "Could not reach Mission-Employed".
+  - Second line of defence: `Sanctum::authenticateAccessTokensUsing` in
+    `AppServiceProvider` refuses any token belonging to a deactivated account.
+    That covers a token issued by a login racing the admin's click.
+  - The MCP server has no admin tools, so it has no deactivate tool either.
+
 ## Wave 4 — Close out
 
 Needs Wave 3. **Read the Deployment section below before starting any of these** —
