@@ -44,6 +44,11 @@ interface JobApplicationsProps {
   coverLetterTemplate: string;
   cvTemplate: string;
   portfolioUrl: string;
+  /** True while the first list is loading, so the empty state does not flash. */
+  loading?: boolean;
+  /** The last failed load or save. The context has already reloaded by then. */
+  loadError?: string | null;
+  onRetry?: () => void;
 }
 
 type PageTab = 'tracker' | 'insights' | 'seek';
@@ -172,6 +177,9 @@ export const JobApplications = ({
   coverLetterTemplate,
   cvTemplate,
   portfolioUrl,
+  loading = false,
+  loadError = null,
+  onRetry,
 }: JobApplicationsProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const prepAppId = searchParams.get('prep');
@@ -348,6 +356,20 @@ export const JobApplications = ({
           </button>
         </div>
       </div>
+
+      {loadError && (
+        <div
+          role="alert"
+          className="flex items-center justify-between gap-4 px-4 py-3 rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 text-sm font-bold text-rose-700 dark:text-rose-300"
+        >
+          <span>{loadError}</span>
+          {onRetry && (
+            <button type="button" onClick={onRetry} className="shrink-0 underline hover:no-underline">
+              Retry
+            </button>
+          )}
+        </div>
+      )}
 
       <div role="tablist" aria-label="Job applications views" className="flex gap-1 border-b border-slate-200 dark:border-slate-700">
         {PAGE_TABS.map(({ key, label }) => {
@@ -546,9 +568,11 @@ export const JobApplications = ({
                 {visible.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-6 py-12 text-center text-slate-400 italic">
-                      {applications.length === 0
-                        ? 'No missions active. Begin mechanical applying.'
-                        : 'No applications match these filters.'}
+                      {loading
+                        ? 'Loading your applications…'
+                        : applications.length === 0
+                          ? 'No missions active. Begin mechanical applying.'
+                          : 'No applications match these filters.'}
                     </td>
                   </tr>
                 ) : (
@@ -629,9 +653,11 @@ export const JobApplications = ({
           <div className="md:hidden space-y-3">
             {visible.length === 0 ? (
               <p className="text-center text-slate-400 italic py-8">
-                {applications.length === 0
-                  ? 'No missions active. Begin mechanical applying.'
-                  : 'No applications match these filters.'}
+                {loading
+                  ? 'Loading your applications…'
+                  : applications.length === 0
+                    ? 'No missions active. Begin mechanical applying.'
+                    : 'No applications match these filters.'}
               </p>
             ) : (
               paged.items.map(app => (

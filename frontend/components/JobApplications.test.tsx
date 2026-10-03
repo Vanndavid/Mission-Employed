@@ -322,3 +322,36 @@ describe('JobApplications', () => {
     expect(screen.queryByLabelText('Search applications')).toBeNull();
   });
 });
+
+describe('JobApplications — load and save state', () => {
+  /**
+   * Writes go to the API now and can fail. The context records the failure
+   * and reloads; this is the screen saying so, rather than quietly rolling
+   * back or showing an empty tracker that looks like lost data.
+   */
+  const withState = (state: { loading?: boolean; loadError?: string | null; onRetry?: () => void }) => {
+    const page = pageWith([]);
+    const element = page.props.children.props.children;
+    return render(
+      <MemoryRouter>
+        <ToastProvider>{React.cloneElement(element, state)}</ToastProvider>
+      </MemoryRouter>,
+    );
+  };
+
+  it('says it is loading rather than that there are no applications', () => {
+    withState({ loading: true });
+
+    expect(screen.getAllByText('Loading your applications…').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/No missions active/)).toBeNull();
+  });
+
+  it('shows a failed load or save, with a retry', () => {
+    const onRetry = vi.fn();
+    withState({ loadError: 'Could not save that change.', onRetry });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not save that change.');
+    fireEvent.click(within(screen.getByRole('alert')).getByRole('button', { name: 'Retry' }));
+    expect(onRetry).toHaveBeenCalledOnce();
+  });
+});

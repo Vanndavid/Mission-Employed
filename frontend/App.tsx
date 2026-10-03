@@ -43,6 +43,9 @@ function AppRoutes() {
     removeInterviewStage,
     commitImport,
     checkAtsScore,
+    loading: applicationsLoading,
+    error: applicationsError,
+    reload: reloadApplications,
   } = useApplications();
   const { profile, updateProfile } = useProfile();
   const { codingHistory, addAttempt } = useCodingHistory();
@@ -84,6 +87,9 @@ function AppRoutes() {
             onDelete={handleDelete}
             onCommitImport={commitImport}
             onCheckAts={checkAtsScore}
+            loading={applicationsLoading}
+            loadError={applicationsError}
+            onRetry={() => void reloadApplications()}
             baseCV={profile.baseCV}
             coverLetterTemplate={profile.coverLetterTemplate}
             cvTemplate={profile.cvTemplate}
