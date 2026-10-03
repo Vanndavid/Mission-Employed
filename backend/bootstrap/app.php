@@ -29,6 +29,14 @@ return Application::configure(basePath: dirname(__DIR__))
         // instead of a 401. Returning null lets it reach the handler, which
         // renders the 401 as JSON (see withExceptions below).
         $middleware->redirectGuestsTo(fn () => null);
+
+        // In production every request arrives from nginx, which got it from
+        // Traefik, both on private Docker networks. Trusting those hops makes
+        // $request->ip() the visitor rather than nginx, which the login and
+        // registration rate limits depend on. Only the private ranges: a
+        // visitor's own X-Forwarded-For entries are never believed, because
+        // the address is read from the right, past the trusted hops.
+        $middleware->trustProxies(at: ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Everything under /api is JSON, including its failures. Without this,
