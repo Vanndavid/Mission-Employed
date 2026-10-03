@@ -1,22 +1,4 @@
 services:
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile.api
-    container_name: mission_employed_api
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      PORT: 3001
-      # The accounts store is a JSON file, so it lives on a volume rather than
-      # inside the container layer. TALENT_FILE is gone with the talent
-      # ranking feature. Since task 4.1 this service only serves /ai/, which
-      # nothing calls; it is deleted in 4.2 once Laravel is confirmed.
-      USERS_FILE: /data/users.json
-    volumes:
-      - api_data:/data
-
   laravel:
     build:
       context: .
@@ -67,11 +49,9 @@ services:
     container_name: mission_employed_nginx
     restart: unless-stopped
     depends_on:
-      - api
       - laravel
     ports:
       - "8090:80"
 
 volumes:
-  api_data:
   laravel_data:

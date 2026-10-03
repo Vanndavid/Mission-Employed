@@ -1,8 +1,8 @@
 # The Laravel API. Replaces Express as the backend for /api/ (task 4.1).
 #
-# FrankenPHP rather than php-fpm because the existing nginx container proxies
-# plain HTTP to a service name (proxy_pass http://api:3001). Keeping that shape
-# means the only nginx change is the upstream address. php-fpm would have meant
+# FrankenPHP rather than php-fpm because the nginx container proxied plain
+# HTTP to the Express service by name (proxy_pass http://api:3001). Keeping
+# that shape meant the cutover's only nginx change was the upstream address. php-fpm would have meant
 # switching that location to fastcgi_pass and hand-writing SCRIPT_FILENAME,
 # which is a lot of untested config to put in front of a live site.
 #

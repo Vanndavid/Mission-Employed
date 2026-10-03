@@ -5,8 +5,8 @@
 frontend/node_modules
 frontend/dist
 
-# Backend (Laravel) — not yet part of the deployed stack, but keep it out of
-# any build context so a stray vendor/ or sqlite file never ships.
+# Backend (Laravel) — Dockerfile.laravel installs its own vendor/; keep a
+# stray local vendor/ or sqlite file out of every build context.
 backend/vendor
 backend/node_modules
 backend/database/*.sqlite
@@ -17,14 +17,10 @@ backend/bootstrap/cache
 mcp/node_modules
 mcp/dist
 
-# Express API (still the deployed backend until the Laravel cutover)
-server/node_modules
-server/data
-
 *.log
 
-# Never let a real environment file into the build context: vite.config.ts
-# inlines GEMINI_API_KEY into the client bundle if it can see one.
+# Never let a real environment file into a build context: it holds the
+# Gemini key, APP_KEY and the admin credentials.
 .env
 .env.*
 !.env.example

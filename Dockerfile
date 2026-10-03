@@ -12,10 +12,8 @@ RUN npm ci
 
 COPY frontend/ ./
 
-# GEMINI_API_KEY is deliberately absent here. vite.config.ts inlines
-# process.env.GEMINI_API_KEY into the client bundle, so a key present at build
-# time would be published to every visitor. Every model call goes through the
-# api service instead, which holds the key server-side.
+# No secrets at build time: the client never calls Gemini itself. Every model
+# call goes through the Laravel API, which holds the key server-side.
 RUN npm run build
 
 FROM nginx:alpine
