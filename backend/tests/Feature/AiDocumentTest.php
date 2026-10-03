@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AiSession;
 use App\Models\User;
 use App\Services\FakeGeminiService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -96,6 +97,81 @@ class AiDocumentTest extends TestCase
         }
 
         $gemini->assertNothingSent();
+    }
+
+    public function test_it_opens_a_cover_letter_refine_session_without_calling_the_model(): void
+    {
+        $gemini = FakeGeminiService::swap();
+
+        $response = $this->postJson('/api/ai/cover-letter/sessions', [
+            'company' => 'Acme',
+            'role' => 'Senior SWE',
+            'jobDescription' => 'Maintain the billing platform.',
+            'document' => 'Dear hiring team, ...',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('session.kind', 'cover_letter')
+            ->assertJsonPath('session.messages', []);
+
+        $gemini->assertNothingSent();
+
+        $session = AiSession::findOrFail($response->json('session.id'));
+        $this->assertStringContainsString('You help refine cover letters for Senior SWE at Acme.', $session->system_instruction);
+        $this->assertStringContainsString('Job Description: Maintain the billing platform.', $session->system_instruction);
+        $this->assertStringContainsString('Current letter: Dear hiring team, ...', $session->system_instruction);
+        $this->assertStringContainsString('Return the full revised letter.', $session->system_instruction);
+    }
+
+    public function test_it_opens_a_cv_refine_session(): void
+    {
+        $gemini = FakeGeminiService::swap();
+
+        $response = $this->postJson('/api/ai/cv/sessions', [
+            'company' => 'Acme',
+            'role' => 'Senior SWE',
+            'jobDescription' => '',
+            'document' => 'JANE DOE — Senior SWE',
+        ]);
+
+        $response->assertCreated()->assertJsonPath('session.kind', 'cv');
+        $gemini->assertNothingSent();
+
+        $instruction = AiSession::findOrFail($response->json('session.id'))->system_instruction;
+        $this->assertStringContainsString('You help refine tailored CVs for Senior SWE at Acme.', $instruction);
+        $this->assertStringContainsString('Current CV: JANE DOE — Senior SWE', $instruction);
+        $this->assertStringContainsString('Never fabricate experience.', $instruction);
+    }
+
+    public function test_a_refine_session_takes_its_turns_through_the_shared_route(): void
+    {
+        $gemini = FakeGeminiService::swap()->queueChat('JANE DOE — shorter summary');
+
+        $id = $this->postJson('/api/ai/cv/sessions', [
+            'company' => 'Acme',
+            'role' => 'Senior SWE',
+            'document' => 'JANE DOE — Senior SWE',
+        ])->assertCreated()->json('session.id');
+
+        $this->postJson("/api/ai/sessions/{$id}/messages", ['message' => 'Shorten the summary.'])
+            ->assertOk()
+            ->assertJsonPath('text', 'JANE DOE — shorter summary');
+
+        $gemini->assertCalled('chat', fn (array $call) => str_contains(
+            (string) $call['systemInstruction'],
+            'You help refine tailored CVs for Senior SWE at Acme.',
+        ));
+    }
+
+    public function test_a_refine_session_needs_the_document_and_who_it_is_for(): void
+    {
+        foreach (['/api/ai/cover-letter/sessions', '/api/ai/cv/sessions'] as $route) {
+            $this->postJson($route, ['jobDescription' => 'x'])
+                ->assertStatus(422)
+                ->assertJsonValidationErrors(['company', 'role', 'document']);
+        }
+
+        $this->assertSame(0, AiSession::count());
     }
 
     public function test_a_gemini_failure_is_contained(): void

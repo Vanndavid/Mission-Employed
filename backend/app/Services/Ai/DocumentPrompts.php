@@ -5,11 +5,10 @@ namespace App\Services\Ai;
 /**
  * Prompts for the tailored cover letter and CV.
  *
- * Ported from `generateCoverLetter` and `generateTailoredCV` in
- * server/aiHandlers.js. The refine-chat siblings (createCoverLetterSession,
- * createCVSession) have no route of their own yet; if they come back they can
- * reuse the shared session-turn endpoint, since AiSession::KINDS already
- * carries `cover_letter` and `cv`.
+ * Ported from `generateCoverLetter`, `generateTailoredCV`,
+ * `createCoverLetterSession` and `createCVSession` in the retired Express
+ * server. The refine instructions become a session's system instruction, and
+ * its turns go through the shared session-turn endpoint.
  */
 class DocumentPrompts
 {
@@ -61,6 +60,28 @@ class DocumentPrompts
             Tailoring instructions: {$template}
 
             Return the full tailored CV as plain text. No placeholder brackets. Preserve contact details from the base CV.
+            PROMPT;
+    }
+
+    /** @param  array{company: string, role: string, jobDescription: string, document: string}  $refine */
+    public static function coverLetterRefineInstruction(array $refine): string
+    {
+        return <<<PROMPT
+            You help refine cover letters for {$refine['role']} at {$refine['company']}.
+            Job Description: {$refine['jobDescription']}
+            Current letter: {$refine['document']}
+            Make targeted edits based on user feedback. Return the full revised letter.
+            PROMPT;
+    }
+
+    /** @param  array{company: string, role: string, jobDescription: string, document: string}  $refine */
+    public static function cvRefineInstruction(array $refine): string
+    {
+        return <<<PROMPT
+            You help refine tailored CVs for {$refine['role']} at {$refine['company']}.
+            Job Description: {$refine['jobDescription']}
+            Current CV: {$refine['document']}
+            Make targeted edits based on user feedback. Return the full revised CV. Never fabricate experience.
             PROMPT;
     }
 

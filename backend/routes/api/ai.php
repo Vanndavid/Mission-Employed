@@ -31,9 +31,9 @@ Route::prefix('ai')->middleware(['auth:sanctum', 'premium'])->group(function ():
     Route::post('/coding/problem', [CodingController::class, 'problem']);
     Route::post('/coding/sessions', [CodingController::class, 'store']);
 
-    // One turn of any stored chat session (coding tutor today; cover_letter and
-    // cv refinement if those sessions come back). Mock interviews use their own
-    // turn route below — they need JSON and inline audio.
+    // One turn of any stored chat session: the coding tutor, and the cover
+    // letter and CV refine chats. Mock interviews use their own turn route
+    // below — they need JSON and inline audio.
     // Read a session back so a refresh can resume it rather than start over.
     Route::get('/sessions/{session}', [SessionController::class, 'show']);
     Route::post('/sessions/{session}/messages', [SessionMessageController::class, 'store']);
@@ -66,6 +66,9 @@ Route::prefix('ai')->middleware(['auth:sanctum', 'premium'])->group(function ():
     // Tailored application documents.
     Route::post('/cover-letter/generate', [DocumentController::class, 'coverLetter']);
     Route::post('/cv/generate', [DocumentController::class, 'cv']);
+    // Refine chats over a letter or CV; their turns use /sessions/{session}/messages.
+    Route::post('/cover-letter/sessions', [DocumentController::class, 'coverLetterSession']);
+    Route::post('/cv/sessions', [DocumentController::class, 'cvSession']);
 
     // Tracker: score a tracked application's CV against its job description.
     // The model only lists the job's keywords, once per job; the score itself

@@ -1,11 +1,12 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { JobApplication } from '../types';
 import {
   generateCoverLetter,
   createCoverLetterSession,
   sendCoverLetterChat,
 } from '../services/apiClient';
+import { useDocumentStudio } from '../hooks/useDocumentStudio';
 import { A4Preview, EditPreviewToggle } from './A4Preview';
 
 interface CoverLetterStudioProps {
@@ -25,51 +26,36 @@ export const CoverLetterStudio = ({
   onSave,
   onClose,
 }: CoverLetterStudioProps) => {
-  const [letter, setLetter] = useState(app.coverLetter || '');
   const [chatInput, setChatInput] = useState('');
-  const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<'edit' | 'preview'>(app.coverLetter ? 'preview' : 'edit');
-  const sessionIdRef = useRef<string | null>(null);
-
-  const handleGenerate = async () => {
-    setLoading(true);
-    try {
-      const text = await generateCoverLetter({
+  const jobDescription = app.jobDescription || app.notes;
+  const studio = useDocumentStudio({
+    initial: app.coverLetter || '',
+    label: 'cover letter',
+    generate: () =>
+      generateCoverLetter({
         company: app.company,
         role: app.role,
-        jobDescription: app.jobDescription || app.notes,
+        jobDescription,
         cv: baseCV,
         template: coverLetterTemplate,
         portfolioUrl,
-      });
-      setLetter(text);
-      setMode('preview');
-      const { sessionId } = await createCoverLetterSession(
-        app.company,
-        app.role,
-        app.jobDescription || app.notes,
-        text
-      );
-      sessionIdRef.current = sessionId;
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
+      }),
+    openSession: current => createCoverLetterSession(app.company, app.role, jobDescription, current),
+    sendTurn: sendCoverLetterChat,
+  });
+  const { loading, error } = studio;
+  const letter = studio.text;
+
+  const handleGenerate = async () => {
+    if (await studio.generate()) setMode('preview');
   };
 
   const handleRefine = async () => {
-    if (!sessionIdRef.current || !chatInput.trim()) return;
-    setLoading(true);
-    try {
-      const revised = await sendCoverLetterChat(sessionIdRef.current, chatInput);
-      setLetter(revised);
+    if (!chatInput.trim()) return;
+    if (await studio.refine(chatInput)) {
       setChatInput('');
       setMode('preview');
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -96,10 +82,16 @@ export const CoverLetterStudio = ({
             {loading ? 'Generating...' : 'Generate Tailored Cover Letter'}
           </button>
 
+          {error && (
+            <p role="alert" className="text-xs text-red-600 dark:text-red-400 font-bold">
+              {error}
+            </p>
+          )}
+
           {mode === 'edit' ? (
             <textarea
               value={letter}
-              onChange={e => setLetter(e.target.value)}
+              onChange={e => studio.edit(e.target.value)}
               className="w-full h-64 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm resize-none"
               placeholder="Cover letter will appear here..."
             />

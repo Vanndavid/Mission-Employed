@@ -15,7 +15,7 @@
  *   turn route because they need JSON alongside inline audio.
  */
 
-import { ApiError, apiRequest } from './http';
+import { apiRequest } from './http';
 import type { LiveTicket, LiveUsage } from './geminiLive';
 import type { AtsReport, AtsSource } from '../types';
 
@@ -315,41 +315,44 @@ export async function generateTailoredCV(params: DocumentParams): Promise<string
 }
 
 /**
- * The refine-chat sessions for a cover letter and a CV have **no route**: they
- * were not in the port list for task 2.3. `AiSession::KINDS` already carries
- * `cover_letter` and `cv`, and `sendSessionMessage` serves any non-mock kind,
- * so bringing them back is one create route on the server plus deleting this
- * guard — nothing else here changes.
- *
- * Failing loudly beats posting at a 404 and reporting it as a server outage.
+ * Open a refine chat over a cover letter or CV the user already has. No model
+ * call happens until the first turn, which goes through the shared session
+ * route like the coding tutor's.
  */
-function refineSessionUnavailable(kind: 'cover letter' | 'CV'): never {
-  throw new ApiError(
-    501,
-    `Refining a ${kind} in chat is not available yet — the session route has not been ported.`,
-    'not_implemented',
-  );
+async function createRefineSession(
+  path: '/ai/cover-letter/sessions' | '/ai/cv/sessions',
+  company: string,
+  role: string,
+  jobDescription: string,
+  document: string,
+): Promise<{ session: AiSessionPayload; sessionId: string }> {
+  const { session } = await apiRequest<{ session: AiSessionPayload }>(path, {
+    method: 'POST',
+    body: { company, role, jobDescription, document },
+  });
+
+  return { session, sessionId: String(session.id) };
 }
 
 export async function createCoverLetterSession(
-  _company: string,
-  _role: string,
-  _jobDescription: string,
-  _currentLetter: string,
+  company: string,
+  role: string,
+  jobDescription: string,
+  currentLetter: string,
 ): Promise<{ session: AiSessionPayload; sessionId: string }> {
-  return refineSessionUnavailable('cover letter');
+  return createRefineSession('/ai/cover-letter/sessions', company, role, jobDescription, currentLetter);
 }
 
 export async function createCVSession(
-  _company: string,
-  _role: string,
-  _jobDescription: string,
-  _currentCV: string,
+  company: string,
+  role: string,
+  jobDescription: string,
+  currentCV: string,
 ): Promise<{ session: AiSessionPayload; sessionId: string }> {
-  return refineSessionUnavailable('CV');
+  return createRefineSession('/ai/cv/sessions', company, role, jobDescription, currentCV);
 }
 
-/** Works the moment a `cover_letter` session exists — the turn route is shared. */
+/** One refine turn; the reply is the full revised letter. */
 export async function sendCoverLetterChat(
   sessionId: string | number,
   message: string,
@@ -357,7 +360,7 @@ export async function sendCoverLetterChat(
   return sendCodingChat(sessionId, message);
 }
 
-/** Works the moment a `cv` session exists — the turn route is shared. */
+/** One refine turn; the reply is the full revised CV. */
 export async function sendCVChat(
   sessionId: string | number,
   message: string,

@@ -1,11 +1,12 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { JobApplication } from '../types';
 import {
   generateTailoredCV,
   createCVSession,
   sendCVChat,
 } from '../services/apiClient';
+import { useDocumentStudio } from '../hooks/useDocumentStudio';
 import { A4Preview, EditPreviewToggle } from './A4Preview';
 
 interface CVStudioProps {
@@ -25,55 +26,40 @@ export const CVStudio = ({
   onSave,
   onClose,
 }: CVStudioProps) => {
-  const [cv, setCv] = useState(app.tailoredCV || '');
   const [chatInput, setChatInput] = useState('');
-  const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<'edit' | 'preview'>(app.tailoredCV ? 'preview' : 'edit');
-  const sessionIdRef = useRef<string | null>(null);
+  const jobDescription = app.jobDescription || app.notes;
+  const studio = useDocumentStudio({
+    initial: app.tailoredCV || '',
+    label: 'CV',
+    generate: () =>
+      generateTailoredCV({
+        company: app.company,
+        role: app.role,
+        jobDescription,
+        cv: baseCV,
+        template: cvTemplate,
+        portfolioUrl,
+      }),
+    openSession: current => createCVSession(app.company, app.role, jobDescription, current),
+    sendTurn: sendCVChat,
+  });
+  const { loading, error } = studio;
+  const cv = studio.text;
 
   const handleGenerate = async () => {
     if (!baseCV.trim()) {
       alert('Add your base CV in CV & Profile first.');
       return;
     }
-    setLoading(true);
-    try {
-      const text = await generateTailoredCV({
-        company: app.company,
-        role: app.role,
-        jobDescription: app.jobDescription || app.notes,
-        cv: baseCV,
-        template: cvTemplate,
-        portfolioUrl,
-      });
-      setCv(text);
-      setMode('preview');
-      const { sessionId } = await createCVSession(
-        app.company,
-        app.role,
-        app.jobDescription || app.notes,
-        text
-      );
-      sessionIdRef.current = sessionId;
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
+    if (await studio.generate()) setMode('preview');
   };
 
   const handleRefine = async () => {
-    if (!sessionIdRef.current || !chatInput.trim()) return;
-    setLoading(true);
-    try {
-      const revised = await sendCVChat(sessionIdRef.current, chatInput);
-      setCv(revised);
+    if (!chatInput.trim()) return;
+    if (await studio.refine(chatInput)) {
       setChatInput('');
       setMode('preview');
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -106,10 +92,16 @@ export const CVStudio = ({
             </p>
           )}
 
+          {error && (
+            <p role="alert" className="text-xs text-red-600 dark:text-red-400 font-bold">
+              {error}
+            </p>
+          )}
+
           {mode === 'edit' ? (
             <textarea
               value={cv}
-              onChange={e => setCv(e.target.value)}
+              onChange={e => studio.edit(e.target.value)}
               className="w-full h-64 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-mono resize-none"
               placeholder="Tailored CV will appear here..."
             />

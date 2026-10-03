@@ -6,7 +6,7 @@
 const FEATURE_LABELS: Record<string, string> = {
   'ai/coding/problem': 'Coding problem',
   'ai/coding/sessions': 'Coding tutor',
-  'ai/sessions/{session}/messages': 'Tutor chat',
+  'ai/sessions/{session}/messages': 'Tutor and refine chat',
   'ai/behavioral/prompt': 'Practice question',
   'ai/behavioral/evaluate': 'Practice answer feedback',
   'ai/mock/sessions/{session}/turns': 'Mock interview (typed)',

@@ -36,6 +36,12 @@ class AiPremiumGateTest extends TestCase
             'cv' => 'Ten years of backend work.',
         ];
 
+        $refine = [
+            'company' => 'Acme',
+            'role' => 'Senior SWE',
+            'document' => 'Dear hiring team, ...',
+        ];
+
         return [
             'coding problem' => ['POST', '/api/ai/coding/problem', ['difficulty' => 'easy'], null],
             'coding session' => ['POST', '/api/ai/coding/sessions', [
@@ -56,6 +62,8 @@ class AiPremiumGateTest extends TestCase
             'job parse' => ['POST', '/api/ai/job/parse', ['text' => 'Acme is hiring a Senior SWE.'], null],
             'cover letter' => ['POST', '/api/ai/cover-letter/generate', $document, null],
             'cv' => ['POST', '/api/ai/cv/generate', $document, null],
+            'cover letter refine session' => ['POST', '/api/ai/cover-letter/sessions', $refine, null],
+            'cv refine session' => ['POST', '/api/ai/cv/sessions', $refine, null],
             'ats check' => ['POST', '/api/ai/applications/{application}/ats', [], null],
             'tts' => ['POST', '/api/ai/tts', ['text' => 'hello'], null],
         ];
