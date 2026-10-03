@@ -1,23 +1,84 @@
-# Mission-Employed — rebuild todo
+# Mission-Employed — task list
 
-Migrating off the Express backend to a **Laravel API + React TypeScript client**,
-and cutting the app down to four features.
-
-**Branch:** `main` (the `rebuild/laravel-react` work is merged) · **Status:** Waves 0 and 1 done, Wave 2 next
+**Branch:** `main` · **Status:** rebuild complete; project parked 2026-10-03. Live at mission-employed.vanndavidteng.com, nothing in flight.
 
 ## How to use this file
 
-Every open task below has a **copy-paste brief** — a fenced block you can paste
-straight into a fresh `claude` session or agent in this folder. Project context
-comes from `CLAUDE.md`, which loads automatically, so the brief only carries what
-is specific to that task. Work is test-driven: write the failing test first.
-[`.cursor/rules/tdd.mdc`](.cursor/rules/tdd.mdc) is the how-to.
+Everything that was planned is built, deployed and recorded below as history,
+with the decisions worth remembering. The original copy-paste briefs are in git
+history (`git log -p -- TASKS.md`).
 
-Tasks in the same wave are independent and can run at the same time. A wave
-cannot start until the wave above it is done. Each brief ends by telling the
-agent to tick its own box here, so the list stays current.
+**If work resumes**, start with the list right below. Each item has a
+copy-paste brief: a fenced block you can paste straight into a fresh `claude`
+session in this folder. Project context comes from `CLAUDE.md`, which loads
+automatically. Work is test-driven:
+[`.cursor/rules/tdd.mdc`](.cursor/rules/tdd.mdc) is the how-to. A new task
+gets the same treatment: a box, a brief, and a tick when it lands.
 
 ---
+
+## If work resumes
+
+Nothing here is broken today. These are the things that will need a hand
+eventually, soonest first.
+
+### Re-enable the uptime monitor
+
+- [ ] Due around 2026-12-02, if nothing has been pushed by then
+
+```
+GitHub pauses scheduled workflows in a public repository after 60 days with no
+commits. When that happens the Uptime workflow (.github/workflows/uptime.yml)
+stops probing mission-employed.vanndavidteng.com and nothing says the site is
+down. GitHub emails a warning first.
+
+Re-enable it with `gh workflow enable uptime.yml`, or Actions -> Uptime ->
+Enable workflow. Then trigger one run (`gh workflow run uptime.yml`) and
+confirm it is green. Tick this box in TASKS.md with the date, and if the
+project is still parked, move the due date on by 60 days rather than ticking.
+```
+
+### Refresh Gemini prices after 2027-01-01
+
+- [ ] Due 2027-01-01
+
+```
+backend/config/ai_pricing.php holds Gemini prices from 2026-09-26, and its
+header notes several rise on 2027-01-01. They only feed the admin usage
+screen's cost estimate, and a recorded cost is fixed at call time, so a stale
+price misreports cost and breaks nothing else.
+
+Read https://ai.google.dev/gemini-api/docs/pricing for the three models in the
+file (and any model the server .env now sets in GEMINI_MODEL,
+GEMINI_TTS_MODEL or GEMINI_LIVE_MODEL). Update the numbers and the "as of"
+date. While there, check gemini-2.5-flash-preview-tts is still served: preview
+models get retired, and if it is, pick its replacement, set GEMINI_TTS_MODEL in
+the server .env (ssh vps, see DEPLOYMENT.md) and the default in
+GeminiService / config/services.php / .env.example, and add its price.
+
+Verify with: cd backend && php artisan test. Tick this box with the date.
+```
+
+### Decide on the legacy Express accounts
+
+- [ ] Whenever; needs a decision, not code
+
+```
+The retired Express server kept its accounts in a JSON file. Laravel started
+from an empty database (see Deployment in TASKS.md), so those accounts were
+never ported. The file is still on the server in the docker volume
+mission-employed_api_data, and backed up as
+/root/backups/mission-employed/api_data.20260902-010243.tgz.
+
+Ask the user whether any of those accounts are worth porting. If not, remove
+the volume with `ssh vps docker volume rm mission-employed_api_data`, keeping
+the tgz. Do not remove the backup without asking. Record the outcome here and
+tick this box.
+```
+
+---
+
+# History
 
 ## Wave 0 — Foundation ✅
 
@@ -50,96 +111,12 @@ Three independent tasks. All need Wave 1.
   registration: `User::create()` left `role` and `plan` null on the in-memory
   model because those defaults live only in the database.
 
-```
-Task 2.1 from TASKS.md: build the auth and admin endpoints.
-
-Your lane: backend/app/Http/Controllers/Auth, backend/app/Http/Requests,
-backend/app/Http/Middleware, backend/routes/api.php, backend/tests/Feature/Auth*.
-Two other agents may be working in backend/app/Http/Controllers — do not touch
-their controllers, and if routes/api.php has changed since you read it, re-read
-before writing rather than overwriting.
-
-Build:
-- POST /api/auth/register, POST /api/auth/login, POST /api/auth/logout,
-  GET /api/auth/me. Sanctum bearer tokens via createToken. Logout revokes only
-  the current token, not all of them.
-- GET /api/admin/users and PATCH /api/admin/users/{user}/plan.
-- An EnsurePremium middleware registered as `premium`, and an EnsureAdmin as
-  `admin`. Premium must match User::isPremium() exactly: premium plan OR admin
-  role. Register both in bootstrap/app.php.
-- A UserResource so role, plan and createdAt serialize in the shape
-  frontend/types/auth.ts expects. Never expose password hashes.
-
-Read server/auth.js first — it is the retired implementation. Match its
-validation rules (email required and valid, password minimum 8 characters) and
-its duplicate-email behaviour, but use Laravel FormRequests rather than porting
-the hand-rolled checks. Do not port its HMAC token scheme; Sanctum replaces it.
-
-Write feature tests that actually prove the boundaries: registration rejects a
-duplicate email and a 7-character password; login with a wrong password fails;
-/api/auth/me 401s without a token; a free user is refused by the premium
-middleware and an admin is allowed through it without a premium plan; a
-non-admin gets 403 from both admin routes; a user cannot change their own plan
-via the admin endpoint. Use the model factories, and their premium()/admin()
-states.
-
-Verify with: cd backend && php artisan test
-Report the real output. Then tick the 2.1 box in TASKS.md with a one-line note
-of what you built. Do not commit.
-```
-
 ### 2.2 Tracker API ✅
 
 - [x] Done — applications CRUD with the status event log written in one place,
   nested interview stages, profile, coding history and behavioral answers. All
   `auth:sanctum`, and someone else's record is a 404 rather than a 403. 40
   feature tests.
-
-```
-Task 2.2 from TASKS.md: build the job application tracker endpoints.
-
-Your lane: backend/app/Http/Controllers/ApplicationController.php,
-InterviewStageController.php, ProfileController.php, CodingAttemptController.php,
-BehavioralAnswerController.php, their FormRequests and Resources, and
-backend/tests/Feature/Application*, Profile*, Coding*, Behavioral*.
-Two other agents may be working in backend/app/Http — do not touch their
-controllers, middleware, or tests. If routes/api.php changed since you read it,
-re-read before writing rather than overwriting.
-
-Build, all behind auth:sanctum:
-- GET|POST /api/applications, GET|PATCH|DELETE /api/applications/{application}
-- POST /api/applications/{application}/stages,
-  DELETE /api/applications/{application}/stages/{stage}
-- GET|PUT /api/profile
-- GET|POST /api/coding/attempts
-- GET /api/behavioral-answers, PUT /api/behavioral-answers/{themeId}
-
-Three things that will bite you, all recorded in Open questions below:
-- Empty strings. The client sends '' for untouched inputs, but date_applied and
-  next_action_due are nullable date columns. Normalize '' to null in the
-  FormRequest, not in the controller.
-- Recruiter contact. Use the Application::recruiter_contact accessor for output
-  rather than reading the three columns yourself. On input, accept the nested
-  {name,email,linkedin} object the client sends and flatten it.
-- Status is stored twice — the current value on applications plus the
-  application_status_events log. Any status change must append an event. Do it
-  in one place so it cannot drift.
-
-Behavioral answers save through updateOrCreate keyed on (user_id, theme_id) —
-edit in place, never accumulate rows. Validate theme_id against
-BehavioralAnswer::THEME_IDS.
-
-Ownership is the thing most likely to be got wrong, so test it hardest: every
-route must 404 (not 403, do not leak existence) when the record belongs to
-another user, including the nested stage routes where the stage exists but its
-application belongs to someone else. Also test that a status change appends
-exactly one event, that '' dates land as null, and that a recruiter with all
-blank fields serializes as null rather than an object of empty strings.
-
-Verify with: cd backend && php artisan test
-Report the real output. Then tick the 2.2 box in TASKS.md with a one-line note.
-Do not commit.
-```
 
 ### 2.3 AI endpoints ✅
 
@@ -149,71 +126,13 @@ Do not commit.
   40-message window, and 41 feature tests that assert the prompt and schema
   sent, not just the status code.
 
-```
-Task 2.3 from TASKS.md: port the AI endpoints from Express to Laravel.
-
-Your lane: backend/app/Http/Controllers/Ai/*, backend/app/Services/Ai/* (prompt
-and schema classes), their FormRequests, and backend/tests/Feature/Ai*.
-Two other agents may be working in backend/app/Http — do not touch their
-controllers, middleware, or tests. Do not modify GeminiService or
-FakeGeminiService; they are finished. If routes/api.php changed since you read
-it, re-read before writing rather than overwriting.
-
-server/aiHandlers.js is the source of truth for every prompt and schema. Port
-the surviving ones verbatim where you can; the wording matters more than the
-structure. Build, all behind auth:sanctum + the premium middleware:
-
-- POST /api/ai/coding/problem, POST /api/ai/coding/sessions,
-  POST /api/ai/sessions/{session}/messages   (one unified chat turn endpoint)
-- POST /api/ai/behavioral/prompt, POST /api/ai/behavioral/evaluate
-- POST /api/ai/mock/sessions, POST /api/ai/mock/sessions/{s}/turns,
-  POST /api/ai/mock/sessions/{s}/report
-- POST /api/ai/job/parse
-- POST /api/ai/cover-letter/generate, POST /api/ai/cv/generate
-- POST /api/ai/tts
-
-Do NOT port: system design (four handlers), analyzeJobDescription's criteria
-scoring, generateFollowUpEmail, generateNegotiationScript. Those features were
-deleted. generateMockReport and parseJobApplication do survive.
-
-Sessions live in the ai_sessions and ai_messages tables, replacing the Express
-in-memory Map. Each turn: load the session, replay its messages into
-GeminiClient::chat(), append both the user turn and the reply with the next
-sequence. Sessions are owned — 404 on someone else's.
-
-Five known porting hazards, from the GeminiService work:
-- Schemas: the SDK's Type.OBJECT / Type.STRING constants become plain strings
-  'OBJECT' / 'STRING' / 'ARRAY' in REST. Mechanical, but easy to miss.
-- The old code did `response.text || ''`, which silently turned a safety block
-  into a blank assistant message. GeminiService now throws instead, so every
-  call site needs a real catch that returns a sensible HTTP error.
-- processAudioResponse parsed prose with text.split('###') and a TRANSCRIPT:
-  regex. Do not port that string surgery — use generateJsonFromParts with a
-  {transcript, feedback} schema.
-- TTS returns raw base64 PCM at audio/L16;rate=24000, not a playable file.
-  Decide where the WAV/RIFF header gets added and write it down in TASKS.md.
-- Every chat turn resends the whole transcript, so tokens grow quadratically
-  over a long session. Not a blocker now; note it if you see a cheap cap.
-
-Bind FakeGeminiService in every test — no test may hit the network. Use its
-queueJson/queueChat/queueAudio and assertPromptContains to prove the right
-prompt and schema were sent, not merely that a 200 came back. Test that a free
-user gets refused by the premium gate on at least one AI route, that a session
-belonging to another user 404s, and that a GeminiException becomes a clean HTTP
-error with no upstream body in the response.
-
-Verify with: cd backend && php artisan test
-Report the real output. Then tick the 2.3 box in TASKS.md with a one-line note.
-Do not commit.
-```
-
 ---
 
 ## Wave 3 — Client
 
 Needs Wave 2. **3.1 must land before the other four**, which can then run together.
 
-### 3.1 Replace the data layer
+### 3.1 Replace the data layer ✅
 
 - [x] Done — the `localStorage` state blob and `migrateState` are gone; four
   providers under `frontend/contexts/` load from the API on mount, expose
@@ -221,169 +140,16 @@ Needs Wave 2. **3.1 must land before the other four**, which can then run togeth
   state. `services/http.ts` is the one place errors and the `data` envelope are
   handled.
 
-```
-Task 3.1 from TASKS.md: replace the frontend data layer with the Laravel API.
+### 3.2 Tracker screens ✅
 
-Your lane: frontend/services/*, frontend/contexts/AuthContext.tsx,
-frontend/App.tsx, frontend/types.ts, frontend/utils/migrateState.ts.
-Nothing under backend/.
-
-Right now App.tsx holds the whole AppState in useState and mirrors it to
-localStorage under mission_employed_state. The server is now the source of
-truth. Replace it.
-
-- Rewrite services/apiClient.ts and services/authClient.ts against the real
-  routes. Read backend/routes/api.php for the actual shapes rather than
-  assuming — Wave 2 may have adjusted them.
-- Delete the localStorage state blob and utils/migrateState.ts with its test.
-  The auth token stays in localStorage under mission_employed_token.
-- Introduce a data layer the screens can use: a hook or small context per
-  resource (applications, profile, coding attempts, behavioral answers) that
-  loads on mount, exposes loading and error state, and writes through to the
-  API. Keep it plain React — do not add a data-fetching dependency.
-- App.tsx should stop owning domain state entirely.
-
-IDs changed type: applications and interview stages were client-generated
-crypto.randomUUID() strings and are now auto-increment integers from the
-database. Update types.ts and remove the client-side id generation. Anywhere
-the client optimistically created a record with its own id needs to use the
-record the server returns instead.
-
-Do not restyle anything. Screens keep working off the same prop shapes wherever
-possible so tasks 3.2 to 3.5 stay small.
-
-Verify with: cd frontend && npx tsc --noEmit && npm run build && npm test
-Then actually run it: ./dev.sh, register a user, confirm the application list
-loads from the API and survives a hard refresh. Report what you saw.
-Tick the 3.1 box in TASKS.md with a one-line note. Do not commit.
-```
-
-#### Contract notes for 3.2–3.5
-
-Read this before starting any of the other Wave 3 tasks. Everything below is
-what actually changed; anything not listed kept its old shape on purpose.
-
-**Where the data lives now**
-
-`frontend/contexts/DataProvider.tsx` mounts four providers inside the
-signed-in branch of `App.tsx`, so each one loads with a token in hand and the
-whole tree is torn down on logout. Use the hooks rather than `fetch`:
-
-| Hook | Gives you |
-| --- | --- |
-| `useApplications()` | `applications`, `addApplication`, `updateApplication`, `updateStatus`, `deleteApplication`, `addInterviewStage`, `removeInterviewStage`, `importApplications` |
-| `useProfile()` | `profile`, `updateProfile` |
-| `useCodingHistory()` | `codingHistory`, `addAttempt` |
-| `useBehavioralAnswers()` | `answers`, `updateAnswer` |
-
-All four also expose `loading`, `error`, `saving` and `reload`. `App.tsx` reads
-them and passes the same props the screens already took, so a screen can keep
-its props or switch to the hook directly — both work.
-
-**Prop shapes that changed, and where**
-
-1. **`JobApplication.id` and `InterviewStage.id` are `number`, not `string`.**
-   Client-side id generation is gone; a new record is whatever the API
-   answered with. Already updated: `JobApplications` (five handler prop types, and the
-   `?prep=` lookup now goes through `Number()`), `InterviewPrepDrawer`
-   (`onRemoveStage`), `InterviewStageEditor` (`onRemove`), `UpcomingInterviews`
-   (`onSelectApp`), and the `utils/csv.test.ts` fixture.
-2. **`AuthUser.id` is `number`** (`types/auth.ts`). `AdminUsersPage` follows:
-   `busyId` state and `changePlan`'s first argument. Owned by 3.5.
-3. **`AppState` is deleted** from `types.ts`, replaced by `UserProfile` with the
-   same six fields. `Profile`'s own props did not change.
-4. **`CodingHistoryEntry` gained an optional `id?: number`**, plus a
-   `NewCodingAttempt` alias for one that has no row yet. `Dashboard`'s
-   `onCodingComplete` prop is unchanged.
-5. **New `ApplicationInput`** — `Partial<Omit<JobApplication, 'id' |
-   'interviewStages' | 'statusHistory'>>` — is what the write helpers take.
-
-**Service functions that changed**
-
-- `createCodingSession()` now returns `{ session, sessionId }` instead of
-  `{ sessionId }`. `Dashboard` compiles unchanged; `session.messages` is there
-  so 3.3 can resume a tutor conversation after a refresh instead of starting
-  blank.
-- `sendCodingChat(sessionId, message)` keeps its signature and posts to the
-  unified `/api/ai/sessions/{id}/messages`. `sendSessionMessage()` returns the
-  whole `{ text, message, reply }` if you want the stored rows.
-- **Mock interviews are session-based.** `conductInterviewTurn(history, …)` and
-  `generateMockReport(history, …)` are gone; the replacements are
-  `createMockSession(context)`, `conductMockTurn(sessionId, { audioBase64 } |
-  { answer })` and `generateMockReport(sessionId)`. `MockTest.tsx` was edited
-  the minimum needed to compile and run: it holds a `sessionId`, opens a
-  session on start, and takes its opening question from the model's first turn
-  (falling back to the old canned line). **3.4 still has to persist the session
-  id so a mid-interview refresh resumes** — that is the whole point of the move.
-- `textToSpeech(text)` still resolves to a base64 string, but the server now
-  prepends the RIFF header, so it is a complete WAV file. Play it as
-  `data:audio/wav;base64,…`. **`PrepRoom` and `MockTest` still push it through
-  `decodeAudioPCM`, which will now misread the 44-byte header as samples — 3.4
-  must fix both.** `TTS_MIME_TYPE` and `synthesizeSpeech()` are exported for it.
-- `parseJobApplication()` drops `null` and `''` fields, so
-  `parsed.notes ?? nlText` still reaches its fallback.
-- `createCoverLetterSession()` / `createCVSession()` **throw** a 501
-  `not_implemented` `ApiError`: the refine-chat routes were never ported.
-  `sendCoverLetterChat` / `sendCVChat` already point at the shared turn
-  endpoint and work the moment a session exists. 3.2 either hides the Refine
-  box in both studios or the two create routes get added on the server —
-  `AiSession::KINDS` already carries `cover_letter` and `cv`.
-- `checkHealth()` moved to `authClient` and is re-exported from `apiClient`;
-  `Sidebar` is unchanged.
-
-**Errors — one place, do not reinvent per screen**
-
-`services/http.ts` throws `ApiError` with `status`, `code` and `errors`, plus
-`isUnauthorized`, `isPremiumRequired`, `isAdminRequired`, `isAiUnavailable`,
-`isNotFound`, `isValidation`, `firstFieldError()`, and a free `errorMessage(e,
-fallback)`. A 401 from anywhere calls the handler `AuthContext` registers,
-which drops the token and signs the user out — no screen has to notice.
-
-**Gotchas**
-
-- Blank date inputs: `toApplicationPayload` sends `null`, never `''`.
-- Behavioral bullets: blanks are stripped before sending, and an all-blank
-  theme is **not sent at all**. See Open questions — clearing a theme is
-  currently impossible.
-- Field edits are debounced 400ms and coalesced per record, so the prep drawer
-  is one PATCH instead of one per keystroke. `saving` covers it, and pending
-  writes flush on unmount.
-- Nothing gates on `loading` yet, so `JobApplications` flashes its empty state during
-  the first load. 3.2 should gate on `useApplications().loading`.
-- `PremiumGate` still reads `useAuth().isPremium`. A 403 from the API is
-  `err.isPremiumRequired` — that is what 3.5 should route to the upgrade prompt.
-
-### 3.2 Tracker screens
-
-- [ ] Not started · needs 3.1
-
-```
-Task 3.2 from TASKS.md: wire the tracker screens to the API.
-
-Your lane: frontend/components/JobApplications.tsx, Profile.tsx, CVStudio.tsx,
-CoverLetterStudio.tsx, A4Preview.tsx, InterviewStageEditor.tsx,
-UpcomingInterviews.tsx, InterviewPrepDrawer.tsx, and frontend/utils/csv.ts.
-Other agents hold the other components. Nothing under backend/.
-
-Task 3.1 built the data layer; use it rather than calling fetch directly.
-Move the job applications screen, the profile document, and the CV and cover letter studios onto
-server data: list, create, update, delete applications; add and remove interview
-stages; save the profile; generate a tailored CV or cover letter through the AI
-endpoints and persist the result on the application.
-
-Watch for: application and stage IDs are integers now, not UUID strings. CSV
-import creates records through the API one at a time rather than pushing into
-local state. Empty date inputs must send null, not ''.
-
-Every mutation needs a visible loading and error state — the old code assumed
-writes could not fail because they were local. They can fail now.
-
-Verify with: cd frontend && npx tsc --noEmit && npm run build && npm test
-Then run ./dev.sh and click through it: add an application, add a stage, paste a
-job description and parse it, generate a cover letter, refresh, confirm it all
-persisted. Report what you saw, including anything that broke.
-Tick the 3.2 box in TASKS.md with a one-line note. Do not commit.
-```
+- [x] Done, closed 2026-10-03. The screens moved onto the API piecemeal with
+  3.1 and 3.2a–3.2d rather than as one task. Closing it found two gaps, both
+  fixed: the Job Applications screen never showed the context's `loading` or
+  `error`, so a failed save rolled back silently and a failed first load looked
+  like an empty tracker (it now has a "Loading" state and an error banner with
+  Retry); and the CV and cover letter studios swallowed every failure into
+  `console.error` (they now say why, premium and AI outage included). The
+  Refine chats are 3.12.
 
 ### 3.2a Job applications table — renamed, filterable, sortable, starrable ✅
 
@@ -511,30 +277,8 @@ Things worth remembering:
 
 - [x] Done — dashboard slimmed to coding practice, pipeline summary and upcoming
   interviews; tutor wired to the session endpoints with real error handling.
-  Not done: restoring an in-progress tutor conversation after a refresh, which
-  `fetchSession` now makes possible. Small follow-up.
-
-```
-Task 3.3 from TASKS.md: wire coding practice and slim the dashboard.
-
-Your lane: frontend/components/Dashboard.tsx and frontend/utils/codingTopics.ts.
-Other agents hold the other components. Nothing under backend/.
-
-Coding attempt history comes from GET /api/coding/attempts and each completed
-attempt POSTs back. The AI tutor chat runs through the session endpoints, so a
-conversation now survives a refresh — make sure the UI reflects that rather than
-starting blank each time.
-
-The dashboard still carries shape from the deleted daily-protocol feature. It
-should now show only: recent coding attempts and weak topics, a summary of the
-application pipeline, and upcoming interviews. No streaks, no personas, no daily
-tasks — those were cut in Wave 1 and must not come back.
-
-Verify with: cd frontend && npx tsc --noEmit && npm run build && npm test
-Then run ./dev.sh, generate a coding problem, hold a short tutor conversation,
-refresh mid-conversation and confirm it resumes. Report what you saw.
-Tick the 3.3 box in TASKS.md with a one-line note. Do not commit.
-```
+  An in-progress tutor conversation resumes after a refresh (the session id is
+  kept in localStorage per user and read back with `fetchSession`).
 
 ### 3.4 Both interview modes ✅
 
@@ -552,66 +296,15 @@ Tick the 3.3 box in TASKS.md with a one-line note. Do not commit.
   `playSpokenClip` now takes an optional `AbortSignal` so starting a recording
   cuts the question off rather than recording it.
 
-```
-Task 3.4 from TASKS.md: wire interview practice and the full mock interview.
+### 3.5 Plans end to end ✅
 
-Your lane: frontend/components/PrepRoom.tsx and MockTest.tsx.
-Other agents hold the other components. Nothing under backend/.
-
-PrepRoom is the one-question-at-a-time practice: a behavioral prompt, the user's
-answer, AI feedback, and spoken playback. Its STAR bullets now persist through
-GET /api/behavioral-answers and PUT /api/behavioral-answers/{themeId}, which
-edits in place per theme rather than accumulating.
-
-MockTest is the full multi-turn mock ending in a written report. Its session
-lives in ai_sessions now, so it survives a refresh and a server restart — the old
-version lost everything because the server held chats in memory.
-
-TTS returns raw base64 PCM at audio/L16;rate=24000, not a playable file. Check
-what task 2.3 decided about the WAV header — if the server does not add it, the
-client must, before handing the audio to an <audio> element. Whichever end does
-it, make sure TASKS.md records the answer.
-
-Verify with: cd frontend && npx tsc --noEmit && npm run build && npm test
-Then run ./dev.sh and go through both: answer a behavioral question and confirm
-the bullets survive a refresh; run several mock turns, refresh mid-interview,
-confirm it resumes, then generate the report. Report what you saw.
-Tick the 3.4 box in TASKS.md with a one-line note. Do not commit.
-```
-
-### 3.5 Plans end to end
-
-- [ ] Not started · needs 3.1
-
-```
-Task 3.5 from TASKS.md: make the free/premium split work end to end.
-
-Your lane: frontend/components/PremiumGate.tsx, AccountPage.tsx,
-AdminUsersPage.tsx, AuthScreen.tsx, frontend/types/auth.ts.
-Other agents hold the other components. Nothing under backend/.
-
-The client's idea of premium must match the server's exactly — premium plan OR
-admin role, the rule in User::isPremium(). Anywhere the client currently decides
-on its own, make it read the plan and role the API returns.
-
-PremiumGate should gate the same routes the server's premium middleware gates,
-and a 402/403 from the API must surface as the upgrade prompt rather than a raw
-error toast. Client-side gating is a courtesy, not the enforcement — never treat
-it as the security boundary.
-
-AccountPage shows the current plan and what premium unlocks. AdminUsersPage
-lists users and changes a plan through PATCH /api/admin/users/{user}/plan, and
-must be invisible and unreachable for non-admins.
-
-There is no payment integration and none is planned — an admin upgrades a user
-by hand. Do not build a checkout, pricing page, or trial flow.
-
-Verify with: cd frontend && npx tsc --noEmit && npm run build && npm test
-Then run ./dev.sh and test both accounts (see Seeder credentials below): confirm
-the free user is blocked from an AI feature and sees the upgrade prompt, then
-upgrade them from the admin account and confirm the feature unlocks. Report what
-you saw. Tick the 3.5 box in TASKS.md with a one-line note. Do not commit.
-```
+- [x] Done, closed 2026-10-03; built up across 3.1, 3.4, 3.7 and 3.11. The
+  client's `isPremium` is `isPremiumUser()`, the same rule as
+  `User::isPremium()`. AI features show `PremiumGate` up front on a free plan,
+  and a 403 `premium_required` that gets past it (a stale plan) surfaces as the
+  upgrade message rather than a raw error. `/account/admin` redirects non-admins
+  and is absent from their sidebar. The walk in 4.4 confirmed the loop against
+  the real API: free user refused, admin upgrades, feature unlocks.
 
 ---
 
@@ -824,13 +517,25 @@ Unverified, and to be checked with one real call before building on it:
     That covers a token issued by a login racing the admin's click.
   - The MCP server has no admin tools, so it has no deactivate tool either.
 
+### 3.12 Refine chats for the CV and cover letter ✅
+
+- [x] Done, 2026-10-03. The Refine box under both studios did nothing: the
+  session-create routes were never ported in 2.3, so the client threw a 501
+  that the studio swallowed. Added `POST /api/ai/cover-letter/sessions` and
+  `POST /api/ai/cv/sessions` (premium; `{company, role, jobDescription?,
+  document}`; no model call), with the Express prompts ported verbatim into
+  `DocumentPrompts`. Turns go through the shared
+  `/api/ai/sessions/{session}/messages`, so usage lands under "Tutor and refine
+  chat". The client opens the session on the first Refine over the text on
+  screen, so it works on a saved document, and a hand edit or a new draft
+  starts a fresh one (`hooks/useDocumentStudio.ts`). That was the last prompt
+  left in `server/`.
+
 ## Wave 4 — Close out
 
-Needs Wave 3. **Read the Deployment section below before starting any of these** —
-the app is live at mission-employed.vanndavidteng.com and Express is what
-currently serves it.
+All done. Express served production until 4.1; it is gone since 4.2.
 
-### 4.1 Laravel production image and nginx cutover
+### 4.1 Laravel production image and nginx cutover ✅
 
 - [x] Done — `Dockerfile.laravel` (FrankenPHP, php 8.3), a `laravel` compose
   service on its own `laravel_data` volume, and `nginx.conf` `/api/` repointed
@@ -863,89 +568,23 @@ The deployment `.env` is not in git and was missing everything Laravel needs.
 `APP_KEY` was generated on the server, and `APP_URL`, `FRONTEND_URL`,
 `SESSION_DRIVER`, `CACHE_STORE`, `QUEUE_CONNECTION`, `BCRYPT_ROUNDS` and
 `LOG_LEVEL` were added. `GEMINI_MODEL` is pinned there to `gemini-2.0-flash`,
-the model the Express backend had been serving — see the open question below.
+the model the Express backend had been serving.
 
-**Open question — the Gemini model.** There is an uncommitted change in the
-working tree bumping the default from `gemini-2.0-flash` to `gemini-3.7-flash`
-in `GeminiService`, `config/services.php` and `.env.example`. It was left
-uncommitted and is *not* deployed, because the model name could not be verified
-against the API. Production is pinned to the known-good value in `.env`, so
-adopting the newer model is a one-line env change plus a restart once someone
-confirms the name is real.
+The Gemini model question this task left open is settled: `gemini-3.7-flash`
+is the default in code and what the server `.env` pins.
 
-```
-Task 4.1 from TASKS.md: put Laravel into the deployed stack.
+### 4.2 Retire Express ✅
 
-The app is live at mission-employed.vanndavidteng.com, served by docker
-compose: an nginx container (Dockerfile) serving the built SPA and proxying
-/api/ and /ai/ to an Express container (Dockerfile.api) on :3001. Read the
-Deployment section of TASKS.md before you touch anything.
-
-Express is still the production backend. This task adds Laravel alongside it
-and moves traffic over. Do NOT delete server/ -- that is task 4.2, and it must
-not happen until this one is deployed and confirmed working.
-
-Build:
-- Dockerfile.laravel: PHP 8.3-fpm-alpine or php:8.3-cli, composer install
-  --no-dev --optimize-autoloader, the pdo_sqlite extension, config/route/view
-  caching, and php artisan migrate --force on boot. The SQLite file must live
-  on a volume, not in the container layer -- the Express container already does
-  this for its JSON store, follow the same pattern.
-- A laravel service in docker-compose.yml with its own named volume for the
-  database, reading APP_KEY, GEMINI_API_KEY and the rest from .env.
-- nginx.conf: repoint location /api/ from the Express container to the Laravel
-  one. Keep client_max_body_size 10m -- mock interviews POST base64 audio and
-  nginx will 413 before the backend sees it. Keep proxy_read_timeout 300s;
-  model calls are slow. Confirm Laravel's own upload limits match.
-- Leave the /ai/ location pointing at Express for now; nothing calls it once
-  Wave 3 lands, and 4.2 removes it.
-
-There is no user data to migrate: production accounts live in the Express
-JSON volume and the plan was always a fresh start on Laravel. If that is wrong,
-stop and ask rather than guessing -- confirm before destroying anything.
-
-Verify: docker compose build, then docker compose up and exercise
-/api/health, register, login and one AI route against the running stack. If the
-Docker daemon is unreachable from your shell, say so plainly rather than
-claiming the build passed.
-
-Tick the 4.1 box in TASKS.md and record what the deployed topology now is.
-Do not commit.
-```
-
-### 4.2 Retire Express
-
-- [ ] Not started · needs 4.1 deployed and confirmed
-
-```
-Task 4.2 from TASKS.md: delete the old Express backend.
-
-Do NOT start until 4.1 is deployed and Laravel is confirmed serving production
-traffic. Deleting server/ before that takes the live site down.
-
-Delete the server/ directory entirely. Nothing may reference it first — grep the
-whole repo, including .github/workflows, dev.sh, README.md and both
-package.json files, and clean up every reference you find.
-
-Two things to remove from the frontend while you are there:
-- @google/genai is in frontend/package.json but the client no longer calls
-  Gemini directly. Drop it and reinstall so the lockfile updates.
-- frontend/vite.config.ts defines process.env.API_KEY and
-  process.env.GEMINI_API_KEY from the env. Nothing reads them today, so nothing
-  is leaking, but the substitution is live and the first component to reference
-  that name would ship the key to every browser. Delete the whole define block.
-  Confirm afterwards that the built bundle contains no key: build with a dummy
-  GEMINI_API_KEY set and grep dist/ for it.
-
-Also remove the Express pieces from the deployment: Dockerfile.api, the api
-service and its api_data volume in docker-compose.yml, and the /ai/ location in
-nginx.conf. Check .dockerignore for now-dead server/ entries.
-
-Verify with: cd frontend && npm run build && npm test, and
-cd backend && php artisan test.
-Report the real output plus the result of the bundle grep.
-Tick the 4.2 box in TASKS.md. Do not commit.
-```
+- [x] Done, 2026-10-03. `server/`, `Dockerfile.api`, the `api` compose service
+  and its volume declaration, and nginx's `/ai/` location are gone, after 3.12
+  ported the last prompts. The frontend lost `@google/genai` (only a dead
+  `createPCMBlob` helper imported it), `supertest`, the `server` script, and
+  the `vite.config.ts` `define` block that would have inlined
+  `GEMINI_API_KEY` into the bundle. Checked by building with a canary key set:
+  it appears nowhere in `dist/`. `deploy.sh` runs `up --remove-orphans`, so
+  the old container went with the deploy. The `mission-employed_api_data`
+  volume (the legacy Express accounts JSON) was deliberately left on the
+  server. See "If work resumes".
 
 ### 4.3 Test coverage pass ✅
 
@@ -956,58 +595,21 @@ Tick the 4.2 box in TASKS.md. Do not commit.
   `preventStrayRequests()` by default. Frontend: `http.ts` contract tests and
   `PremiumGate`. CI runs `tsc --noEmit`.
 
-```
-Task 4.3 from TASKS.md: close the gaps in test coverage.
-
-Read every controller under backend/app/Http/Controllers and check it against
-the existing feature tests. Add what is missing, focusing on the boundaries
-rather than the happy paths that already pass:
-
-- Every owned resource 404s for another user's record, including nested routes.
-- The premium middleware gates every AI route, and admin role passes without a
-  premium plan.
-- Validation rejects the bad input each FormRequest claims to catch.
-- A GeminiException surfaces as a clean HTTP error with no upstream body.
-- No test hits the network — FakeGeminiService is bound everywhere.
-
-On the frontend, keep Vitest meaningful for what survives rather than chasing a
-number. Do not weaken an assertion to make something pass; if a test fails,
-either the code is wrong or the test is, and say which.
-
-Verify with: cd backend && php artisan test, and
-cd frontend && npm test && npx tsc --noEmit.
-Report the real output and the coverage gaps you found.
-Tick the 4.3 box in TASKS.md. Do not commit.
-```
-
-### 4.4 CI and a real end-to-end run
+### 4.4 CI and a real end-to-end run ✅
 
 - [x] **CI half** — `.github/workflows/ci.yml` already ran PHPUnit, Vitest and
   the frontend build from a clean checkout; it now also runs `npx tsc --noEmit`.
-- [ ] **Live walk still outstanding** — boot `./dev.sh` as free and premium,
-  exercise all four features, hard-refresh mid-conversation. Needs a Gemini
-  key; not part of the TDD plumbing PR.
-
-```
-Task 4.4 from TASKS.md: get CI green and walk the whole app.
-
-Update .github/workflows so one workflow covers both packages: PHP 8.3 with
-pdo_sqlite, composer install, php artisan test for the backend; Node with a
-frontend/package-lock.json cache, npm ci, tsc --noEmit, build and test for the
-frontend. Both jobs must pass from a clean checkout — no committed vendor/,
-node_modules/ or database file.
-
-Then boot the pair with ./dev.sh and walk all four features end to end against a
-live database, as both a free and a premium user: coding practice with the tutor,
-the application tracker including a tailored CV and cover letter, one-question
-interview practice, and a full mock interview through to its report. Do a hard
-refresh partway through each AI conversation to confirm sessions really do
-survive, which was the whole point of moving them out of the Express Map.
-
-Write down what actually worked and what did not. Do not fix large problems
-silently — report them and add a task to TASKS.md.
-Tick the 4.4 box in TASKS.md. Do not commit.
-```
+- [x] **Live walk, 2026-10-03**, against the real Gemini API on a throwaway
+  database, driven over HTTP. Free user refused (403 `premium_required`), admin
+  upgrade unlocks it. Coding problem and tutor; the API was **restarted
+  mid-conversation** and the session read back intact and continued in
+  context. Tracker: JD parse, create, stage, tailored CV and cover letter, both
+  Refine chats, save, ATS check and the free re-check, all persisted. Practice
+  question, TTS (valid WAV), typed mock interview through to its report and
+  history. Usage recorded per feature: 14 calls, $0.038. Login lockout: 429
+  on the sixth try. Not driven here: microphone-only paths (behavioral answer
+  evaluation, the Live voice interview), which 3.4 and 3.6 exercised in
+  headless Chromium.
 
 ---
 
@@ -1032,6 +634,18 @@ Tick the 4.4 box in TASKS.md. Do not commit.
   `DEPLOYMENT.md`. Telescope was considered and rejected: it is a local
   debugging tool that writes every request to the database, and it cannot
   tell you the site is down.
+
+### 4.7 Parking the project ✅
+
+- [x] Done, 2026-10-03. Rate limits on the two routes reachable without a token:
+  login 5/min per email + IP, registration 10/hour per IP. `bootstrap/app.php`
+  now trusts the private Docker ranges as proxies, because without it every
+  request's IP was nginx's and any per-IP limit would have been global.
+  Nightly SQLite backups (`scripts/backup.sh`, 30 days, see `DEPLOYMENT.md`).
+  Dependency audits clean: `league/commonmark` and `laravel/framework` patched
+  within `^12`, `react-router` patched. Stale branches, PRs and the leftover
+  worktree cleaned up; `.claude/settings.json` and its hook scripts are now
+  tracked.
 
 ## Wave 5 — MCP server
 
@@ -1098,70 +712,37 @@ Decisions:
 
 ---
 
+---
+
 ## Deployment
 
 **The app is live at `mission-employed.vanndavidteng.com`, and a green push to
-`main` deploys it automatically** (task 4.5, [`DEPLOYMENT.md`](DEPLOYMENT.md)).
+`main` deploys it automatically** (task 4.5, [`DEPLOYMENT.md`](DEPLOYMENT.md),
+which also covers monitoring and backups).
 
 The stack is docker compose behind Traefik:
 
 | Service | Image | Role |
 | --- | --- | --- |
-| `nginx` | `Dockerfile` | Serves the built SPA, proxies `/api/` and `/ai/` |
+| `nginx` | `Dockerfile` | Serves the built SPA, proxies `/api/` to Laravel and the OAuth + `/mcp` paths to `mcp` |
 | `laravel` | `Dockerfile.laravel` | The Laravel API on `:8080`, SQLite on the `laravel_data` volume |
-| `api` | `Dockerfile.api` | Express on `:3001`. Serves only `/ai/`, which nothing calls. Deleted in 4.2 |
+| `mcp` | `Dockerfile.mcp` | The remote MCP connector (task 5.2) |
 
 `docker-compose.prod.yml` adds the Traefik labels and TLS. `nginx.conf` sets
-`client_max_body_size 10m` to match the Express JSON limit — mock interviews POST
-base64 audio, and nginx would 413 before the backend ever saw it — and a 300s
-read timeout because model calls are slow.
+`client_max_body_size 10m`, since mock interviews POST base64 audio and nginx
+would 413 before the backend ever saw it, and a 300s read timeout because
+model calls are slow.
 
-**Laravel is the backend for `/api/`, deployed and confirmed on 2026-09-02.**
-The Express container is still up but only answers `/ai/`, which nothing calls.
-Deleting `server/` is task 4.2, and it is now unblocked.
-
-Deploying is a pull and a rebuild on the server, which is reachable as
-`ssh vps` (see `~/.ssh/config`):
-
-```
-cd /home/ubuntu/traefik-projects/Mission-Employed
-git pull --ff-only origin main
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
-```
-
-`.env` there is not in git and holds `APP_KEY`, `GEMINI_API_KEY` and the admin
-credentials — never overwrite it from the repo. The SQLite database is on the
-`laravel_data` volume and the legacy Express accounts JSON on `api_data`, so a
-rebuild keeps both but `docker compose down -v` would destroy them. Backups of
-`.env` and the accounts file are in `/root/backups/mission-employed/`.
+`.env` on the server is not in git and holds `APP_KEY`, `GEMINI_API_KEY`, the
+admin credentials and `MCP_OAUTH_SECRET`. Never overwrite it from the repo. The
+SQLite database is on the `laravel_data` volume, so a rebuild keeps it but
+`docker compose down -v` would destroy it. Backups of `.env` and the database
+are in `/root/backups/mission-employed/`.
 
 **Accounts did not migrate.** The Express users lived in a JSON file on the
-`api_data` volume and Laravel starts from an empty SQLite database, so everyone
-except the bootstrap admin has to register again. The old file is still on the
-volume and in the backup directory if those accounts are ever worth porting.
-
-Why this mattered: the client has sent every request to `/api/` since commit
-3f36616, and Express only implements `/api/health`, `/api/auth/*` and
-`/api/admin/users`. Its AI handlers live at `/ai/...`, not `/api/ai/...`. So
-deploying `main` against the Express backend gives a site where login works and
-the tracker, profile, behavioral answers and every AI feature return 404.
-
-The repo split moved the client into `frontend/`, so `Dockerfile` now copies from
-there and `.dockerignore` covers both packages.
-
-The Docker daemon **is** reachable from this WSL shell (29.7.2) — an earlier note
-here said otherwise. Task 4.1 was verified by building and running the real
-stack: `/api/health`, register, login, `GET`/`PUT /api/behavioral-answers`, the
-premium 403 and the sanitised 502 when `GEMINI_API_KEY` is empty, plus the SQLite
-volume surviving a container restart. Both through the container directly and
-through nginx.
-
-`Dockerfile` and `.dockerignore` both carry comments about keeping
-`GEMINI_API_KEY` out of the build context, because `vite.config.ts` inlines it
-into the client bundle. Task 4.2 removes that `define` block, which retires the
-whole hazard.
-
----
+`api_data` volume and Laravel started from an empty SQLite database, so
+everyone except the bootstrap admin had to register again. The old file is
+still there; deciding its fate is under "If work resumes".
 
 ## Carried over from the old server
 
@@ -1170,7 +751,7 @@ Things found in the Express code that are **not** being reproduced as-is.
 - **The API key is wired into the client build.** `vite.config.ts` defines
   `process.env.API_KEY` from `GEMINI_API_KEY`. No frontend file reads it today so
   nothing leaks yet, but the substitution is live — the first component to
-  reference that name ships the key to every browser. Removed in 4.1.
+  reference that name ships the key to every browser. Removed in 4.2.
 - **Errors returned raw exception text.** The Express `asyncHandler` sent
   `e.message` straight to the client, so anything the Gemini SDK threw went out
   over the wire. `GeminiException` now keeps upstream detail in `detail()`, never
@@ -1184,46 +765,33 @@ Things found in the Express code that are **not** being reproduced as-is.
 - **A safety block looked like an empty answer.** `response.text || ''` turned a
   blocked generation into a blank assistant message. `GeminiService` throws.
 
-## Open questions
+## Decisions on record
 
-- **IDs changed type** — applications and interview stages were client-generated
-  UUID strings, now auto-increment integers. Wave 3 has to account for it.
-- **`recruiterContact` was flattened** to three nullable columns, so "no recruiter"
-  and "recruiter with blank fields" are indistinguishable in storage. The
-  `Application::recruiter_contact` accessor normalizes it, treating blank strings
-  as absent. Use it rather than reimplementing the check.
-- **`dateApplied` and `nextActionDue` can be `''` on the client** but are nullable
-  `date` columns. Normalize in the FormRequest.
-- **Status is stored twice** — the current value on `applications` plus the event
-  log. Keeping them in sync is a controller concern.
-- **`behavioral_answers` is per-user global**, not per-application, matching how
-  PrepRoom and MockTest read it.
-- ~~**A behavioral theme could not be emptied.**~~ Resolved: `bullets` is now
-  `present` rather than `required` so `[]` is accepted, and blank elements are
-  dropped rather than rejected — `ConvertEmptyStringsToNull` was turning a blank
-  bullet into `null`, which the `string` element rule refused.
-- **`@types/react` is not installed**, so every import from `react` and
-  `react-dom` is an implicit `any` and `strict` is off in `tsconfig.json`. That
-  means `npx tsc --noEmit` checks far less inside components than it looks like
-  it does — hook state, props and event handlers are all unchecked. Adding the
-  types would be a one-line dependency change but would surface errors across
-  most components at once, so it belongs in 4.3 rather than in the middle of a
-  wave. Until then, do not read a clean `tsc` as proof a component is sound.
-- **The cover letter and CV refine-chat sessions have no create route.** They
-  were not in the port list for 2.3. `AiSession::KINDS` already carries
-  `cover_letter` and `cv` and the unified turn endpoint serves any non-mock
-  kind, so it is one controller action away if 3.2 wants the Refine box back.
-  Until then `createCoverLetterSession` / `createCVSession` throw a client-side
-  501 rather than posting at a 404.
-- **Chat history grows quadratically.** Every turn resends the whole transcript,
-  so a long session gets expensive. Not urgent; worth a cap or a summarization
-  step eventually.
+What used to be the open questions, now that each has an answer.
+
+- **IDs are integers.** Applications and interview stages were client-generated
+  UUID strings; they are auto-increment integers from the database.
+- **`recruiterContact` is flattened** to three nullable columns, so "no
+  recruiter" and "recruiter with blank fields" are indistinguishable in
+  storage. The `Application::recruiter_contact` accessor normalizes it,
+  treating blank strings as absent. Use it rather than reimplementing the check.
+- **Blank dates are `null`.** The client sends `''` for untouched inputs;
+  `toApplicationPayload` sends `null` and the FormRequests normalize too.
+- **Status is stored twice**, the current value on `applications` plus the event
+  log, and `ApplicationController` keeps them in sync in one place.
+- **`behavioral_answers` is per-user global**, not per-application, and a theme
+  can be emptied: `bullets` is `present` rather than `required`, and blank
+  elements are dropped rather than rejected.
+- **TypeScript is strict.** `@types/react` is installed and `strict` is on in
+  `frontend/tsconfig.json`, so a clean `tsc --noEmit` means something.
+- **Chat history is capped.** Every turn resends the transcript, so
+  `AiController::HISTORY_LIMIT` replays the last 40 messages; the persona lives
+  in `system_instruction` and is never dropped.
 - **TTS is wrapped server-side.** Gemini returns raw headerless PCM at
-  `audio/L16;rate=24000`. Task 2.3 settled the open question: `PcmWavEncoder`
-  prepends the 44-byte RIFF header in the API, so `POST /api/ai/tts` answers
-  `{ audio, mimeType: 'audio/wav', sampleRate: 24000 }` and task 3.4 can hand
-  `audio` straight to an `<audio src="data:audio/wav;base64,…">` with no
-  decoder on the client.
+  `audio/L16;rate=24000`; `PcmWavEncoder` prepends the 44-byte RIFF header, so
+  `POST /api/ai/tts` answers a playable `audio/wav`.
+- **`npm install` in `mcp/` with vitest crashes npm 10.9.2** (an arborist
+  peer-resolution bug), which is why `mcp/` tests run on `node:test` via `tsx`.
 
 ## Seeder credentials
 

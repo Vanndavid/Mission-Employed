@@ -54,10 +54,8 @@ backend/auth.json
 *.sln
 *.sw?
 
-# Environment files — these hold the Gemini key and admin credentials
-.env
-.env.local
-server/.env
-
-# Local JSON stores written by the API server
-server/data
+# --- Claude Code ------------------------------------------------------------
+# .claude/settings.json and its hook scripts are shared project config; these
+# are per-machine.
+.claude/settings.local.json
+.claude/worktrees/

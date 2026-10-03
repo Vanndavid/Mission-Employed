@@ -3,9 +3,11 @@
 A job-hunting SaaS: practice coding, track applications with AI-tailored CVs and
 cover letters, rehearse interviews.
 
-**Currently mid-rebuild.** Read `TASKS.md` at the repo root before starting work —
-it holds the live task list, what's done, and the open questions. Keep it updated
-as work lands rather than letting it go stale.
+**The rebuild is finished and the project is parked** (2026-10-03): live,
+deployed from `main`, nothing in flight. `TASKS.md` at the repo root records what
+was built and why, and ends with the follow-ups worth doing if work resumes —
+each as a copy-paste brief. Keep it updated as work lands rather than letting it
+go stale.
 
 ## Stack
 
@@ -75,8 +77,6 @@ The stack is docker compose behind Traefik:
 - `Dockerfile` builds the SPA from `frontend/` and serves it from nginx.
 - `Dockerfile.laravel` is the API, with SQLite on the `laravel_data` volume.
 - `Dockerfile.mcp` is the remote MCP connector (see below).
-- `Dockerfile.api` is the retired Express server. It serves only `/ai/`, which
-  nothing calls, and is removed in task 4.2.
 - `nginx.conf` keeps `client_max_body_size 10m` (mock interviews POST base64
   audio) and `proxy_read_timeout 300s` (model calls are slow).
 - The server `.env` is not in git and a deploy never touches it. A new required
@@ -175,5 +175,9 @@ the emergency modal.
   `frontend/utils/usageFormat.ts` for the admin breakdown, and a price in
   `backend/config/ai_pricing.php` if it uses a new model. A model with no
   price records its tokens with no cost.
-- `server/` is the retired Express backend, kept only as a reference for porting
-  prompts out of `aiHandlers.js`. It is deleted in the final wave. Do not add to it.
+- The retired Express backend (`server/`) was deleted once every prompt worth
+  keeping had been ported; comments that cite `server/aiHandlers.js` refer to
+  it, and `git log -- server/` still has it. Do not bring it back.
+- Login and registration are rate limited (`AppServiceProvider`), which relies
+  on `bootstrap/app.php` trusting the private Docker ranges as proxies so
+  `$request->ip()` is the visitor and not nginx.

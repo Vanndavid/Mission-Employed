@@ -1,15 +1,20 @@
 # Mission: Employed
 
-Job-hunt execution system for software engineers. Currently mid-rebuild on
-`rebuild/laravel-react`: the API is moving from an in-memory Express proxy to
-Laravel, and the React app has moved out of the repo root.
+Job-hunt execution system for software engineers: coding practice with an AI
+tutor, a job application tracker with tailored CVs and cover letters, one-question
+interview practice, and a full spoken mock interview. Live at
+<https://mission-employed.vanndavidteng.com>.
+
+`CLAUDE.md` is the project orientation (scope, constraints, conventions),
+`TASKS.md` the history and the follow-ups, and `DEPLOYMENT.md` how it ships.
 
 ## Layout
 
 ```
 backend/    Laravel 12 API — PHP 8.3, SQLite, Sanctum bearer tokens (port 8000)
 frontend/   React 19 + TypeScript + Vite SPA (port 3000)
-server/     Legacy Express + Gemini proxy — being replaced, removed in a later wave
+mcp/        MCP server over the API, also deployed as a remote connector
+scripts/    deploy.sh (runs on the server) and the uptime probe
 ```
 
 ## Requirements
@@ -84,7 +89,7 @@ credentials. There is no wildcard origin.
 ## Environment
 
 `backend/.env.example` lists every key the API reads, including `GEMINI_API_KEY`
-for the AI features (ported in a later wave). Never commit a real key —
+for the AI features. Never commit a real key —
 `.env` is gitignored, `.env.example` is not.
 
 ## Tests
@@ -97,7 +102,9 @@ cd backend  && php artisan test    # PHPUnit, in-memory SQLite
 cd frontend && npm test            # Vitest
 cd frontend && npm run typecheck   # tsc --noEmit
 cd frontend && npm run build       # production build
+cd mcp      && npm test && npm run typecheck
 ```
 
-CI (`.github/workflows/ci.yml`) runs PHPUnit, Vitest, `tsc --noEmit`, and the
-frontend build. `deploy.yml` builds `frontend/` and publishes it to GitHub Pages.
+CI (`.github/workflows/ci.yml`) runs PHPUnit, Vitest, `tsc --noEmit`, the
+frontend build and the MCP tests, and on `main` deploys once they are green.
+See `DEPLOYMENT.md`.

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Ai\DatabaseUsageRecorder;
 use Database\Factories\AiUsageFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * One Gemini call's token usage and estimated cost. Written by
- * {@see \App\Services\Ai\DatabaseUsageRecorder}, read by the admin usage screen.
+ * {@see DatabaseUsageRecorder}, read by the admin usage screen.
  */
 class AiUsage extends Model
 {

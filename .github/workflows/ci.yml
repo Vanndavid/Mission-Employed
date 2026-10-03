@@ -4,7 +4,7 @@ name: CI
 # job ships it to mission-employed.vanndavidteng.com. See DEPLOYMENT.md.
 on:
   push:
-    branches: [main, 'cursor/**', 'rebuild/**']
+    branches: [main, 'cursor/**']
   pull_request:
     branches: [main]
   # Redeploy main by hand: Actions -> CI -> Run workflow. Tests still run first.
