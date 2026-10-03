@@ -97,10 +97,45 @@ it through Actions → Uptime → *Run workflow*.
 Limits worth knowing:
 
 - GitHub's cron is best effort. Runs can start a few minutes late, and they
-  pause if the repo has had no activity for 60 days. The Actions tab says so
-  when that happens.
+  pause if the repo has had no activity for 60 days. GitHub emails before it
+  happens and the Actions tab says so after; `gh workflow enable uptime.yml`
+  turns it back on. While the project is parked this is a tracked item in
+  `TASKS.md`.
 - The monitor runs inside GitHub. If GitHub Actions itself is down, nothing
   alerts you.
+
+## Backups
+
+**Every night at 03:17 UTC the server snapshots the SQLite database** with
+[`scripts/backup.sh`](scripts/backup.sh), from `/etc/cron.d/mission-employed-backup`:
+
+```
+17 3 * * * root /home/ubuntu/traefik-projects/Mission-Employed/scripts/backup.sh >> /var/log/mission-employed-backup.log 2>&1
+```
+
+The host has no `sqlite3`, so the snapshot is taken inside the running
+`laravel` container with `VACUUM INTO`, which is consistent even mid-write.
+Each one is gzipped to `/root/backups/mission-employed/db/` and kept 30 days.
+They live on the same disk as the volume, so they cover a bad migration, a
+deleted record or a `docker compose down -v`, not the loss of the server.
+
+Take one by hand before anything risky:
+
+```bash
+ssh vps /home/ubuntu/traefik-projects/Mission-Employed/scripts/backup.sh
+```
+
+**Restore:** stop Laravel so nothing writes, swap the file on the volume, start
+it again, and check `/api/health`:
+
+```bash
+ssh vps
+cd /home/ubuntu/traefik-projects/Mission-Employed
+docker compose -f docker-compose.yml -f docker-compose.prod.yml stop laravel
+gunzip -c /root/backups/mission-employed/db/database-<stamp>.sqlite.gz \
+  > /var/lib/docker/volumes/mission-employed_laravel_data/_data/database.sqlite
+docker compose -f docker-compose.yml -f docker-compose.prod.yml start laravel
+```
 
 ## Everyday operations
 
