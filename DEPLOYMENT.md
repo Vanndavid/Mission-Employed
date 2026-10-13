@@ -65,9 +65,10 @@ script. This setup follows the same idea and closes the gaps in it:
 
 ## Monitoring
 
-**Every 10 minutes, [`.github/workflows/uptime.yml`](.github/workflows/uptime.yml)
-probes the live site from outside**, through Traefik and TLS, the same way a
-user reaches it. The probe is [`scripts/uptime-check.sh`](scripts/uptime-check.sh),
+**[`.github/workflows/uptime.yml`](.github/workflows/uptime.yml) probes the
+live site from outside**, through Traefik and TLS, the same way a user reaches
+it. It is scheduled every 10 minutes, but GitHub runs it far less often: see
+the limits below. The probe is [`scripts/uptime-check.sh`](scripts/uptime-check.sh),
 and it checks:
 
 | Check | What it proves |
@@ -96,7 +97,11 @@ it through Actions → Uptime → *Run workflow*.
 
 Limits worth knowing:
 
-- GitHub's cron is best effort. Runs can start a few minutes late, and they
+- **GitHub's cron is best effort, and in practice sparse.** Across the 97 runs
+  from 2026-09-24 to 2026-10-13, the median gap between runs was about 5
+  hours and the longest about 10, despite the 10-minute schedule. An outage
+  can go unnoticed for hours, so treat this as a backstop, not an alarm. A
+  real external monitor is a follow-up in `TASKS.md`. Runs also
   pause if the repo has had no activity for 60 days. GitHub emails before it
   happens and the Actions tab says so after; `gh workflow enable uptime.yml`
   turns it back on. While the project is parked this is a tracked item in

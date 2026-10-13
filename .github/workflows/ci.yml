@@ -10,15 +10,18 @@ on:
   # Redeploy main by hand: Actions -> CI -> Run workflow. Tests still run first.
   workflow_dispatch:
 
+# Runners are pinned rather than ubuntu-latest, so an image migration (to
+# Ubuntu 26 from 2026-10-19) cannot change CI under a parked project and block
+# its next deploy. Move them on deliberately.
 jobs:
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: 'npm'
@@ -29,12 +32,12 @@ jobs:
       - run: npm run build
 
   backend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
@@ -51,13 +54,13 @@ jobs:
       - run: php artisan test
 
   mcp:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: mcp
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: 'npm'
@@ -69,7 +72,7 @@ jobs:
   deploy:
     needs: [frontend, backend, mcp]
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: production
       url: https://mission-employed.vanndavidteng.com

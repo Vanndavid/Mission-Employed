@@ -22,9 +22,34 @@ gets the same treatment: a box, a brief, and a tick when it lands.
 Nothing here is broken today. These are the things that will need a hand
 eventually, soonest first.
 
+### Move uptime monitoring to an external service
+
+- [ ] Needs the user to create the account; then about ten minutes
+
+```
+The Uptime workflow is scheduled every 10 minutes, but GitHub runs it every
+few hours (a median of about 5 hours between runs in Sep–Oct 2026; see
+Monitoring in DEPLOYMENT.md). The first real outage, on 2026-10-13, was a
+network-level blip at the host: the server and containers stayed up, and it
+was caught only because a run happened to land inside it.
+
+Once the user has a free UptimeRobot or Better Stack account, add HTTP(S)
+monitors at a 5-minute interval with email alerts for:
+  https://mission-employed.vanndavidteng.com/                 (keyword: id="root")
+  https://mission-employed.vanndavidteng.com/api/health        (keyword: "status":"ok")
+  https://mission-employed.vanndavidteng.com/.well-known/oauth-protected-resource/mcp
+plus the service's SSL-expiry alert. The user does this in the service's UI,
+or gives you an API key for it; never commit that key.
+
+Then update Monitoring in DEPLOYMENT.md to name the service as the alarm and
+uptime.yml as the backstop, keep uptime.yml (it costs nothing on a public
+repo), and drop the "Re-enable the uptime monitor" item below, since nothing
+will depend on it. Tick this box with the date.
+```
+
 ### Re-enable the uptime monitor
 
-- [ ] Due around 2026-12-02, if nothing has been pushed by then
+- [ ] Due around 2026-12-12, if nothing has been pushed by then
 
 ```
 GitHub pauses scheduled workflows in a public repository after 60 days with no
@@ -626,7 +651,7 @@ is the default in code and what the server `.env` pins.
 
 ### 4.6 Uptime monitoring ✅
 
-- [x] Done. `uptime.yml` runs `scripts/uptime-check.sh` every 10 minutes
+- [x] Done. `uptime.yml` runs `scripts/uptime-check.sh` on a 10-minute schedule
   against the SPA, `/api/health`, the MCP resource metadata and the TLS expiry.
   It opens one `outage` issue on failure and closes it on recovery.
   `/api/health` now checks SQLite and storage and returns 503 when either
