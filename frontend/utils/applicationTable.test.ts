@@ -1,11 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { JobApplication, JobStatus } from '../types';
 import {
+  APPLICATIONS_PAGE_SIZES,
+  DEFAULT_APPLICATIONS_PAGE_SIZE,
   DEFAULT_FILTERS,
   DEFAULT_SORT,
   filterApplications,
   hasActiveFilters,
   nextSort,
+  pageAfterResize,
   paginate,
   sortApplications,
   STATUS_STYLES,
@@ -235,6 +238,22 @@ describe('sorting by status update', () => {
 
     expect(companies(sortApplications(list, { key: 'statusUpdated', direction: 'desc' }))).toEqual(['New', 'Old', 'None']);
     expect(nextSort(DEFAULT_SORT, 'statusUpdated')).toEqual({ key: 'statusUpdated', direction: 'desc' });
+  });
+});
+
+describe('page sizes', () => {
+  it('offers the default as one of the choices', () => {
+    expect(APPLICATIONS_PAGE_SIZES).toContain(DEFAULT_APPLICATIONS_PAGE_SIZE);
+  });
+});
+
+describe('pageAfterResize', () => {
+  it('lands on the page holding the row that was first on screen', () => {
+    // Page 3 at 5 a page starts at row 11, which is on page 2 at 10 a page.
+    expect(pageAfterResize(3, 5, 10)).toBe(2);
+    // Page 2 at 25 a page starts at row 26: page 6 at 5 a page.
+    expect(pageAfterResize(2, 25, 5)).toBe(6);
+    expect(pageAfterResize(1, 5, 100)).toBe(1);
   });
 });
 

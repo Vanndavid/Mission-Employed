@@ -53,6 +53,7 @@ function AppRoutes() {
   // way Dashboard does; the two read-only consumers below still take it as a
   // prop.
   const { answers } = useBehavioralAnswers();
+  const { user, updatePreferences } = useAuth();
 
   const handleDelete = (id: number) => {
     if (window.confirm('Terminate mission record?')) {
@@ -94,6 +95,8 @@ function AppRoutes() {
             coverLetterTemplate={profile.coverLetterTemplate}
             cvTemplate={profile.cvTemplate}
             portfolioUrl={profile.portfolioUrl}
+            pageSize={user?.preferences.applicationsPageSize}
+            onPageSizeChange={size => updatePreferences({ applicationsPageSize: size })}
           />
         }
       />

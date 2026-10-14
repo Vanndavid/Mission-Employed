@@ -18,6 +18,8 @@ const USER = {
   role: 'user',
   plan: 'free',
   createdAt: '2026-08-29T15:40:44+00:00',
+  deactivatedAt: null,
+  preferences: { applicationsPageSize: 5 },
 };
 
 const APPLICATION = {

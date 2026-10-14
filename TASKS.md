@@ -298,6 +298,29 @@ Things worth remembering:
   on one rejection count once. The range filter dates a rejected application by
   its latest Rejected status event and anything else by `dateApplied`.
 
+### 3.2e Rows per page, saved on the account ✅
+
+- [x] Done, 2026-10-14. The tracker table had a fixed 5 rows per page. A "Rows
+  per page" select (5, 10, 25, 50, 100) now sits under the table and the
+  mobile cards. It shows whenever the list is non-empty, so a user who picked
+  100 can still go back down. Changing it keeps the row that was at the top on
+  screen (`pageAfterResize`).
+  - Saved per account, not per browser, so the choice follows the user to
+    another device: `users.preferences` (JSON, nullable, not fillable), read
+    back on `/auth/me` as `preferences.applicationsPageSize` with defaults
+    filled in by `User::effectivePreferences()`. A stored value no longer
+    offered reads as the default.
+  - Written by `PATCH /api/auth/preferences`, which merges, so one preference
+    never resets another. Unknown keys are dropped, and a size outside the
+    list is a 422. The allowed list is `User::APPLICATIONS_PAGE_SIZES` and
+    `APPLICATIONS_PAGE_SIZES` in `utils/applicationTable.ts`; change both
+    together.
+  - The client applies the choice at once (`AuthContext.updatePreferences`)
+    and does not apply the response, so a slow answer cannot undo a later
+    choice. A failed save keeps the choice for the session and toasts that it
+    will not be remembered.
+  - Theme stays in `localStorage`. It is a device choice, not an account one.
+
 ### 3.3 Coding practice and dashboard ✅
 
 - [x] Done — dashboard slimmed to coding practice, pipeline summary and upcoming

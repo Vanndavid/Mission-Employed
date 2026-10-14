@@ -25,6 +25,23 @@ class User extends Authenticatable
     protected $rememberTokenName = '';
 
     /**
+     * Rows-per-page choices for the applications table. Mirrors
+     * APPLICATIONS_PAGE_SIZES in frontend/utils/applicationTable.ts.
+     *
+     * @var list<int>
+     */
+    public const APPLICATIONS_PAGE_SIZES = [5, 10, 25, 50, 100];
+
+    /**
+     * What a preference reads as until the user changes it.
+     *
+     * @var array{applicationsPageSize: int}
+     */
+    public const DEFAULT_PREFERENCES = [
+        'applicationsPageSize' => 5,
+    ];
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
@@ -73,6 +90,8 @@ class User extends Authenticatable
             'plan' => AccountPlan::class,
             // Deliberately not fillable: only the admin route sets it.
             'deactivated_at' => 'datetime',
+            // Deliberately not fillable: only PreferencesController writes it.
+            'preferences' => 'array',
         ];
     }
 
@@ -146,6 +165,24 @@ class User extends Authenticatable
     {
         $this->deactivated_at = null;
         $this->save();
+    }
+
+    /**
+     * Every preference, defaults filled in. A stored value that is no longer
+     * offered (the choices changed since it was saved) reads as the default.
+     *
+     * @return array{applicationsPageSize: int}
+     */
+    public function effectivePreferences(): array
+    {
+        $stored = $this->preferences ?? [];
+        $preferences = self::DEFAULT_PREFERENCES;
+
+        if (in_array($stored['applicationsPageSize'] ?? null, self::APPLICATIONS_PAGE_SIZES, true)) {
+            $preferences['applicationsPageSize'] = $stored['applicationsPageSize'];
+        }
+
+        return $preferences;
     }
 
     /** The plan the client should see — admins read back as premium. */

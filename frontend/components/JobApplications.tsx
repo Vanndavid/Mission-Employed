@@ -14,15 +14,18 @@ import { rejectionReasonsOf } from '../utils/rejectionInsights';
 import { RejectionFlagsBadge } from './RejectionFeedback';
 import { RejectionInsights } from './RejectionInsights';
 import { AtsBadge } from './AtsScore';
+import { useToast } from './ToastProvider';
 import {
   ApplicationFilters,
   ApplicationSort,
-  APPLICATIONS_PAGE_SIZE,
+  APPLICATIONS_PAGE_SIZES,
+  DEFAULT_APPLICATIONS_PAGE_SIZE,
   DEFAULT_FILTERS,
   DEFAULT_SORT,
   SortKey,
   hasActiveFilters,
   nextSort,
+  pageAfterResize,
   paginate,
   STATUS_STYLES,
   statusUpdatedAt,
@@ -49,6 +52,10 @@ interface JobApplicationsProps {
   /** The last failed load or save. The context has already reloaded by then. */
   loadError?: string | null;
   onRetry?: () => void;
+  /** Rows per page, as saved on the account. */
+  pageSize?: number;
+  /** Saves a new rows-per-page choice; rejects when it could not be saved. */
+  onPageSizeChange?: (size: number) => Promise<void>;
 }
 
 type PageTab = 'tracker' | 'insights' | 'seek';
@@ -180,7 +187,10 @@ export const JobApplications = ({
   loading = false,
   loadError = null,
   onRetry,
+  pageSize = DEFAULT_APPLICATIONS_PAGE_SIZE,
+  onPageSizeChange,
 }: JobApplicationsProps) => {
+  const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const prepAppId = searchParams.get('prep');
   const tab = tabFromParam(searchParams.get('tab'));
@@ -219,7 +229,14 @@ export const JobApplications = ({
   // A new filter or sort starts from the first page.
   useEffect(() => setPage(1), [filters, sort]);
 
-  const paged = paginate(visible, page, APPLICATIONS_PAGE_SIZE);
+  const paged = paginate(visible, page, pageSize);
+
+  const changePageSize = (next: number) => {
+    setPage(pageAfterResize(paged.page, pageSize, next));
+    onPageSizeChange?.(next).catch(() =>
+      toast('Could not save rows per page, so it will reset when you reload.', 'error'),
+    );
+  };
 
   const filtering = hasActiveFilters(filters);
   const starredCount = applications.filter(app => app.isImportant).length;
@@ -712,30 +729,47 @@ export const JobApplications = ({
             )}
           </div>
 
-          {paged.pageCount > 1 && (
-            <nav aria-label="Applications pages" className="flex items-center justify-end gap-2">
-              <button
-                type="button"
-                aria-label="Previous page"
-                disabled={paged.page <= 1}
-                onClick={() => setPage(paged.page - 1)}
-                className="px-3 py-2 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-500 disabled:opacity-40"
-              >
-                Previous
-              </button>
-              <span className="text-xs text-slate-400">
-                Page {paged.page} of {paged.pageCount}
-              </span>
-              <button
-                type="button"
-                aria-label="Next page"
-                disabled={paged.page >= paged.pageCount}
-                onClick={() => setPage(paged.page + 1)}
-                className="px-3 py-2 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-500 disabled:opacity-40"
-              >
-                Next
-              </button>
-            </nav>
+          {visible.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <label className="flex items-center gap-2 text-xs text-slate-400">
+                Rows per page
+                <select
+                  value={pageSize}
+                  onChange={e => changePageSize(Number(e.target.value))}
+                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-bold text-slate-600 dark:text-slate-300"
+                >
+                  {APPLICATIONS_PAGE_SIZES.map(size => (
+                    <option key={size} value={size}>{size}</option>
+                  ))}
+                </select>
+              </label>
+
+              {paged.pageCount > 1 && (
+                <nav aria-label="Applications pages" className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    aria-label="Previous page"
+                    disabled={paged.page <= 1}
+                    onClick={() => setPage(paged.page - 1)}
+                    className="px-3 py-2 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-500 disabled:opacity-40"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-xs text-slate-400">
+                    Page {paged.page} of {paged.pageCount}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Next page"
+                    disabled={paged.page >= paged.pageCount}
+                    onClick={() => setPage(paged.page + 1)}
+                    className="px-3 py-2 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-500 disabled:opacity-40"
+                  >
+                    Next
+                  </button>
+                </nav>
+              )}
+            </div>
           )}
         </div>
       )}

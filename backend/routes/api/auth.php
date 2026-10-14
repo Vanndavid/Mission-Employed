@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\AdminUsageController;
 use App\Http\Controllers\Auth\AdminUserController;
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Auth\PreferencesController;
 use Illuminate\Support\Facades\Route;
 
 // Auth and admin routes. Owned by task 2.1 in TASKS.md.
@@ -17,6 +18,8 @@ Route::prefix('auth')->group(function (): void {
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('/me', [AuthController::class, 'me']);
         Route::post('/logout', [AuthController::class, 'logout']);
+        // Partial: {applicationsPageSize: 25} leaves any other preference alone.
+        Route::patch('/preferences', PreferencesController::class);
     });
 });
 

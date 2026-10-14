@@ -6,7 +6,7 @@
  * Only the tracker endpoints use Laravel's resource wrapper.
  */
 
-import { AccountPlan, AuthUser } from '../types/auth';
+import { AccountPlan, AuthUser, UserPreferences } from '../types/auth';
 import { apiRequest, getStoredToken, setStoredToken } from './http';
 
 // The token lives in localStorage under `mission_employed_token`; storage is
@@ -37,6 +37,11 @@ export async function loginAccount(email: string, password: string): Promise<Aut
 
 export async function fetchMe(): Promise<{ user: AuthUser }> {
   return apiRequest<{ user: AuthUser }>('/auth/me');
+}
+
+/** A partial save: keys left out keep their saved value. */
+export async function updatePreferences(patch: Partial<UserPreferences>): Promise<{ user: AuthUser }> {
+  return apiRequest<{ user: AuthUser }>('/auth/preferences', { method: 'PATCH', body: patch });
 }
 
 /** Revokes only the token that made the request, not every session. */

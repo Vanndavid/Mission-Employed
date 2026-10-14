@@ -56,8 +56,15 @@ const INITIAL_DIRECTION: Record<SortKey, SortDirection> = {
  */
 export const STATUS_ORDER: JobStatus[] = Object.values(JobStatus);
 
-/** Applications per page in the tracker table. */
-export const APPLICATIONS_PAGE_SIZE = 5;
+/**
+ * Rows-per-page choices for the tracker table. The choice is saved on the
+ * account, and the server validates it against the same list
+ * (User::APPLICATIONS_PAGE_SIZES) — change both together.
+ */
+export const APPLICATIONS_PAGE_SIZES = [5, 10, 25, 50, 100] as const;
+
+/** Until the user picks one. Matches User::DEFAULT_PREFERENCES. */
+export const DEFAULT_APPLICATIONS_PAGE_SIZE = 5;
 
 /**
  * A colour per status, for the pill and the status select. Full class strings
@@ -96,6 +103,14 @@ export function paginate<T>(items: T[], page: number, pageSize: number): Page<T>
   const start = (current - 1) * pageSize;
 
   return { items: items.slice(start, start + pageSize), page: current, pageCount };
+}
+
+/**
+ * The page to show after the page size changes: the one holding the row that
+ * was at the top, so resizing does not throw away your place in the list.
+ */
+export function pageAfterResize(page: number, oldSize: number, newSize: number): number {
+  return Math.floor(((page - 1) * oldSize) / newSize) + 1;
 }
 
 export function hasActiveFilters(filters: ApplicationFilters): boolean {

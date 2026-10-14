@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { AuthUser, isPremiumUser } from '../types/auth';
+import { AuthUser, isPremiumUser, UserPreferences } from '../types/auth';
 import {
   fetchMe,
   getStoredToken,
@@ -7,6 +7,7 @@ import {
   logoutAccount,
   registerAccount,
   setStoredToken,
+  updatePreferences as savePreferences,
 } from '../services/authClient';
 import { setUnauthorizedHandler } from '../services/http';
 
@@ -19,6 +20,11 @@ interface AuthContextValue {
   register: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  /**
+   * Applies at once and saves to the account. A failed save rejects, but the
+   * choice stays for this session — the caller says it was not remembered.
+   */
+  updatePreferences: (patch: Partial<UserPreferences>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -73,6 +79,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(result.user);
   }, []);
 
+  const updatePreferences = useCallback(async (patch: Partial<UserPreferences>) => {
+    setUser(prev => (prev ? { ...prev, preferences: { ...prev.preferences, ...patch } } : prev));
+    // The response is not applied: local state is already ahead of it, and a
+    // slow answer to an earlier choice must not undo a later one.
+    await savePreferences(patch);
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       // Revokes this token server-side; signing out on a laptop must not sign
@@ -99,6 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         register,
         logout,
         refreshUser,
+        updatePreferences,
       }}
     >
       {children}

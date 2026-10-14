@@ -178,6 +178,12 @@ the emergency modal.
 - The retired Express backend (`server/`) was deleted once every prompt worth
   keeping had been ported; comments that cite `server/aiHandlers.js` refer to
   it, and `git log -- server/` still has it. Do not bring it back.
+- Per-account UI preferences (rows per page in the tracker) live in
+  `users.preferences`, come back on `/auth/me` with defaults filled in, and are
+  saved by `PATCH /api/auth/preferences`. A new one needs a rule in
+  `UpdatePreferencesRequest`, a default and a check in
+  `User::effectivePreferences()`, and a key on `UserPreferences` in
+  `frontend/types/auth.ts`. Theme is a device choice and stays in localStorage.
 - Login and registration are rate limited (`AppServiceProvider`), which relies
   on `bootstrap/app.php` trusting the private Docker ranges as proxies so
   `$request->ip()` is the visitor and not nginx.

@@ -73,6 +73,36 @@ const pageWith = (applications: unknown[], onUpdateApplication = vi.fn(), onAdd 
 const renderPage = (onAdd = vi.fn(), applications: unknown[] = [], onUpdateApplication = vi.fn()) =>
   render(pageWith(applications, onUpdateApplication, onAdd));
 
+/**
+ * The page with a saved page size. The harness holds the size the way the auth
+ * context does: it changes straight away, and `save` stands in for the PATCH.
+ */
+const renderWithPageSize = (
+  applications: unknown[],
+  { pageSize = 5, save = vi.fn(async () => undefined) }: { pageSize?: number; save?: (size: number) => Promise<void> },
+) => {
+  const element = pageWith(applications).props.children.props.children;
+
+  function Harness() {
+    const [size, setSize] = React.useState(pageSize);
+    return React.cloneElement(element, {
+      pageSize: size,
+      onPageSizeChange: (next: number) => {
+        setSize(next);
+        return save(next);
+      },
+    });
+  }
+
+  return render(
+    <MemoryRouter>
+      <ToastProvider>
+        <Harness />
+      </ToastProvider>
+    </MemoryRouter>,
+  );
+};
+
 beforeEach(() => {
   onCheckAts.mockClear();
   searchSeekJobs.mockReset().mockResolvedValue({
@@ -134,6 +164,53 @@ describe('JobApplications', () => {
     expect(within(table).getByText('Company 7')).toBeTruthy();
     expect(within(table).queryByText('Company 12')).toBeNull();
     expect(screen.getByText('Page 2 of 3')).toBeTruthy();
+  });
+
+  it('shows as many applications a page as the account has chosen', () => {
+    renderWithPageSize(Array.from({ length: 12 }, (_, i) => tracked(i + 1)), { pageSize: 10 });
+
+    const table = screen.getByRole('table');
+    expect(within(table).getByText('Company 3')).toBeTruthy();
+    expect(within(table).queryByText('Company 2')).toBeNull();
+    expect(screen.getByText('Page 1 of 2')).toBeTruthy();
+    expect(screen.getByLabelText<HTMLSelectElement>('Rows per page').value).toBe('10');
+  });
+
+  it('saves a new rows-per-page choice and keeps the first row on screen in view', async () => {
+    const save = vi.fn(async () => undefined);
+    renderWithPageSize(Array.from({ length: 12 }, (_, i) => tracked(i + 1)), { save });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+    // Page 3 at 5 a page: rows 11 and 12, the two oldest.
+    expect(within(screen.getByRole('table')).getByText('Company 2')).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText('Rows per page'), { target: { value: '10' } });
+
+    expect(save).toHaveBeenCalledWith(10);
+    // Rows 11 and 12 are page 2 at 10 a page.
+    expect(screen.getByText('Page 2 of 2')).toBeTruthy();
+    expect(within(screen.getByRole('table')).getByText('Company 2')).toBeTruthy();
+    expect(within(screen.getByRole('table')).queryByText('Company 3')).toBeNull();
+  });
+
+  it('keeps the choice for now but says when it could not be saved', async () => {
+    const save = vi.fn(async () => {
+      throw new Error('offline');
+    });
+    renderWithPageSize(Array.from({ length: 12 }, (_, i) => tracked(i + 1)), { save });
+
+    fireEvent.change(screen.getByLabelText('Rows per page'), { target: { value: '25' } });
+
+    expect(await screen.findByText(/Could not save rows per page/)).toBeTruthy();
+    expect(within(screen.getByRole('table')).getByText('Company 1')).toBeTruthy();
+  });
+
+  it('still offers a smaller page size when everything fits on one page', () => {
+    renderWithPageSize([tracked(1), tracked(2)], { pageSize: 25 });
+
+    expect(screen.getByLabelText('Rows per page')).toBeTruthy();
+    expect(screen.queryByRole('navigation', { name: 'Applications pages' })).toBeNull();
   });
 
   it('shows when each status was last updated', () => {
