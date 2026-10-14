@@ -101,6 +101,10 @@ sealed with `MCP_OAUTH_SECRET` from the server `.env`, and it keeps no database.
 Email sync is deliberately done by the *client's* Gmail connector, driven by the
 `sync_job_emails` prompt. Do not add mailbox access to the app.
 
+Every account sees how to connect under **Connect an AI agent** on Settings
+(`ConnectAgentSection.tsx`). If the connector's address, sign-in or setup
+changes, change that section with it.
+
 ## Scope — this is the whole product
 
 Five things. Anything not on this list was deliberately deleted, so do not

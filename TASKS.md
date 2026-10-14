@@ -784,6 +784,25 @@ Decisions:
 - nginx resolves `mcp` per request (`resolver 127.0.0.11`), so a broken `mcp`
   container 502s `/mcp` but cannot keep nginx, and so the site, from starting.
 
+### 5.3 "Connect an AI agent" on Settings ✅
+
+- [x] Done, 2026-10-15. Settings has a section, for every account and not only
+  admins, on connecting Claude to the hosted connector
+  (`components/ConnectAgentSection.tsx`). It shows the connector address with a
+  copy button, the steps for Claude (web, desktop and Cowork: **Settings →
+  Connectors → Add custom connector**), and the Claude Code command
+  (`claude mcp add --transport http mission-employed <address>`, then `/mcp` to
+  sign in), plus a few things to ask.
+  - The address is `window.location.origin + '/mcp'`, so it is right on any
+    host serving the `mcp` service. In dev it reads `localhost:3000/mcp`,
+    which Vite does not proxy.
+  - It covers only the hosted connector. The local stdio setup needs the repo
+    and stays in `mcp/README.md`.
+  - A free account is told which tools need Premium (the API refuses them
+    anyway). The email-sync example notes it needs Claude's own Gmail
+    connector.
+  - The sidebar's Settings subtitle is now "Theme & AI agents".
+
 ---
 
 ---

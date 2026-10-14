@@ -1,20 +1,28 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { ThemeProvider } from '../contexts/ThemeContext';
 import { SettingsPage } from './SettingsPage';
 
 /**
  * The colour theme and light/dark mode, moved off the sidebar into Settings.
  * Both are device preferences: they apply to the page at once and are kept
- * in localStorage, not on the account.
+ * in localStorage, not on the account. The agent section below them has its
+ * own tests in ConnectAgentSection.test.tsx.
  */
+
+vi.mock('../contexts/AuthContext', () => ({
+  useAuth: () => ({ isPremium: false, isAdmin: false, user: null, logout: vi.fn() }),
+}));
 
 const renderSettings = () =>
   render(
-    <ThemeProvider>
-      <SettingsPage />
-    </ThemeProvider>,
+    <MemoryRouter>
+      <ThemeProvider>
+        <SettingsPage />
+      </ThemeProvider>
+    </MemoryRouter>,
   );
 
 const pressed = (name: string | RegExp) =>
@@ -67,5 +75,11 @@ describe('SettingsPage', () => {
     expect(document.documentElement.dataset.palette).toBe('ocean');
     expect(localStorage.getItem('theme_palette')).toBe('ocean');
     expect(pressed(/Ocean/)).toBe('true');
+  });
+
+  it('shows how to connect an AI agent to an account that is not an admin', () => {
+    renderSettings();
+
+    expect(screen.getByRole('heading', { name: /connect an ai agent/i })).toBeTruthy();
   });
 });

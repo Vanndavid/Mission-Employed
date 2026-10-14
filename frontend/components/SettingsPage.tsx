@@ -1,13 +1,17 @@
 import React from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { ColorMode, THEME_PALETTE_IDS, THEME_PALETTES } from '../themes';
+import { ConnectAgentSection } from './ConnectAgentSection';
 
 const MODES: { id: ColorMode; label: string; icon: string }[] = [
   { id: 'light', label: 'Light', icon: '☀️' },
   { id: 'dark', label: 'Dark', icon: '🌙' },
 ];
 
-/** Display preferences. They apply to this device only and are not saved to the account. */
+/**
+ * Display preferences, which apply to this device only and are not saved to
+ * the account, and how to connect an AI agent to it.
+ */
 export function SettingsPage() {
   const { mode, palette, setMode, setPalette } = useTheme();
 
@@ -75,6 +79,8 @@ export function SettingsPage() {
           </div>
         </div>
       </section>
+
+      <ConnectAgentSection />
     </div>
   );
 }

@@ -33,7 +33,7 @@ export const Sidebar = ({ mobileOpen, onMobileClose }: SidebarProps) => {
     tabs.push({ path: '/account/admin', label: 'Admin', sub: 'Plans & usage', icon: '🔑', end: true });
   }
 
-  tabs.push({ path: '/settings', label: 'Settings', sub: 'Theme & display', icon: '⚙️', end: true });
+  tabs.push({ path: '/settings', label: 'Settings', sub: 'Theme & AI agents', icon: '⚙️', end: true });
 
   const navContent = (
     <>

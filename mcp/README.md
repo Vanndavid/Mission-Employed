@@ -65,6 +65,16 @@ in the web app, and nothing more. Signing out of that token (or an admin
 deleting it) disconnects the connector straight away. Cowork uses the same
 connectors.
 
+Claude Code can use the hosted connector too, with no checkout of this repo:
+
+```bash
+claude mcp add --transport http mission-employed https://mission-employed.vanndavidteng.com/mcp
+```
+
+…then `/mcp` in Claude Code to sign in. Signed-in users find both of these,
+with copy buttons, under **Connect an AI agent** on the web app's Settings page
+(`frontend/components/ConnectAgentSection.tsx`).
+
 How it works: `node dist/index.js --http` with `MCP_PUBLIC_URL` set serves
 OAuth 2.1 with dynamic client registration and PKCE alongside a stateless
 Streamable HTTP endpoint at `/mcp`. It keeps no state. Client ids, codes and
