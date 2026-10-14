@@ -188,7 +188,7 @@ describe('sanitizePlan', () => {
         columns: { company: 0 },
         statusMap: [
           { from: 'Applied', status: 'Applied' },
-          { from: 'Ghosted', status: 'Ghosted' },
+          { from: 'Archived', status: 'Archived' },
           { from: '', status: 'Applied' },
           'not an object',
         ],

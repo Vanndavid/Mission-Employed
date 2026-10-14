@@ -150,7 +150,7 @@ describe('applyPlan', () => {
     expect(mapped.statusDate).toBe('2026-09-15');
   });
 
-  it('keeps what our five statuses cannot say, in the notes', () => {
+  it('keeps what our statuses cannot say, in the notes', () => {
     const [mapped] = applyPlan(
       grid([row({ 2: 'Sportsbet', 3: 'Associate Software Engineer', 5: 'Role filled' })]),
       plan(),
@@ -207,14 +207,14 @@ describe('applyPlan', () => {
 
   it('warns about a status it cannot place, and keeps the wording', () => {
     const [mapped] = applyPlan(
-      grid([row({ 2: 'Acme', 3: 'Engineer', 5: 'Ghosted' })]),
+      grid([row({ 2: 'Acme', 3: 'Engineer', 5: 'Archived' })]),
       plan(),
       options(),
     );
 
     expect(mapped.input.status).toBe(JobStatus.APPLIED);
-    expect(mapped.input.notes).toBe('Sheet status: Ghosted');
-    expect(mapped.warnings).toEqual(['Unrecognised status "Ghosted" — imported as Applied.']);
+    expect(mapped.input.notes).toBe('Sheet status: Archived');
+    expect(mapped.warnings).toEqual(['Unrecognised status "Archived" — imported as Applied.']);
   });
 
   it('moves a trailing parenthetical out of the role and into the notes', () => {

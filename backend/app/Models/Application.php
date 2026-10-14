@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\JobStatus;
+use Carbon\CarbonImmutable;
 use Database\Factories\ApplicationFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,6 +15,9 @@ class Application extends Model
 {
     /** @use HasFactory<ApplicationFactory> */
     use HasFactory;
+
+    /** Days at Applied with no reply before an application counts as Ghosted. */
+    public const GHOSTED_AFTER_DAYS = 30;
 
     /** @var list<string> */
     protected $fillable = [
@@ -92,6 +96,21 @@ class Application extends Model
     public function hasRecruiter(): bool
     {
         return $this->recruiter_contact !== null;
+    }
+
+    /**
+     * The last time anything happened on this application: its latest status
+     * change, or the date applied when that was edited to something later.
+     * Falls back to creation for a row with neither.
+     */
+    public function lastHeardAt(): CarbonImmutable
+    {
+        $dates = $this->statusEvents->pluck('occurred_at')
+            ->push($this->date_applied)
+            ->filter()
+            ->map(fn ($date) => CarbonImmutable::parse($date));
+
+        return $dates->max() ?? CarbonImmutable::parse($this->created_at);
     }
 
     /** @return BelongsTo<User, $this> */

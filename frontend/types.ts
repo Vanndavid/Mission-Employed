@@ -2,6 +2,9 @@
 export enum JobStatus {
   SAVED = 'Saved',
   APPLIED = 'Applied',
+  // No reply a month after applying; the server moves Applied here by itself.
+  // Before Interviewing because a late reply moves it on (see statusAdvances).
+  GHOSTED = 'Ghosted',
   INTERVIEWING = 'Interviewing',
   OFFER = 'Offer',
   REJECTED = 'Rejected'

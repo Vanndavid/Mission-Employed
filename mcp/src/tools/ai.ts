@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import type { ApiClient } from "../client.js";
 import { fail, guarded, ok, present } from "./shared.js";
-import { CODING_DIFFICULTIES, unwrap } from "./tracker.js";
+import { CODING_DIFFICULTIES, JOB_STATUSES, unwrap } from "./tracker.js";
 
 /**
  * The model-backed half of the product. Every route behind these tools is
@@ -88,7 +88,7 @@ export function registerAiTools(server: McpServer, api: ApiClient): void {
       inputSchema: {
         text: z.string().describe("The pasted posting or note."),
         status: z
-          .enum(["Saved", "Applied", "Interviewing", "Offer", "Rejected"])
+          .enum(JOB_STATUSES)
           .optional()
           .describe("Defaults to Saved."),
       },

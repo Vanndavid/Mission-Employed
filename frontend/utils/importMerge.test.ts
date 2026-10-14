@@ -116,6 +116,21 @@ describe('statusAdvances', () => {
     expect(statusAdvances(JobStatus.INTERVIEWING, JobStatus.APPLIED)).toBe(false);
     expect(statusAdvances(JobStatus.APPLIED, JobStatus.APPLIED)).toBe(false);
   });
+
+  it('lets a late reply move a ghosted application on', () => {
+    expect(statusAdvances(JobStatus.APPLIED, JobStatus.GHOSTED)).toBe(true);
+    expect(statusAdvances(JobStatus.GHOSTED, JobStatus.INTERVIEWING)).toBe(true);
+    expect(statusAdvances(JobStatus.GHOSTED, JobStatus.OFFER)).toBe(true);
+    expect(statusAdvances(JobStatus.GHOSTED, JobStatus.REJECTED)).toBe(true);
+  });
+
+  it('never ghosts an application back out of its interviews', () => {
+    // The server ghosts a stale Applied row, so a sheet still saying Applied
+    // must not undo that — and a sheet's Ghosted cannot outrank an interview.
+    expect(statusAdvances(JobStatus.GHOSTED, JobStatus.APPLIED)).toBe(false);
+    expect(statusAdvances(JobStatus.INTERVIEWING, JobStatus.GHOSTED)).toBe(false);
+    expect(statusAdvances(JobStatus.REJECTED, JobStatus.GHOSTED)).toBe(false);
+  });
 });
 
 describe('buildRowPlans', () => {

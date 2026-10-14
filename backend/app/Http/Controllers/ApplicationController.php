@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\JobStatus;
 use App\Http\Concerns\GuardsApplicationOwnership;
 use App\Http\Requests\Tracker\StoreApplicationRequest;
 use App\Http\Requests\Tracker\UpdateApplicationRequest;
 use App\Http\Resources\ApplicationResource;
 use App\Models\Application;
+use App\Models\User;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -19,8 +22,9 @@ use Illuminate\Support\Facades\DB;
  *
  * Status lives in two places — the current value on `applications` and the
  * `application_status_events` log the timeline reads. recordStatusEvent() is
- * the only writer of that log in this codebase, and both the create path and
- * the update path go through it, so the two cannot drift apart.
+ * the only writer of that log in this codebase, and the create path, the
+ * update path and the Ghosted sweep all go through it, so the two cannot drift
+ * apart.
  */
 class ApplicationController extends Controller
 {
@@ -31,6 +35,8 @@ class ApplicationController extends Controller
 
     public function index(Request $request): AnonymousResourceCollection
     {
+        $this->ghostUnanswered($request->user());
+
         $applications = $request->user()->applications()
             ->with(self::RELATIONS)
             ->orderByDesc('created_at')
@@ -63,7 +69,9 @@ class ApplicationController extends Controller
     {
         $this->guardApplicationOwnership($application, $request->user());
 
-        return new ApplicationResource($application->load(self::RELATIONS));
+        $this->ghostUnanswered($request->user());
+
+        return new ApplicationResource($application->refresh()->load(self::RELATIONS));
     }
 
     public function update(UpdateApplicationRequest $request, Application $application): ApplicationResource
@@ -102,13 +110,49 @@ class ApplicationController extends Controller
     }
 
     /**
+     * Move the user's applications that have sat at Applied for
+     * Application::GHOSTED_AFTER_DAYS with no reply on to Ghosted.
+     *
+     * Done when the tracker is read rather than on a schedule: the deployment
+     * runs no scheduler, and nobody can see the status until they read it.
+     * The event is dated when the silence crossed the line, not when someone
+     * looked, so the timeline reads the same however late this runs.
+     *
+     * "No reply" means no status change since applying and no interview on
+     * the books — a stage is the employer answering, whatever the status says.
+     */
+    private function ghostUnanswered(User $user): void
+    {
+        $cutoff = CarbonImmutable::now()->subDays(Application::GHOSTED_AFTER_DAYS);
+
+        $candidates = $user->applications()
+            ->where('status', JobStatus::Applied)
+            ->whereDoesntHave('interviewStages')
+            ->with('statusEvents')
+            ->get();
+
+        foreach ($candidates as $application) {
+            $lastHeard = $application->lastHeardAt();
+
+            if ($lastHeard->greaterThan($cutoff)) {
+                continue;
+            }
+
+            DB::transaction(function () use ($application, $lastHeard): void {
+                $application->update(['status' => JobStatus::Ghosted]);
+                $this->recordStatusEvent($application, $lastHeard->addDays(Application::GHOSTED_AFTER_DAYS));
+            });
+        }
+    }
+
+    /**
      * Append the application's current status to its event log. The single
      * place any status event is written.
      *
      * $occurredAt backdates the entry, for an import carrying the date the
      * status actually changed. Absent, the event is stamped now().
      */
-    private function recordStatusEvent(Application $application, ?string $occurredAt = null): void
+    private function recordStatusEvent(Application $application, CarbonInterface|string|null $occurredAt = null): void
     {
         $application->statusEvents()->create([
             'status' => $application->status,

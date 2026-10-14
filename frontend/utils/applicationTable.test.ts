@@ -131,10 +131,12 @@ describe('sortApplications', () => {
       app({ company: 'Rejected Co', status: JobStatus.REJECTED }),
       app({ company: 'Saved Co', status: JobStatus.SAVED }),
       app({ company: 'Offer Co', status: JobStatus.OFFER }),
+      app({ company: 'Ghosted Co', status: JobStatus.GHOSTED }),
+      app({ company: 'Applied Co', status: JobStatus.APPLIED }),
     ];
 
     expect(companies(sortApplications(list, { key: 'status', direction: 'asc' })))
-      .toEqual(['Saved Co', 'Offer Co', 'Rejected Co']);
+      .toEqual(['Saved Co', 'Applied Co', 'Ghosted Co', 'Offer Co', 'Rejected Co']);
   });
 
   it('sorts by date applied, newest first by default', () => {

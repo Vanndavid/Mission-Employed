@@ -59,7 +59,7 @@ let requests: { url: string; method: string; body: any }[] = [];
  * real controller eager loads relations on every response — a PATCH answers
  * with the application's current stages, not an empty list.
  */
-function stubApi() {
+function stubApi(overrides: Record<string, unknown> = {}) {
   let stages: unknown[] = [];
 
   vi.stubGlobal(
@@ -70,7 +70,7 @@ function stubApi() {
       const body = init?.body ? JSON.parse(String(init.body)) : undefined;
       requests.push({ url, method, body });
 
-      const current = { ...APPLICATION, interviewStages: stages };
+      const current = { ...APPLICATION, ...overrides, interviewStages: stages };
 
       if (method === 'GET') return json({ data: [current] });
       if (method === 'POST' && url.endsWith('/ats')) return json(ATS_REPORT);
@@ -155,6 +155,20 @@ describe('ApplicationsProvider', () => {
     expect(result.current.applications[0].interviewStages).toEqual([
       { id: 21, type: 'technical', scheduledAt: '', notes: '' },
     ]);
+  });
+
+  it.each(['Applied', 'Ghosted'])('moves an application at %s to Interviewing when one is scheduled', async status => {
+    stubApi({ status });
+    const { result } = renderHook(() => useApplications(), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    requests = [];
+
+    await act(async () => {
+      await result.current.addInterviewStage(5, { type: 'phone', scheduledAt: '' });
+    });
+
+    expect(requests.at(-1)).toMatchObject({ method: 'PATCH', body: { status: 'Interviewing' } });
+    expect(result.current.applications[0].status).toBe('Interviewing');
   });
 
   it('surfaces a failed write instead of leaving the optimistic value in place', async () => {

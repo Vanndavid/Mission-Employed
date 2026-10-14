@@ -513,7 +513,7 @@ class ApplicationApiTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors('company');
 
-        $this->postJson('/api/applications', $this->payload(['status' => 'Ghosted']))
+        $this->postJson('/api/applications', $this->payload(['status' => 'Archived']))
             ->assertUnprocessable()
             ->assertJsonValidationErrors('status');
 

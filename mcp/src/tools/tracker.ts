@@ -5,7 +5,7 @@ import type { ApiClient } from "../client.js";
 import { guarded, ok, present } from "./shared.js";
 
 /** The stored values of App\Enums\JobStatus — the exact strings the API takes. */
-export const JOB_STATUSES = ["Saved", "Applied", "Interviewing", "Offer", "Rejected"] as const;
+export const JOB_STATUSES = ["Saved", "Applied", "Ghosted", "Interviewing", "Offer", "Rejected"] as const;
 
 /** InterviewStage::TYPES. `system_design` is a real interview round, not the cut drill. */
 export const STAGE_TYPES = [

@@ -321,6 +321,32 @@ Things worth remembering:
     will not be remembered.
   - Theme stays in `localStorage`. It is a device choice, not an account one.
 
+### 3.2f Ghosted status ✅
+
+- [x] Done, 2026-10-15. A sixth status, `Ghosted`, for applications left a
+  month with no reply. It can be picked by hand like any other, and the server
+  also sets it by itself.
+  - **The rule:** at Applied, with no status change and no interview stage for
+    `Application::GHOSTED_AFTER_DAYS` (30). The clock runs from the latest
+    status event or `date_applied`, whichever is later, so putting an
+    application back to Applied restarts it.
+  - **Applied when read, not on a schedule.** The deployment runs no
+    scheduler, so `ApplicationController::ghostUnanswered()` sweeps the
+    signed-in user's applications on `index` and `show`. The event is dated
+    when the 30 days ran out, not when someone looked, so the timeline is the
+    same whenever the sweep happens to run. It goes through
+    `recordStatusEvent()`, still the only writer of the event log.
+  - **Pipeline order is Saved → Applied → Ghosted → Interviewing → Offer, then
+    Rejected.** Ghosted sits before Interviewing because a late reply moves it
+    on. The import's forward-only rule reads that order, so a sheet still
+    saying Applied cannot undo a ghosting, and a sheet's Ghosted cannot outrank
+    an interview. Scheduling an interview moves a Ghosted application to
+    Interviewing, the same as an Applied one.
+  - The MCP `sync_job_emails` prompt never sets Ghosted from an email. An
+    employer's email is a reply, so it moves a Ghosted application on.
+  - Fixed at 30 days. If it needs to vary, it would be a per-account preference
+    (see 3.2e).
+
 ### 3.3 Coding practice and dashboard ✅
 
 - [x] Done — dashboard slimmed to coding practice, pipeline summary and upcoming

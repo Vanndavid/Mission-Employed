@@ -109,6 +109,7 @@ function clearStoredSession(): void {
 const PIPELINE_STATUSES: JobStatus[] = [
   JobStatus.SAVED,
   JobStatus.APPLIED,
+  JobStatus.GHOSTED,
   JobStatus.INTERVIEWING,
   JobStatus.OFFER,
   JobStatus.REJECTED,

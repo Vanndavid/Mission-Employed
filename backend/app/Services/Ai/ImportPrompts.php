@@ -91,7 +91,7 @@ class ImportPrompts
             - "nextAction": what the user still has to do, when the sheet's wording implies
               an unresolved action (for instance a status meaning the employer has replied
               and the message has not been read yet). "" when it implies nothing to do.
-            - "noteSuffix": a short phrase preserving meaning our five statuses cannot
+            - "noteSuffix": a short phrase preserving meaning our statuses cannot
               express — for instance a status meaning the role was filled rather than the
               candidate rejected. "" when nothing is lost.
 

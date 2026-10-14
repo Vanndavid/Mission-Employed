@@ -160,6 +160,12 @@ the emergency modal.
   deterministically. Keywords are cached on the application under a hash of
   role + JD, so re-checking an edited CV makes no model call. `ats_keywords` and
   `ats_report` are server-owned: never fillable, never in `COLUMN_MAP`.
+- **`Ghosted` is set by the server.** An application at Applied with no status
+  change and no interview stage for `Application::GHOSTED_AFTER_DAYS` (30) is
+  moved to Ghosted when the tracker is read (`ghostUnanswered()` on `index` and
+  `show`). There is no scheduler, so this is not a cron job. The event is
+  dated when the 30 days ran out. In pipeline order it sits between Applied and
+  Interviewing, so a reply moves it on and an import cannot move it back.
 - `statusDate` is accepted on create and update but is **not a column**. It
   backdates the status event, which is why it is absent from
   `ApplicationRequest::COLUMN_MAP`.

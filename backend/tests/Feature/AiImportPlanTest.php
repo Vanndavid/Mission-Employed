@@ -98,8 +98,8 @@ class AiImportPlanTest extends TestCase
             ->assertPromptContains('7: Days Since Applied')
             ->assertPromptContains('Cullen Jewellery')
             ->assertPromptContains('column 5: "Applied", "Rejected"')
-            // The five statuses the sheet has to be folded into.
-            ->assertPromptContains('Saved, Applied, Interviewing, Offer, Rejected');
+            // The statuses the sheet has to be folded into.
+            ->assertPromptContains('Saved, Applied, Ghosted, Interviewing, Offer, Rejected');
 
         $schema = $gemini->lastCall('generateJson')['responseSchema'];
 
@@ -164,7 +164,7 @@ class AiImportPlanTest extends TestCase
             'statusMap' => [
                 ['from' => 'Applied', 'status' => 'Applied'],
                 // Invented wholesale, and a blank key.
-                ['from' => 'Ghosted', 'status' => 'Ghosted'],
+                ['from' => 'Archived', 'status' => 'Archived'],
                 ['from' => '', 'status' => 'Applied'],
                 'not an object',
             ],

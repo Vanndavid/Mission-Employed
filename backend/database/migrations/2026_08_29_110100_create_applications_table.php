@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('role');
             $table->string('location')->nullable();
             $table->string('url')->nullable();
-            // App\Enums\JobStatus: Saved | Applied | Interviewing | Offer | Rejected
+            // App\Enums\JobStatus: Saved | Applied | Ghosted | Interviewing | Offer | Rejected
             $table->string('status')->default('Saved');
             $table->date('date_applied')->nullable();
             $table->text('notes')->nullable();

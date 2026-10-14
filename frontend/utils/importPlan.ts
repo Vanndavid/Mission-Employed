@@ -46,7 +46,7 @@ export interface StatusRule {
   status: JobStatus;
   /** What the user still has to do, when the wording implies something. */
   nextAction: string;
-  /** Meaning our five statuses cannot hold, preserved in the notes. */
+  /** Meaning our statuses cannot hold, preserved in the notes. */
   noteSuffix: string;
 }
 
@@ -220,7 +220,7 @@ export function guessPlan(grid: SheetGrid): ImportPlan {
 /**
  * Translate the status column's own words without a model.
  *
- * Only exact matches against our five statuses are trusted. Anything else is
+ * Only exact matches against our own statuses are trusted. Anything else is
  * left out on purpose: the review form shows an unmapped value as needing a
  * choice, which is far better than guessing wrong quietly.
  */

@@ -195,6 +195,20 @@ describe("the MCP server", () => {
     assert.deepEqual(api.requests.at(-1)?.body, { nextActionDue: null });
   });
 
+  it("takes Ghosted as a status, on an update and on a posting", async () => {
+    await client.callTool({ name: "update_application", arguments: { id: 1, status: "Ghosted" } });
+
+    assert.deepEqual(api.requests.at(-1)?.body, { status: "Ghosted" });
+
+    const result = (await client.callTool({
+      name: "track_job_from_description",
+      arguments: { text: "Staff engineer at Initech", status: "Ghosted" },
+    })) as CallToolResult;
+
+    assert.notEqual(result.isError, true);
+    assert.equal((api.requests.at(-1)?.body as Record<string, unknown>).status, "Ghosted");
+  });
+
   it("passes rejection reasons through to the API", async () => {
     const reasons = ["Which of the following statements best describes your right to work in Australia?"];
 
@@ -303,6 +317,9 @@ describe("the MCP server", () => {
     // Seek's rejection email names the screening questions that did not match.
     assert.match(body, /rejectionReasons/);
     assert.match(body, /Application feedback/);
+    // The tracker ghosts a silent application itself; a reply moves it on.
+    assert.match(body, /Saved → Applied → Ghosted → Interviewing → Offer/);
+    assert.match(body, /Never set Ghosted from an email/);
   });
 });
 

@@ -96,6 +96,9 @@ function rank(status: JobStatus): number {
  * Rejection is terminal from anywhere, so Offer → Rejected advances while
  * Rejected → Applied does not. Without this, importing a stale export would
  * quietly reopen applications that are long closed.
+ *
+ * Ghosted ranks between Applied and Interviewing, so a reply moves it on but a
+ * sheet still saying Applied cannot undo the server's month-of-silence rule.
  */
 export function statusAdvances(from: JobStatus, to: JobStatus): boolean {
   if (from === to) return false;

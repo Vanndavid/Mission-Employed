@@ -21,7 +21,8 @@ export function syncJobEmailsPrompt(since: string, apply: boolean): string {
    - Offer → status Offer. Rejection → status Rejected.
    - A rejection that says why → also set rejectionReasons, one short entry per reason. Seek's "Application update … unlikely to progress" email has an "Application feedback" section listing the screening questions whose answers did not match the employer's preferences (e.g. right to work, years of experience): use each question's text as an entry. Keep any reasons already recorded and add the new ones, without duplicates.
    - Recruiter name or email I do not have yet → recruiterContact.
-   Status only ever moves forward: Saved → Applied → Interviewing → Offer. Rejected can follow any of them. Never move a status backwards. Pass statusDate as the email's date so the timeline is dated correctly.
+   Status only ever moves forward: Saved → Applied → Ghosted → Interviewing → Offer. Rejected can follow any of them. Never move a status backwards. Pass statusDate as the email's date so the timeline is dated correctly.
+   Ghosted means a month at Applied with no reply, and the tracker sets it by itself. Never set Ghosted from an email — an email from the employer is a reply, so it moves a Ghosted application on like any other.
 
 4. Record every email you act on with append_application_note, one line saying what happened, with ref set to "gmail:<message id>" (or the equivalent id from your mail tool). A ref already on the application means that email was handled on an earlier run — skip it entirely.
 

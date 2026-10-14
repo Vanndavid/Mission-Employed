@@ -198,9 +198,9 @@ export function ApplicationsProvider({ children }: { children: React.ReactNode }
         setError(null);
 
         // Scheduling an interview moves an applied record along, the way the
-        // local-state version did.
+        // local-state version did. A ghosted one too: the interview is the reply.
         const current = applications.find(app => app.id === applicationId);
-        if (current?.status === JobStatus.APPLIED) {
+        if (current?.status === JobStatus.APPLIED || current?.status === JobStatus.GHOSTED) {
           replace(await tracker.updateApplication(applicationId, { status: JobStatus.INTERVIEWING }));
         }
 
