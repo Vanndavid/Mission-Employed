@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ApiError, errorMessage } from '../services/http';
+import { aiFailureMessage } from '../services/http';
 
 interface DocumentStudioOptions {
   /** The saved document, or '' when there is none yet. */
@@ -27,17 +27,7 @@ export function useDocumentStudio({ initial, label, generate, openSession, sendT
   const [error, setError] = useState<string | null>(null);
   const sessionIdRef = useRef<string | null>(null);
 
-  const describe = (cause: unknown, fallback: string): string => {
-    if (cause instanceof ApiError) {
-      if (cause.isPremiumRequired) {
-        return `The tailored ${label} is a Premium feature and this account is not on Premium. Ask an admin to upgrade the plan.`;
-      }
-      if (cause.isAiUnavailable) {
-        return 'The AI service is not answering right now. Nothing was lost — try again in a moment.';
-      }
-    }
-    return errorMessage(cause, fallback);
-  };
+  const describe = (cause: unknown, fallback: string): string => aiFailureMessage(cause, fallback);
 
   /** Resolves true when the work succeeded, so the caller can switch views. */
   const run = async (work: () => Promise<void>, fallback: string): Promise<boolean> => {

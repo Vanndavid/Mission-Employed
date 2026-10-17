@@ -7,11 +7,14 @@
  *    ways and {@link ApiError} normalizes all of them, so a screen can ask
  *    `err.isPremiumRequired` instead of pattern-matching bodies:
  *      - 401                              → the token is dead, log the user out
- *      - 403 `{message, code}`            → `premium_required` / `admin_required`,
- *                                           or `account_deactivated` from login
+ *      - 403 `{message, code}`            → `premium_required` / `feature_unavailable`
+ *                                           (the plan), `admin_required`, or
+ *                                           `account_deactivated` from login
+ *      - 429 `{message, code}`            → `quota_exceeded` (the plan's allowance)
+ *                                           or `rate_limited` (requests per minute)
  *      - 422 `{message, errors}`          → standard validation failure
  *      - 502 `{code: 'ai_unavailable'}`   → Gemini failed, contained server-side
-      - 502 `{code: 'seek_unavailable'}` → Seek's jobsearch JSON failed, contained server-side
+ *      - 502 `{code: 'seek_unavailable'}` → Seek's jobsearch JSON failed, contained server-side
  * 2. **The resource envelope.** Tracker endpoints return Laravel's default
  *    `{ data: ... }` wrapper; auth and AI endpoints return flat objects. The
  *    caller says which it expects rather than this module guessing.
@@ -45,9 +48,32 @@ export class ApiError extends Error {
     return this.status === 401;
   }
 
-  /** A free account hit a premium-gated route. Show the upgrade prompt. */
+  /** The account's plan lacks a feature Premium has. Show the upgrade prompt. */
   get isPremiumRequired(): boolean {
     return this.status === 403 && this.code === 'premium_required';
+  }
+
+  /** The feature is switched off for the account's plan, and upgrading would not help. */
+  get isFeatureUnavailable(): boolean {
+    return this.status === 403 && this.code === 'feature_unavailable';
+  }
+
+  /** The plan's allowance for this feature is used up until it resets. */
+  get isQuotaExceeded(): boolean {
+    return this.status === 429 && this.code === 'quota_exceeded';
+  }
+
+  /** Too many requests this minute for the plan. */
+  get isRateLimited(): boolean {
+    return this.status === 429 && this.code === 'rate_limited';
+  }
+
+  /**
+   * Any refusal by the account's plan. The server's message says which and
+   * when it lifts, in a sentence fit to show as it is.
+   */
+  get isPlanRefusal(): boolean {
+    return this.isPremiumRequired || this.isFeatureUnavailable || this.isQuotaExceeded || this.isRateLimited;
   }
 
   /** A non-admin hit an admin route. */
@@ -89,6 +115,22 @@ export class ApiError extends Error {
  */
 export function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError';
+}
+
+/**
+ * The sentence for a failed AI call. A plan refusal is the server's own words
+ * (which feature, which limit, when it resets), a Gemini outage gets one
+ * reassuring line, and anything else falls back to {@link errorMessage}.
+ */
+export function aiFailureMessage(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) {
+    if (error.isPremiumRequired) return `${error.message} Request Premium on the Plan & usage page.`;
+    if (error.isPlanRefusal) return error.message;
+    if (error.isAiUnavailable) {
+      return 'The AI service is not answering right now. Nothing was lost — try again in a moment.';
+    }
+  }
+  return errorMessage(error, fallback);
 }
 
 /** Turn anything thrown by a request into a sentence a screen can render. */

@@ -1,7 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureAdmin;
-use App\Http\Middleware\EnsurePremium;
+use App\Http\Middleware\EnsureFeature;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -16,7 +16,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'premium' => EnsurePremium::class,
+            // feature:<key>[,access] -- see EnsureFeature.
+            'feature' => EnsureFeature::class,
             'admin' => EnsureAdmin::class,
         ]);
 

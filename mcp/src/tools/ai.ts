@@ -6,9 +6,10 @@ import { fail, guarded, ok, present } from "./shared.js";
 import { CODING_DIFFICULTIES, JOB_STATUSES, unwrap } from "./tracker.js";
 
 /**
- * The model-backed half of the product. Every route behind these tools is
- * premium-gated by the API, so a free account gets a 403 the tools report as a
- * plain message rather than a crash.
+ * The model-backed half of the product. Every route behind these tools is a
+ * plan feature, gated and metered by the API: a plan without it gets a 403 and
+ * a used-up allowance a 429, which the tools report as the API's own sentence
+ * (which feature, which limit, when it resets) rather than a crash.
  *
  * Two features are deliberately absent: evaluating a spoken behavioral answer
  * and text-to-speech. Both are audio round trips that only make sense in the

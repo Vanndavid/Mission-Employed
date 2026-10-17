@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Services\Ai\AtsPrompts;
 use App\Services\GeminiClient;
 use App\Services\GeminiException;
+use Closure;
 use Illuminate\Support\Arr;
 use Illuminate\Validation\ValidationException;
 
@@ -39,16 +40,21 @@ class AtsCheck
      * Score the application's CV, store the report, and return it as the
      * client sees it.
      *
+     * $beforeAskingModel runs only when the job's keywords are not cached,
+     * just before the model is asked. The controller charges the plan's
+     * allowance there, so a re-check is free.
+     *
      * @param  string|null  $source  'tailored' or 'base'. Null picks the
      *                               tailored CV when there is one.
      * @param  string|null  $baseCv  The owner's profile CV.
+     * @param  (Closure(): void)|null  $beforeAskingModel
      * @return array<string, mixed>
      *
      * @throws ValidationException when there is no job description or no CV,
      *                             or the model finds no keywords in the job.
      * @throws GeminiException
      */
-    public function run(Application $application, ?string $source, ?string $baseCv): array
+    public function run(Application $application, ?string $source, ?string $baseCv, ?Closure $beforeAskingModel = null): array
     {
         if (trim((string) $application->job_description) === '') {
             throw ValidationException::withMessages([
@@ -68,7 +74,7 @@ class AtsCheck
         }
 
         $jobHash = self::jobHash($application);
-        $keywords = $this->keywords($application, $jobHash);
+        $keywords = $this->keywords($application, $jobHash, $beforeAskingModel);
 
         $application->forceFill([
             'ats_keywords' => ['hash' => $jobHash, 'keywords' => $keywords],
@@ -156,12 +162,16 @@ class AtsCheck
      * @throws GeminiException
      * @throws ValidationException
      */
-    private function keywords(Application $application, string $jobHash): array
+    private function keywords(Application $application, string $jobHash, ?Closure $beforeAskingModel): array
     {
         $cached = $application->ats_keywords;
 
         if (is_array($cached) && ($cached['hash'] ?? null) === $jobHash && is_array($cached['keywords'] ?? null)) {
             return $cached['keywords'];
+        }
+
+        if ($beforeAskingModel !== null) {
+            $beforeAskingModel();
         }
 
         $answer = $this->gemini->generateJson(

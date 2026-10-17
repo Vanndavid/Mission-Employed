@@ -125,8 +125,9 @@ export function ConnectAgentSection() {
       {!isPremium && (
         <p className="text-sm rounded-lg p-3 bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-200">
           You're on the Free plan. The tracker, your CV profile and practice history all work from
-          an agent; the AI tools (job parsing, tailored CVs and cover letters, the ATS check,
-          coding problems and mock interviews) need Premium.{' '}
+          an agent; the AI tools your plan does not include (by default job parsing, tailored CVs
+          and cover letters, the ATS check, coding problems and mock interviews) need Premium. An
+          agent's requests count against the same allowances as yours.{' '}
           <NavLink to="/account" className="font-bold underline">
             View account plan
           </NavLink>

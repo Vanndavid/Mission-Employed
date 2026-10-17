@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Ai;
 
+use App\Http\Middleware\EnsureFeature;
 use App\Http\Requests\Ai\AtsCheckRequest;
 use App\Models\Application;
 use App\Services\Ats\AtsCheck;
@@ -21,7 +22,14 @@ class AtsController extends AiController
     {
         // Ownership was settled in the form request's authorize().
         try {
-            $report = $ats->run($application, $request->validated('source'), $request->user()->profile?->base_cv);
+            // Charged only when the job's keywords are not cached yet: the
+            // route is feature:ats_check,deferred, so a re-check is free.
+            $report = $ats->run(
+                $application,
+                $request->validated('source'),
+                $request->user()->profile?->base_cv,
+                fn () => EnsureFeature::charge($request),
+            );
         } catch (GeminiException $exception) {
             return $this->geminiFailure($exception, 'ATS keyword extraction');
         }

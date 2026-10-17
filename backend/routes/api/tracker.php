@@ -11,8 +11,8 @@ use Illuminate\Support\Facades\Route;
 // Job application tracker, CV profile, coding history and behavioral answers.
 // Owned by task 2.2 in TASKS.md.
 //
-// Everything here needs a token and nothing here is premium-gated — the plan
-// only decides what AI features a user can reach.
+// Everything here needs a token. Only the Seek search is a plan feature; the
+// tracker itself is free on every plan.
 //
 // Records are addressed by id but never trusted by id: controllers answer 404
 // for another user's row rather than 403, so the API does not confirm that
@@ -44,6 +44,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::put('/behavioral-answers/{themeId}', [BehavioralAnswerController::class, 'update']);
 
     // Seek's own jobsearch JSON, mapped into the tracker-shaped listing.
-    // Not premium-gated: browsing listings is the free half of applying.
-    Route::get('/seek/jobs', [SeekJobController::class, 'index']);
+    // Free by default (browsing listings is the free half of applying), but a
+    // plan feature so an admin can cap or close it: every search hits Seek.
+    Route::get('/seek/jobs', [SeekJobController::class, 'index'])
+        ->middleware(['throttle:features', 'feature:seek_jobs']);
 });

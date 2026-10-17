@@ -10,23 +10,24 @@ use Tests\TestCase;
 /**
  * The admin surface and the free/premium boundary.
  *
- * There is no payment integration by design: an admin upgrades a user by hand.
- * That makes these two routes and the `premium` middleware the whole of the
- * plan model, so they carry more weight than their size suggests.
+ * There is no payment integration: an admin upgrades a user by hand, with an
+ * optional end date. What each plan includes is FeatureGateTest's subject;
+ * this is who is on which plan.
  */
 class AdminAndPlanTest extends TestCase
 {
     use RefreshDatabase;
 
     /**
-     * The premium gate is exercised through a throwaway route so these tests do
-     * not depend on which AI endpoints happen to exist yet.
+     * The gate is exercised through a throwaway route behind a feature that
+     * is Premium by default, so these tests do not depend on which AI
+     * endpoints happen to exist.
      */
     protected function setUp(): void
     {
         parent::setUp();
 
-        Route::middleware(['api', 'auth:sanctum', 'premium'])
+        Route::middleware(['api', 'auth:sanctum', 'feature:coding_problem'])
             ->get('/_test/premium', fn () => response()->json(['ok' => true]));
     }
 
@@ -111,6 +112,83 @@ class AdminAndPlanTest extends TestCase
             ->patchJson("/api/admin/users/{$user->id}/plan", ['plan' => 'enterprise'])
             ->assertStatus(422)
             ->assertJsonValidationErrorFor('plan');
+    }
+
+    public function test_an_admin_grants_premium_until_a_date(): void
+    {
+        $this->travelTo('2026-10-17 12:00:00');
+        $admin = User::factory()->admin()->create();
+        $user = User::factory()->create(['premium_requested_at' => now()->subDay()]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->patchJson("/api/admin/users/{$user->id}/plan", ['plan' => 'premium', 'expiresAt' => '2026-11-17T12:00:00Z'])
+            ->assertOk()
+            ->assertJsonPath('user.plan', 'premium')
+            ->assertJsonPath('user.planExpiresAt', '2026-11-17T12:00:00+00:00')
+            // Granting answers the request.
+            ->assertJsonPath('user.premiumRequestedAt', null);
+
+        $this->travelTo('2026-11-17 12:00:01');
+        $this->assertFalse($user->fresh()->isPremium());
+    }
+
+    public function test_premium_without_an_end_date_does_not_lapse(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $user = User::factory()->premium()->create(['plan_expires_at' => now()->addWeek()]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->patchJson("/api/admin/users/{$user->id}/plan", ['plan' => 'premium', 'expiresAt' => null])
+            ->assertOk()
+            ->assertJsonPath('user.planExpiresAt', null);
+    }
+
+    public function test_an_end_date_in_the_past_is_rejected(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $user = User::factory()->create();
+
+        $this->actingAs($admin, 'sanctum')
+            ->patchJson("/api/admin/users/{$user->id}/plan", ['plan' => 'premium', 'expiresAt' => now()->subMinute()->toIso8601String()])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrorFor('expiresAt');
+
+        $this->assertFalse($user->fresh()->isPremium());
+    }
+
+    public function test_moving_an_account_to_free_clears_its_end_date(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $user = User::factory()->premium()->create(['plan_expires_at' => now()->addWeek()]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->patchJson("/api/admin/users/{$user->id}/plan", ['plan' => 'free', 'expiresAt' => now()->addMonth()->toIso8601String()])
+            ->assertOk()
+            ->assertJsonPath('user.planExpiresAt', null);
+    }
+
+    public function test_an_admin_can_dismiss_a_premium_request(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $user = User::factory()->create(['premium_requested_at' => now()]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->deleteJson("/api/admin/users/{$user->id}/premium-request")
+            ->assertOk()
+            ->assertJsonPath('user.premiumRequestedAt', null)
+            ->assertJsonPath('user.plan', 'free');
+    }
+
+    public function test_the_user_list_shows_end_dates_and_requests(): void
+    {
+        $admin = User::factory()->admin()->create();
+        User::factory()->create(['premium_requested_at' => '2026-10-16 09:00:00']);
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/admin/users')
+            ->assertOk()
+            ->assertJsonPath('users.1.premiumRequestedAt', '2026-10-16T09:00:00+00:00')
+            ->assertJsonPath('users.1.planExpiresAt', null);
     }
 
     public function test_the_premium_gate_refuses_a_free_user(): void

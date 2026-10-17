@@ -90,6 +90,10 @@ class User extends Authenticatable
             'plan' => AccountPlan::class,
             // Deliberately not fillable: only the admin route sets it.
             'deactivated_at' => 'datetime',
+            // Not fillable either: the admin plan route sets the end date, and
+            // the account's own Request Premium button sets the request.
+            'plan_expires_at' => 'datetime',
+            'premium_requested_at' => 'datetime',
             // Deliberately not fillable: only PreferencesController writes it.
             'preferences' => 'array',
         ];
@@ -125,18 +129,33 @@ class User extends Authenticatable
         return $this->hasMany(AiSession::class);
     }
 
+    /** @return HasMany<FeatureUsage, $this> */
+    public function featureUsages(): HasMany
+    {
+        return $this->hasMany(FeatureUsage::class);
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === AccountRole::Admin;
     }
 
     /**
-     * Matches isPremiumUser() in frontend/types/auth.ts: admins are always
-     * premium, everyone else needs the premium plan.
+     * Matches isPremiumUser() in frontend/types/auth.ts, which reads the
+     * effective plan this decides: admins are always premium, everyone else
+     * needs the premium plan, and one with an end date stops at that moment.
      */
     public function isPremium(): bool
     {
-        return $this->plan === AccountPlan::Premium || $this->isAdmin();
+        return $this->isAdmin() || ($this->plan === AccountPlan::Premium && ! $this->premiumHasLapsed());
+    }
+
+    /** A Premium plan whose end date has passed. Free plans never lapse. */
+    public function premiumHasLapsed(): bool
+    {
+        return $this->plan === AccountPlan::Premium
+            && $this->plan_expires_at !== null
+            && $this->plan_expires_at->lessThanOrEqualTo(now());
     }
 
     /**
@@ -185,7 +204,10 @@ class User extends Authenticatable
         return $preferences;
     }
 
-    /** The plan the client should see — admins read back as premium. */
+    /**
+     * The plan the client should see and every feature check uses — admins
+     * read back as premium, and a lapsed premium plan as free.
+     */
     public function effectivePlan(): AccountPlan
     {
         return $this->isPremium() ? AccountPlan::Premium : AccountPlan::Free;

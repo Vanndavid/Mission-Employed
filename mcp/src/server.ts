@@ -35,8 +35,10 @@ export function createServer(
         "When updating the tracker from email or any other source, record what happened with " +
         "append_application_note and a `ref` so it is never applied twice; the sync_job_emails " +
         "prompt describes the whole routine. " +
-        "The AI tools (parsing, cover letters, CVs, ATS scores, problems, interviews) need a premium or admin " +
-        "account; whoami says which. Ask before deleting anything.",
+        "Which AI tools (parsing, cover letters, CVs, ATS scores, problems, interviews) an account can use, " +
+        "and how many uses each has left today, this week or this month, depends on its plan; whoami lists " +
+        "both. A refusal names the feature and when its limit resets — pass that on rather than retrying. " +
+        "Ask before deleting anything.",
     },
   );
 

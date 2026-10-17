@@ -3,18 +3,34 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { PremiumGate } from './PremiumGate';
-import { PREMIUM_FEATURES } from '../types/auth';
+import { FeatureKey } from '../types/auth';
 
 let premium = false;
+let enabled: Partial<Record<FeatureKey, boolean>> | null = null;
+let premiumHas: Partial<Record<FeatureKey, boolean>> = {};
 
 vi.mock('../contexts/AuthContext', () => ({
-  useAuth: () => ({ isPremium: premium, user: null, isAdmin: false, logout: vi.fn() }),
+  useAuth: () => ({ isPremium: premium, user: null, isAdmin: false, logout: vi.fn(), refreshUser: vi.fn() }),
 }));
 
-function renderGate() {
+vi.mock('../contexts/SubscriptionContext', async () => {
+  const actual = await vi.importActual<typeof import('../contexts/SubscriptionContext')>(
+    '../contexts/SubscriptionContext',
+  );
+  return {
+    ...actual,
+    useSubscription: () => ({
+      canUse: (key: FeatureKey) => (enabled ? enabled[key] ?? false : premium),
+      premiumIncludes: (key: FeatureKey) => premiumHas[key] ?? true,
+      allowance: (key: FeatureKey) => ({ key, name: key === 'coding_tutor' ? 'AI coding tutor' : 'Coding problem generator' }),
+    }),
+  };
+});
+
+function renderGate(feature: FeatureKey | FeatureKey[] = 'coding_tutor') {
   return render(
     <MemoryRouter>
-      <PremiumGate title="Coding practice">
+      <PremiumGate feature={feature} title="Coding practice">
         <button type="button">Generate problem</button>
       </PremiumGate>
     </MemoryRouter>,
@@ -24,26 +40,51 @@ function renderGate() {
 describe('PremiumGate', () => {
   beforeEach(() => {
     premium = false;
+    enabled = null;
+    premiumHas = {};
   });
 
-  it('shows the upgrade prompt to a free user and hides the gated children', () => {
+  it('shows the upgrade prompt when the plan lacks a Premium feature, and hides the children', () => {
     renderGate();
 
     expect(screen.getByRole('heading', { name: 'Coding practice' })).toBeTruthy();
-    expect(screen.getByText(/locked on Free/i)).toBeTruthy();
-    expect(screen.getByRole('link', { name: /view account plan/i })).toHaveAttribute('href', '/account');
+    expect(screen.getByText(/included with Premium/i)).toBeTruthy();
+    expect(screen.getByText(/AI coding tutor/)).toBeTruthy();
+    expect(screen.getByRole('link', { name: /see plans/i })).toHaveAttribute('href', '/account');
     expect(screen.queryByRole('button', { name: 'Generate problem' })).toBeNull();
-
-    for (const feature of PREMIUM_FEATURES.slice(0, 4)) {
-      expect(screen.getByText(feature, { exact: false })).toBeTruthy();
-    }
   });
 
-  it('renders children when the account is premium', () => {
+  it('renders children when the plan includes the feature', () => {
     premium = true;
     renderGate();
 
     expect(screen.getByRole('button', { name: 'Generate problem' })).toBeTruthy();
-    expect(screen.queryByText(/locked on Free/i)).toBeNull();
+    expect(screen.queryByText(/included with Premium/i)).toBeNull();
+  });
+
+  it('follows the admin’s configuration rather than the plan name', () => {
+    // A free account the admin has given the tutor to.
+    enabled = { coding_tutor: true };
+    renderGate();
+
+    expect(screen.getByRole('button', { name: 'Generate problem' })).toBeTruthy();
+  });
+
+  it('needs every feature it names', () => {
+    enabled = { coding_tutor: true, coding_problem: false };
+    renderGate(['coding_problem', 'coding_tutor']);
+
+    expect(screen.queryByRole('button', { name: 'Generate problem' })).toBeNull();
+    expect(screen.getByText(/Coding problem generator/)).toBeTruthy();
+  });
+
+  it('does not promise Premium for a feature switched off for everyone', () => {
+    premium = true;
+    enabled = { coding_tutor: false };
+    premiumHas = { coding_tutor: false };
+    renderGate();
+
+    expect(screen.getByText(/not available on your plan/i)).toBeTruthy();
+    expect(screen.queryByText(/included with Premium/i)).toBeNull();
   });
 });

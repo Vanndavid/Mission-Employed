@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { checkHealth } from '../services/apiClient';
 import { useAuth } from '../contexts/AuthContext';
+import { useSubscription } from '../contexts/SubscriptionContext';
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -10,6 +11,7 @@ interface SidebarProps {
 
 export const Sidebar = ({ mobileOpen, onMobileClose }: SidebarProps) => {
   const { user, isPremium, isAdmin, logout } = useAuth();
+  const { canUse } = useSubscription();
   const [aiStatus, setAiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
 
   useEffect(() => {
@@ -25,12 +27,13 @@ export const Sidebar = ({ mobileOpen, onMobileClose }: SidebarProps) => {
     { path: '/applications', label: 'Job Applications', sub: 'Mechanical Applying', icon: '📁', end: true },
     { path: '/applications/profile', label: 'CV & Profile', sub: 'Frozen Documents', icon: '📄', end: false },
     { path: '/prep', label: 'Training Room', sub: 'Behavioral Drills', icon: '🧠', end: true },
-    { path: '/mock', label: 'Mock Test', sub: isPremium ? 'Conversational Sim' : 'Premium unlock', icon: '👔', end: true },
-    { path: '/account', label: 'Account', sub: isPremium ? 'Premium plan' : 'Free plan', icon: '👤', end: true },
+    { path: '/mock', label: 'Mock Test', sub: canUse('mock_interview') ? 'Conversational Sim' : 'Premium unlock', icon: '👔', end: true },
+    { path: '/account', label: 'Plan & Usage', sub: isPremium ? 'Premium plan' : 'Free plan', icon: '👤', end: true },
   ];
 
   if (isAdmin) {
-    tabs.push({ path: '/account/admin', label: 'Admin', sub: 'Plans & usage', icon: '🔑', end: true });
+    tabs.push({ path: '/account/admin', label: 'Admin', sub: 'Users & usage', icon: '🔑', end: true });
+    tabs.push({ path: '/account/admin/plans', label: 'Plans & Limits', sub: 'Features per plan', icon: '🎛️', end: true });
   }
 
   tabs.push({ path: '/settings', label: 'Settings', sub: 'Theme & AI agents', icon: '⚙️', end: true });

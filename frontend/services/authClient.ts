@@ -1,5 +1,6 @@
 /**
- * Accounts: register, sign in, sign out, and the admin plan and deactivation switches.
+ * Accounts: register, sign in, sign out, and the admin plan, Premium request
+ * and deactivation switches.
  *
  * Auth responses are deliberately NOT wrapped in a `data` envelope — register
  * and login answer with a flat `{ user, token }`, and `me` with `{ user }`.
@@ -85,11 +86,25 @@ export async function fetchAdminUsage(days: number): Promise<UsageReport> {
   return apiRequest<UsageReport>(`/admin/usage?days=${days}`);
 }
 
-export async function setUserPlan(userId: number, plan: AccountPlan): Promise<{ user: AuthUser }> {
+/**
+ * Setting either plan answers a pending Premium request. `expiresAt` (ISO,
+ * in the future) ends a Premium plan on that date; null means no end date.
+ * The server ignores it for Free.
+ */
+export async function setUserPlan(
+  userId: number,
+  plan: AccountPlan,
+  expiresAt: string | null = null,
+): Promise<{ user: AuthUser }> {
   return apiRequest<{ user: AuthUser }>(`/admin/users/${userId}/plan`, {
     method: 'PATCH',
-    body: { plan },
+    body: { plan, expiresAt },
   });
+}
+
+/** Turn a Premium request down without changing the plan. */
+export async function dismissPremiumRequest(userId: number): Promise<{ user: AuthUser }> {
+  return apiRequest<{ user: AuthUser }>(`/admin/users/${userId}/premium-request`, { method: 'DELETE' });
 }
 
 /**

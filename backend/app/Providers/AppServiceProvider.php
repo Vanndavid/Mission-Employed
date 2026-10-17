@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\Plan;
 use App\Services\Ai\DatabaseUsageRecorder;
 use App\Services\Ai\UsageRecorder;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -45,5 +46,24 @@ class AppServiceProvider extends ServiceProvider
             ->by(Str::lower((string) $request->input('email')).'|'.$request->ip()));
 
         RateLimiter::for('register', fn (Request $request) => Limit::perHour(10)->by($request->ip()));
+
+        // Every metered feature combined, per account, at the rate its plan
+        // allows: the daily quotas stop a slow drain, this stops a burst.
+        // Admins and a plan with no rate set are not throttled.
+        RateLimiter::for('features', function (Request $request): Limit {
+            $user = $request->user();
+            $perMinute = $user === null || $user->isAdmin()
+                ? null
+                : Plan::resolve($user->effectivePlan())->requests_per_minute;
+
+            return $perMinute === null
+                ? Limit::none()
+                : Limit::perMinute($perMinute)
+                    ->by('features|'.$user->id)
+                    ->response(fn (Request $request, array $headers) => response()->json([
+                        'message' => "Too many requests: your plan allows {$perMinute} a minute. Try again in a moment.",
+                        'code' => 'rate_limited',
+                    ], 429, $headers));
+        });
     }
 }

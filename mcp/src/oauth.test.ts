@@ -134,6 +134,11 @@ describe("the hosted server's OAuth flow", () => {
         auth === `Bearer ${UPSTREAM}` && !revoked
           ? { json: { user: { id: 1, email: "a@b.test", plan: "premium" } } }
           : { status: 401, json: { message: "Unauthenticated." } },
+      )
+      .route("GET", "/subscription", (_body, { auth }) =>
+        auth === `Bearer ${UPSTREAM}` && !revoked
+          ? { json: { plan: "premium", planExpiresAt: null, premiumRequestedAt: null, requestsPerMinute: 30, features: [], plans: [] } }
+          : { status: 401, json: { message: "Unauthenticated." } },
       );
 
     hosted = await host(api);
@@ -240,8 +245,9 @@ describe("the hosted server's OAuth flow", () => {
 
     assert.ok(!names.includes("login"));
 
-    await client.callTool({ name: "whoami", arguments: {} });
+    const whoami = (await client.callTool({ name: "whoami", arguments: {} })) as { isError?: boolean };
 
+    assert.notEqual(whoami.isError, true);
     assert.equal(api.requests.at(-1)?.auth, `Bearer ${UPSTREAM}`);
 
     await client.close();

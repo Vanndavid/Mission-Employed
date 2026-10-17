@@ -4,10 +4,11 @@ A job-hunting SaaS: practice coding, track applications with AI-tailored CVs and
 cover letters, rehearse interviews.
 
 **The rebuild is finished and the project is parked** (2026-10-03): live,
-deployed from `main`, nothing in flight. `TASKS.md` at the repo root records what
-was built and why, and ends with the follow-ups worth doing if work resumes —
-each as a copy-paste brief. Keep it updated as work lands rather than letting it
-go stale.
+deployed from `main`, nothing in flight. It was briefly unparked on 2026-10-17
+to make plans configurable (6.1 in `TASKS.md`). `TASKS.md` at the repo root
+records what was built and why, and ends with the follow-ups worth doing if
+work resumes — each as a copy-paste brief. Keep it updated as work lands rather
+than letting it go stale.
 
 ## Stack
 
@@ -87,8 +88,9 @@ The stack is docker compose behind Traefik:
 `mcp/` exposes the same API to an MCP client (Claude Code, Claude Desktop,
 Cowork) so an application can be tracked or a CV tailored from a conversation.
 It is a **thin client** — ownership checks, validation, the status timeline and
-the premium gate stay in Laravel, and no rule is reimplemented there. When an
-endpoint changes shape, the matching tool in `mcp/src/tools/` changes with it.
+the plan's feature gates and limits stay in Laravel, and no rule is
+reimplemented there. When an endpoint changes shape, the matching tool in
+`mcp/src/tools/` changes with it.
 
 Audio round trips (`/api/ai/behavioral/evaluate`, `/api/ai/tts`, and the Gemini
 Live mock interview's `/live` and `/exchanges`) are deliberately not exposed:
@@ -111,9 +113,14 @@ Five things. Anything not on this list was deliberately deleted, so do not
 reintroduce it or build features that depend on it:
 
 1. **SaaS shell** — register/login, `free` and `premium` plans, `user` and `admin`
-   roles. An admin upgrades a plan by hand; there is no payment integration and
-   none is planned right now. An admin can also deactivate an account, which
-   locks it and revokes its tokens but keeps its data, and reactivate it later.
+   roles. **What each plan includes, and how often, is set by an admin** on
+   Admin · Plans & limits: per feature, included or not and a limit per day,
+   week or month, plus a requests-per-minute cap per plan. Users see their
+   allowances and both plans on Plan & usage, and press **Request Premium**;
+   an admin grants Premium by hand, for a period or with no end date. There is
+   no payment integration yet (the follow-up in `TASKS.md` needs the user to
+   pick a provider). An admin can also deactivate an account, which locks it
+   and revokes its tokens but keeps its data, and reactivate it later.
 2. **Coding practice** — software engineering only. Problem generation, AI tutor
    chat, attempt history.
 3. **Job application tracker** — CRUD, statuses, interview stages, paste-a-JD
@@ -146,7 +153,30 @@ the emergency modal.
 ## Conventions
 
 - Enums live in `backend/app/Enums` and are cast on the model (`JobStatus`,
-  `AccountPlan`, `AccountRole`). Each has a `values()` helper for validation rules.
+  `AccountPlan`, `AccountRole`, `Feature`, `QuotaPeriod`). Each has a
+  `values()` helper for validation rules.
+- **Every paid route names its plan feature.** `routes/api/ai.php` puts
+  `feature:<key>` on each route (`App\Http\Middleware\EnsureFeature`): it
+  refuses a plan without the feature (403 `premium_required`, or
+  `feature_unavailable` when Premium lacks it too), claims one use, and hands
+  the use back if the response is not a success. `,access` checks without
+  counting (opening, reading, deleting a session), `,deferred` lets the
+  controller call `EnsureFeature::charge()` only when it does paid work (the
+  ATS check, whose re-checks are free), and `feature:session` takes the feature
+  from the session's kind. A used-up allowance is 429 `quota_exceeded`; the
+  per-minute cap (`throttle:features`) is 429 `rate_limited`. Admins are never
+  refused but are counted. The catalog is the `Feature` enum, because code
+  enforces it; an admin edits only its terms (`plans`, `plan_features`), and a
+  feature or plan with no row reads as the defaults in `Feature` and
+  `AccountPlan`, so nothing is seeded. A new paid route needs a `Feature`
+  case (label, description, group, `defaultSetting()`), the middleware on the
+  route, `FeatureKey` in `frontend/types/auth.ts`, and a row in
+  `AiPremiumGateTest`. Uses live in `feature_usages`, separate from `ai_usage`
+  (tokens and cost): a use is what the plan promises, so a failed call leaves
+  none.
+- A Premium plan can end: past `users.plan_expires_at` the account reads as
+  Free everywhere (`User::isPremium()`, `effectivePlan()`). An admin setting
+  either plan clears `premium_requested_at`.
 - Every model has a factory. Feature tests use them rather than hand-built arrays.
 - Tests must never hit the network. Bind `FakeGeminiService` for anything that
   touches a model. `Http::preventStrayRequests()` is on `Tests\TestCase` so a

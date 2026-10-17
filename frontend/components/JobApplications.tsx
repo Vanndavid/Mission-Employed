@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AtsSource, BehavioralAnswer, InterviewStage, JobApplication, JobStatus } from '../types';
 import { parseJobApplication } from '../services/apiClient';
+import { aiFailureMessage } from '../services/http';
 import { SeekJobs } from './SeekJobs';
 import { InterviewPrepDrawer } from './InterviewPrepDrawer';
 import { CoverLetterStudio } from './CoverLetterStudio';
@@ -312,8 +313,9 @@ export const JobApplications = ({
       }));
       setIsAdding(true);
       setNlText('');
-    } catch (e) {
-      console.error(e);
+    } catch (cause) {
+      // The text stays in the box, so nothing typed is lost.
+      toast(aiFailureMessage(cause, 'Could not parse that.'), 'error');
     } finally {
       setParsingNl(false);
     }

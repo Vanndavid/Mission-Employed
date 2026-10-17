@@ -6,7 +6,7 @@ application, tailor a CV, or run a mock interview without opening the web app.
 
 It is a thin client over the Laravel API in `../backend`. There is no second copy
 of any business rule here: ownership, validation, the status timeline and the
-premium gate are all still enforced by the API, and this server's job is to make
+plan's feature gates and limits are all still enforced by the API, and this server's job is to make
 its shapes legible to a model.
 
 ## Setup
@@ -129,8 +129,11 @@ running the sync again is a no-op. In Cowork this can run on a schedule.
 Prompt: `sync_job_emails`, described above. `login` and `logout` exist only in
 the local modes: over OAuth the connector owns the token.
 
-Everything under **AI** is premium-gated by the API; a free account gets a
-readable refusal rather than an error. `whoami` reports the effective plan.
+Everything under **AI** is a plan feature, gated and metered by the API: a
+plan without it, or with its allowance used up, gets the API's own readable
+refusal (which feature, which limit, when it resets) rather than an error.
+`whoami` reports the effective plan and, per feature, whether it is included,
+its limit and how much is used.
 
 Three API features are deliberately not exposed: evaluating a spoken behavioral
 answer, text-to-speech, and the spoken mock interview over Gemini Live

@@ -4,7 +4,8 @@ import { generateBehavioralPrompt, processAudioResponse, textToSpeech } from '..
 import { playSpokenClip } from '../utils/speech';
 import { useAnswerRecorder } from '../hooks/useAnswerRecorder';
 import { useBehavioralAnswers } from '../contexts/DataProvider';
-import { useAuth } from '../contexts/AuthContext';
+import { useSubscription } from '../contexts/SubscriptionContext';
+import { aiFailureMessage } from '../services/http';
 import { CoachFeedback } from './CoachFeedback';
 import { LevelMeter } from './LevelMeter';
 import { PremiumGate } from './PremiumGate';
@@ -136,7 +137,10 @@ function FactField({
 }
 
 export const PrepRoom = () => {
-  const { isPremium } = useAuth();
+  const { canUse, noteRefusal } = useSubscription();
+  // Playback is its own plan feature. Without it the question is only read,
+  // rather than asked for and refused.
+  const canSpeak = canUse('spoken_playback');
   const { answers, updateAnswer, loading, saving, error: storeError } = useBehavioralAnswers();
 
   const [activeThemeId, setActiveThemeId] = useState(BEHAVIORAL_THEMES[0].id);
@@ -234,12 +238,16 @@ export const PrepRoom = () => {
       // not yet read.
       setPrompt(cleaned);
       setStage('question');
-      void speak(cleaned);
-    } catch {
-      setError('The interviewer could not be reached. Try again in a moment.');
+      if (canSpeak) void speak(cleaned);
+    } catch (cause) {
+      setError(
+        noteRefusal(cause)
+          ? aiFailureMessage(cause, '')
+          : 'The interviewer could not be reached. Try again in a moment.',
+      );
       setStage('idle');
     }
-  }, [activeTheme.label, speak]);
+  }, [activeTheme.label, speak, canSpeak, noteRefusal]);
 
   const evaluate = useCallback(
     async (audio: Blob) => {
@@ -258,12 +266,16 @@ export const PrepRoom = () => {
         setFeedback(result.feedback);
         setStage('result');
         setDrilled(previous => new Set(previous).add(activeThemeId));
-      } catch {
-        setError('That answer could not be scored. The question is still here — try the take again.');
+      } catch (cause) {
+        setError(
+          noteRefusal(cause)
+            ? aiFailureMessage(cause, '')
+            : 'That answer could not be scored. The question is still here — try the take again.',
+        );
         setStage('question');
       }
     },
-    [activeTheme.label, activeThemeId, prompt, themeFacts],
+    [activeTheme.label, activeThemeId, prompt, themeFacts, noteRefusal],
   );
 
   const recorder = useAnswerRecorder(evaluate);
@@ -507,8 +519,8 @@ export const PrepRoom = () => {
         </aside>
 
         <section className="order-1 lg:order-2 lg:col-span-3">
-          {!isPremium ? (
-            <PremiumGate title="Behavioral AI coach (Premium)" />
+          {!canUse('interview_practice') ? (
+            <PremiumGate feature="interview_practice" title="Behavioral AI coach (Premium)" />
           ) : (
             <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
               <ol className="flex border-b border-slate-200 dark:border-slate-800">
@@ -600,14 +612,16 @@ export const PrepRoom = () => {
                       <span className="text-[10px] font-black uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">
                         Interviewer asks
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => void speak(prompt)}
-                        disabled={speaking}
-                        className="shrink-0 rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-brand-700 transition-colors hover:bg-brand-100 disabled:opacity-40 dark:text-brand-300 dark:hover:bg-brand-500/20"
-                      >
-                        {speaking ? '🔊 Speaking…' : '🔊 Replay'}
-                      </button>
+                      {canSpeak && (
+                        <button
+                          type="button"
+                          onClick={() => void speak(prompt)}
+                          disabled={speaking}
+                          className="shrink-0 rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-brand-700 transition-colors hover:bg-brand-100 disabled:opacity-40 dark:text-brand-300 dark:hover:bg-brand-500/20"
+                        >
+                          {speaking ? '🔊 Speaking…' : '🔊 Replay'}
+                        </button>
+                      )}
                     </div>
                     <p className="text-lg font-semibold italic leading-snug text-slate-800 dark:text-slate-100">
                       {prompt}

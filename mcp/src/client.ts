@@ -151,8 +151,14 @@ function explain(status: number, payload: unknown): string {
   if (status === 403) {
     return (
       message ??
-      "Refused: this endpoint needs a premium plan (or the admin role). An admin upgrades a plan by hand."
+      "Refused: the account's plan does not include this. whoami lists what the plan includes."
     );
+  }
+
+  if (status === 429) {
+    // The plan's allowance for a feature is used up (the message says when it
+    // resets), or too many requests this minute. Retrying straight away cannot help.
+    return message ?? "Refused: the plan's limit for this is used up. whoami says when it resets.";
   }
 
   if (status === 404) {

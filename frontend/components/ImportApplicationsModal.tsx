@@ -177,13 +177,15 @@ export const ImportApplicationsModal = ({
       } catch (cause) {
         if (!live) return;
 
-        // The two failure modes must not read the same, or a premium user will
+        // The failure modes must not read the same, or a premium user will
         // think their subscription lapsed.
         setAi({
           kind: 'skipped',
           reason: cause instanceof ApiError && cause.isPremiumRequired
             ? 'Columns matched by name. AI column matching is a premium feature.'
-            : 'Columns matched by name — the AI service could not be reached.',
+            : cause instanceof ApiError && cause.isPlanRefusal
+              ? `Columns matched by name. ${cause.message}`
+              : 'Columns matched by name — the AI service could not be reached.',
         });
       }
     };

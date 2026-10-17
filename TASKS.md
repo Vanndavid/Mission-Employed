@@ -1,6 +1,6 @@
 # Mission-Employed — task list
 
-**Branch:** `main` · **Status:** rebuild complete; project parked 2026-10-03. Live at mission-employed.vanndavidteng.com, nothing in flight.
+**Branch:** `main` · **Status:** rebuild complete; project parked 2026-10-03, unparked 2026-10-17 for configurable plans (6.1, done). Live at mission-employed.vanndavidteng.com, nothing in flight.
 
 ## How to use this file
 
@@ -21,6 +21,36 @@ gets the same treatment: a box, a brief, and a tick when it lands.
 
 Nothing here is broken today. These are the things that will need a hand
 eventually, soonest first.
+
+### Take payment for Premium
+
+- [ ] Needs the user to choose a payment provider and create the account
+
+```
+Premium is granted by hand today. A user presses Request Premium on Plan &
+usage; an admin grants it for a period on Admin · Users & usage, which is
+PATCH /api/admin/users/{id}/plan with {plan: 'premium', expiresAt}. Taking
+payment means a provider's webhook doing what that click does. Nothing else in
+the plan model (features, limits, plan_expires_at, see 6.1) has to change.
+
+First ask the user which provider and at what price. Do not assume Stripe: it
+does not onboard merchants in every country. Paddle and Lemon Squeezy are
+merchants of record and cover more. The account and keys are theirs to create.
+
+Then build: a checkout endpoint that returns the provider's hosted checkout
+URL for the Premium price; a webhook route, signature-verified and idempotent
+on the event id, that on a paid or renewed period sets plan=premium and
+plan_expires_at to the end of that period and on cancellation lets it run out;
+the provider's customer and subscription ids on users (not fillable). Plan &
+usage's Request Premium button becomes Upgrade when payments are configured
+and stays as the fallback when they are not. New secrets go in the server .env
+before the deploy that needs them (DEPLOYMENT.md). Tests use Http::fake() and
+signed fixture payloads, never the network.
+
+Verify with: cd backend && php artisan test; cd frontend && npm test && npx
+tsc --noEmit. Update CLAUDE.md's SaaS shell item, and tick this box with the
+date.
+```
 
 ### Move uptime monitoring to an external service
 
@@ -49,7 +79,7 @@ will depend on it. Tick this box with the date.
 
 ### Re-enable the uptime monitor
 
-- [ ] Due around 2026-12-12, if nothing has been pushed by then
+- [ ] Due around 2026-12-16, if nothing has been pushed by then
 
 ```
 GitHub pauses scheduled workflows in a public repository after 60 days with no
@@ -802,6 +832,68 @@ Decisions:
     anyway). The email-sync example notes it needs Claude's own Gmail
     connector.
   - The sidebar's Settings subtitle is now "Theme & AI agents".
+
+---
+
+## Wave 6 — Plans as a product
+
+### 6.1 Plans, features and limits, set by an admin ✅
+
+- [x] Done, 2026-10-17. Asked for as "like a SaaS: normal features free,
+  premium features need a subscription, the features set up by the admin, and
+  limits even on the subscription so nobody can abuse it."
+  - **The catalog is code, its terms are data.** `App\Enums\Feature` lists
+    eleven features: the ten AI ones plus Seek job search, which hits an
+    outside service. An admin sets, per plan and feature, included or not and
+    a limit per day, week or month (`plan_features`), and per plan its name,
+    price label, description and requests-per-minute cap (`plans`). With no
+    row, `Feature::defaultSetting()` and `AccountPlan`'s defaults apply, so
+    nothing was seeded and today's behaviour carried over: Free has no AI and
+    100 Seek searches a day; Premium has every feature with daily caps sized
+    well above real use (30 coding problems … 200 tutor messages), and 30
+    requests a minute.
+  - **Enforcement is one middleware.** `feature:<key>` on every AI route and
+    the Seek route replaced `premium` (`EnsurePremium` is gone). It claims a
+    use before the controller runs and deletes it unless the response is a
+    success, so refused, invalid and failed requests are free. Claim, then
+    count up to the claim's id, so two requests racing for the last use cannot
+    both win. `,access` gates without counting, `,deferred` lets the ATS
+    controller charge only when the job's keywords are not cached yet (a
+    first try that claimed up front refused a free re-check to a user at their
+    limit), and `feature:session` maps a session's kind to its feature, so a
+    CV refine chat counts against Tailored CV. It answers 404 for someone
+    else's session itself, since it runs before the controller's check.
+  - **Refusals are sentences.** 403 `premium_required` ("Tailored CV writer is
+    a Premium feature."), 403 `feature_unavailable` when Premium lacks it too,
+    429 `quota_exceeded` with the limit, period and `resetsAt` ("… It resets
+    Sun 18 Oct at 00:00 UTC.", plus "Premium has a higher limit." for a free
+    account when it does), 429 `rate_limited`. The MCP server relays them
+    verbatim. Periods are calendar UTC: midnight, Monday, the 1st.
+  - **Subscriptions end.** `users.plan_expires_at`: past it the account reads
+    as Free everywhere. The admin users screen grants 1, 3, 6 or 12 months or
+    no end date, running on from an end date still ahead, so extending never
+    shortens. `users.premium_requested_at` is the Request Premium button;
+    requests sort first with a badge and Dismiss. Setting either plan clears
+    it.
+  - **Screens.** Plan & usage (`AccountPage.tsx`, the sidebar's renamed
+    Account): current plan and end date, a meter per allowance with when a
+    used-up one comes back, both plans compared, Request Premium / Withdraw.
+    Admin · Plans & limits (`AdminPlansPage.tsx`): plans across, features
+    down, one Save. `PremiumGate` now takes `feature` and reads
+    `SubscriptionContext`, so a feature an admin opens to Free unlocks there
+    with no deploy. The paste-a-job-ad box used to swallow every failure into
+    `console.error`; it now toasts the reason.
+  - **API.** `GET /api/subscription` (plan, allowances with `used` and
+    `resetsAt`, every plan), `POST`/`DELETE /api/subscription/request`,
+    `GET /api/admin/plans`, `PATCH /api/admin/plans/{plan}` (partial; a feature
+    sent must give enabled, limit and period; limit ≥ 1 or null),
+    `PATCH /api/admin/users/{id}/plan` takes `expiresAt`, and
+    `DELETE /api/admin/users/{id}/premium-request`. MCP `whoami` adds the
+    allowances.
+  - Uses are in `feature_usages`, not `ai_usage`: that one is tokens and cost
+    per model call, this is what the plan promises. Admins are counted but
+    never refused.
+  - Payment is the open follow-up at the top of this file.
 
 ---
 

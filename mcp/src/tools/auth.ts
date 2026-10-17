@@ -4,6 +4,23 @@ import { z } from "zod";
 import type { ApiClient } from "../client.js";
 import { guarded, ok } from "./shared.js";
 
+/** The parts of GET /api/subscription whoami passes on. */
+type Subscription = {
+  plan: string;
+  planExpiresAt: string | null;
+  premiumRequestedAt: string | null;
+  requestsPerMinute: number | null;
+  features: {
+    key: string;
+    name: string;
+    enabled: boolean;
+    limit: number | null;
+    period: string;
+    used: number;
+    resetsAt: string | null;
+  }[];
+};
+
 /**
  * Signing in and finding out who you are. Everything else in this server needs
  * a token, so these are the tools a fresh client reaches for first.
@@ -22,12 +39,38 @@ export function registerAuthTools(
     {
       title: "Current account",
       description:
-        "The signed-in user: id, email, role and effective plan. Use it to check whether the " +
-        "account can reach the premium AI tools before calling one.",
+        "The signed-in user (id, email, role, effective plan) and what that plan allows: each " +
+        "feature, whether it is included, its limit per day/week/month and how much is used. " +
+        "Use it to check whether an AI tool is available, and how many uses are left, before " +
+        "calling one.",
       inputSchema: {},
       annotations: { readOnlyHint: true },
     },
-    guarded(async () => ok(await api.request("/auth/me"))),
+    guarded(async () => {
+      const [{ user }, subscription] = await Promise.all([
+        api.request<{ user: unknown }>("/auth/me"),
+        api.request<Subscription>("/subscription"),
+      ]);
+
+      return ok({
+        user,
+        plan: subscription.plan,
+        planExpiresAt: subscription.planExpiresAt,
+        premiumRequestedAt: subscription.premiumRequestedAt,
+        requestsPerMinute: subscription.requestsPerMinute,
+        // The catalog's descriptions and the plan comparison are for the web
+        // page; a model needs what it can call and how often.
+        features: subscription.features.map(({ key, name, enabled, limit, period, used, resetsAt }) => ({
+          key,
+          name,
+          enabled,
+          limit,
+          period,
+          used,
+          resetsAt,
+        })),
+      });
+    }),
   );
 }
 

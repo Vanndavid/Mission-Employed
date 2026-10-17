@@ -9,8 +9,9 @@ import {
   generateCodingProblem,
   sendCodingChat,
 } from '../services/apiClient';
-import { ApiError, errorMessage } from '../services/http';
+import { aiFailureMessage, ApiError } from '../services/http';
 import { useAuth } from '../contexts/AuthContext';
+import { useSubscription } from '../contexts/SubscriptionContext';
 import { useApplications, useCodingHistory } from '../contexts/DataProvider';
 import { UpcomingInterviews } from './UpcomingInterviews';
 import { PremiumGate } from './PremiumGate';
@@ -130,7 +131,10 @@ export const Dashboard = ({
   onCodingComplete,
 }: DashboardProps) => {
   const navigate = useNavigate();
-  const { user, isPremium, refreshUser } = useAuth();
+  const { user } = useAuth();
+  const { canUse, noteRefusal } = useSubscription();
+  // A tutor session starts from a generated problem, so it needs both.
+  const canTutor = canUse('coding_problem') && canUse('coding_tutor');
 
   // The records themselves still arrive as props from App; the providers are
   // read here only for the load and save status props cannot carry.
@@ -178,27 +182,17 @@ export const Dashboard = ({
   }, [applications]);
 
   /**
-   * One place that turns a failed AI call into a sentence, off `ApiError`'s
-   * flags rather than the message text: the tutor is premium-gated (403
-   * `premium_required`) and Gemini outages are contained as 502
-   * `ai_unavailable`, and those two deserve different answers.
+   * One place that turns a failed AI call into a sentence. A plan refusal
+   * (not included, or the allowance used up) means our copy of the plan is
+   * stale, so it is re-read and the panel below can flip to the gate; the
+   * server's message already says which and when it lifts.
    */
   const describeFailure = useCallback(
     (cause: unknown, fallback: string): string => {
-      if (cause instanceof ApiError) {
-        if (cause.isPremiumRequired) {
-          // The server is the boundary; our copy of the plan is stale, so
-          // re-read it and the panel below flips to the upgrade prompt.
-          void refreshUser();
-          return 'The AI tutor is a Premium feature and this account is not on Premium. Ask an admin to upgrade the plan.';
-        }
-        if (cause.isAiUnavailable) {
-          return 'The AI service is not answering right now. Nothing was lost — try again in a moment.';
-        }
-      }
-      return errorMessage(cause, fallback);
+      noteRefusal(cause);
+      return aiFailureMessage(cause, fallback);
     },
-    [refreshUser],
+    [noteRefusal],
   );
 
   const startProblem = async (difficulty: Difficulty) => {
@@ -313,7 +307,7 @@ export const Dashboard = ({
               <h3 className="text-xl font-bold flex items-center">
                 <span className="mr-2">🧩</span> Coding Tutor
               </h3>
-              {isPremium && (
+              {canTutor && (
                 <div className="space-x-2">
                   {difficultyButton(
                     'easy',
@@ -334,9 +328,9 @@ export const Dashboard = ({
               )}
             </div>
 
-            {!isPremium ? (
+            {!canTutor ? (
               <div className="flex-1 flex items-center">
-                <PremiumGate title="AI coding tutor (Premium)" />
+                <PremiumGate feature={['coding_problem', 'coding_tutor']} title="AI coding tutor (Premium)" />
               </div>
             ) : (
               <>

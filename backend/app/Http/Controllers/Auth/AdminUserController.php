@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Enums\AccountPlan;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\UpdateUserActiveRequest;
 use App\Http\Requests\Auth\UpdateUserPlanRequest;
@@ -10,7 +11,8 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 
 /**
- * The admin user list, the manual plan switch, and deactivation.
+ * The admin user list, the manual plan switch, Premium requests, and
+ * deactivation.
  *
  * Both routes sit behind auth:sanctum + the `admin` middleware, so nothing here
  * re-checks the role — the boundary lives in exactly one place.
@@ -35,7 +37,22 @@ class AdminUserController extends Controller
             ], 403);
         }
 
-        $user->update(['plan' => $request->plan()]);
+        // Setting the plan either way answers a pending Premium request.
+        $user->forceFill([
+            'plan' => $request->plan(),
+            'plan_expires_at' => $request->plan() === AccountPlan::Premium ? $request->expiresAt() : null,
+            'premium_requested_at' => null,
+        ])->save();
+
+        return response()->json([
+            'user' => new UserResource($user),
+        ]);
+    }
+
+    /** Turn a request down without changing the plan. */
+    public function dismissPremiumRequest(User $user): JsonResponse
+    {
+        $user->forceFill(['premium_requested_at' => null])->save();
 
         return response()->json([
             'user' => new UserResource($user),

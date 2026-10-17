@@ -1,5 +1,5 @@
 import React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -12,12 +12,15 @@ import { MemoryRouter } from 'react-router-dom';
 const listAdminUsers = vi.fn();
 const fetchAdminUsage = vi.fn();
 const setUserActive = vi.fn();
+const setUserPlan = vi.fn();
+const dismissPremiumRequest = vi.fn();
 
 vi.mock('../services/authClient', () => ({
   listAdminUsers: (...args: unknown[]) => listAdminUsers(...args),
   fetchAdminUsage: (...args: unknown[]) => fetchAdminUsage(...args),
-  setUserPlan: vi.fn(),
+  setUserPlan: (...args: unknown[]) => setUserPlan(...args),
   setUserActive: (...args: unknown[]) => setUserActive(...args),
+  dismissPremiumRequest: (...args: unknown[]) => dismissPremiumRequest(...args),
 }));
 
 vi.mock('../contexts/AuthContext', () => ({
@@ -169,5 +172,87 @@ describe('AdminUsersPage deactivation', () => {
     await screen.findByText('me@example.com');
 
     expect(screen.queryByRole('button', { name: 'Deactivate me@example.com' })).toBeNull();
+  });
+});
+
+describe('AdminUsersPage plans', () => {
+  const free = { id: 1, email: 'quiet@example.com', role: 'user', plan: 'free', planExpiresAt: null, premiumRequestedAt: null, createdAt: '', deactivatedAt: null };
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-17T12:00:00Z'));
+    setUserPlan.mockReset();
+    dismissPremiumRequest.mockReset();
+  });
+
+  afterEach(() => vi.useRealTimers());
+
+  it('lists accounts waiting for Premium first, and says how many', async () => {
+    listAdminUsers.mockResolvedValue({
+      users: [
+        { ...free, id: 2, email: 'heavy@example.com', plan: 'premium' },
+        { ...free, premiumRequestedAt: '2026-10-16T09:00:00+00:00' },
+      ],
+    });
+    renderPage();
+
+    expect(await screen.findByText(/1 account is waiting for Premium/)).toBeTruthy();
+    const rows = screen.getAllByRole('row').map(row => row.textContent ?? '');
+    expect(rows.findIndex(r => r.includes('quiet@'))).toBeLessThan(rows.findIndex(r => r.includes('heavy@')));
+    expect(within(screen.getByText('quiet@example.com').closest('tr')!).getByText(/Wants Premium/)).toBeTruthy();
+  });
+
+  it('grants Premium for a month by default', async () => {
+    listAdminUsers.mockResolvedValue({ users: [free] });
+    setUserPlan.mockResolvedValue({ user: { ...free, plan: 'premium', planExpiresAt: '2026-11-17T12:00:00.000Z' } });
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Grant Premium for quiet@example.com' }));
+
+    await waitFor(() => expect(setUserPlan).toHaveBeenCalledWith(1, 'premium', '2026-11-17T12:00:00.000Z'));
+    expect(await screen.findByText(/^until /)).toBeTruthy();
+  });
+
+  it('grants Premium with no end date when picked', async () => {
+    listAdminUsers.mockResolvedValue({ users: [free] });
+    setUserPlan.mockResolvedValue({ user: { ...free, plan: 'premium' } });
+    renderPage();
+
+    fireEvent.change(await screen.findByLabelText('Premium period for quiet@example.com'), { target: { value: 'null' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Grant Premium for quiet@example.com' }));
+
+    await waitFor(() => expect(setUserPlan).toHaveBeenCalledWith(1, 'premium', null));
+  });
+
+  it('extends Premium from its current end date', async () => {
+    const premium = { ...free, plan: 'premium', planExpiresAt: '2026-10-24T12:00:00.000Z' };
+    listAdminUsers.mockResolvedValue({ users: [premium] });
+    setUserPlan.mockResolvedValue({ user: premium });
+    renderPage();
+
+    fireEvent.change(await screen.findByLabelText('Premium period for quiet@example.com'), { target: { value: '3' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Extend Premium for quiet@example.com' }));
+
+    await waitFor(() => expect(setUserPlan).toHaveBeenCalledWith(1, 'premium', '2027-01-24T12:00:00.000Z'));
+  });
+
+  it('dismisses a request without touching the plan', async () => {
+    const waiting = { ...free, premiumRequestedAt: '2026-10-16T09:00:00+00:00' };
+    listAdminUsers.mockResolvedValue({ users: [waiting] });
+    dismissPremiumRequest.mockResolvedValue({ user: free });
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: "Dismiss quiet@example.com's Premium request" }));
+
+    await waitFor(() => expect(dismissPremiumRequest).toHaveBeenCalledWith(1));
+    expect(setUserPlan).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByText(/Wants Premium/)).toBeNull());
+  });
+
+  it('says when a lapsed Premium plan ended', async () => {
+    listAdminUsers.mockResolvedValue({ users: [{ ...free, planExpiresAt: '2026-10-01T00:00:00+00:00' }] });
+    renderPage();
+
+    expect(await screen.findByText(/^Premium ended/)).toBeTruthy();
   });
 });

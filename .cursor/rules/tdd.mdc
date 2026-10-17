@@ -48,8 +48,8 @@ Vitest is jsdom with `frontend/setupTests.ts` (jest-dom + cleanup). Do not add
 - `Tests\TestCase` already calls `Http::preventStrayRequests()`. A missed fake fails the test instead of opening a socket.
 - Anything that would call Gemini: `FakeGeminiService::swap()`, then `assertNothingSent()` / `assertPromptContains()`. Do **not** bind the fake globally — `GeminiServiceTest` needs the real client.
 - Someone else's record is **404**, not 403. Do not leak that it exists.
-- Every `/api/ai/*` route is `auth:sanctum` + `premium`. A free user is `403` + `premium_required`. An admin on a free plan is allowed (`User::isPremium()` is plan **or** role).
-- Session-bound routes (`/sessions/{session}`, mock turns) need a real row first. `SubstituteBindings` runs with the `api` group, **before** `premium`, so a missing id is a 404 that never proves the gate. See `AiPremiumGateTest`.
+- Every `/api/ai/*` route is `auth:sanctum` + `feature:<key>`. With the default plan settings a free user is `403` + `premium_required`; an admin is always allowed. To test other settings, create a `PlanFeature` with its factory. Quotas, refunds on failure and the per-minute cap are `FeatureGateTest`.
+- Session-bound routes (`/sessions/{session}`, mock turns) need a real row first. `SubstituteBindings` runs with the `api` group, **before** `feature`, so a missing id is a 404 that never proves the gate. See `AiPremiumGateTest`.
 - `GeminiException` becomes `502` `{ code: 'ai_unavailable' }` with **no** upstream body, model name, or status in the JSON.
 - Empty client strings (`''`) on nullable dates become `null` in the FormRequest, not the controller.
 
@@ -58,7 +58,7 @@ Vitest is jsdom with `frontend/setupTests.ts` (jest-dom + cleanup). Do not add
 - Screens talk to the API through `services/http.ts` (`apiRequest`, `apiResource`, `ApiError`). Do not `fetch` in a component or reinvent `isPremiumRequired`.
 - A 401 is handled once in `AuthContext` via `setUnauthorizedHandler`. Tests that hit 401 should expect that, not a toast.
 - IDs are numbers from the server. Never `crypto.randomUUID()` a new application or stage.
-- `PremiumGate` is a courtesy. The server is the enforcement. When a 403 `premium_required` comes back, surface the upgrade prompt (`err.isPremiumRequired`), do not show a raw error.
+- `PremiumGate feature="…"` is a courtesy, driven by `useSubscription().canUse()`. The server is the enforcement. When a plan refusal comes back (`err.isPlanRefusal`: 403 `premium_required`/`feature_unavailable`, 429 `quota_exceeded`/`rate_limited`), show `aiFailureMessage(err)` (the server's sentence says which feature and when it resets) and call `noteRefusal(err)`, never a raw error.
 
 ## What a good new test proves
 
@@ -66,6 +66,7 @@ Pick the boundary the change can get wrong. Happy-path 200s already exist.
 
 - Other user's application / stage / session → 404
 - Free user on an AI route → 403, Gemini not called
+- Allowance used up → 429 `quota_exceeded`, Gemini not called; a failed call → no use counted
 - FormRequest rejects the input it claims to reject → 422, Gemini not called
 - Gemini throws → 502 `ai_unavailable`, body has no leak
 - Client `''` date → stored `null`; blank recruiter → serialized `null`

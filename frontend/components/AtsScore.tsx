@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AtsReport, AtsSource, JobApplication } from '../types';
-import { useAuth } from '../contexts/AuthContext';
-import { ApiError, errorMessage } from '../services/http';
+import { useSubscription } from '../contexts/SubscriptionContext';
+import { aiFailureMessage } from '../services/http';
 import { PremiumGate } from './PremiumGate';
 
 /**
@@ -77,7 +77,7 @@ interface AtsScorePanelProps {
 
 /** The drawer section. Keyed by application id by its parent. */
 export const AtsScorePanel = ({ app, hasBaseCv, onCheck }: AtsScorePanelProps) => {
-  const { isPremium, refreshUser } = useAuth();
+  const { canUse, noteRefusal } = useSubscription();
   const report = app.atsReport ?? null;
 
   const available: Record<AtsSource, boolean> = {
@@ -96,27 +96,20 @@ export const AtsScorePanel = ({ app, hasBaseCv, onCheck }: AtsScorePanelProps) =
   const hasJob = app.jobDescription.trim() !== '';
   const hasCv = available[source];
 
-  if (!isPremium) {
+  if (!canUse('ats_check')) {
     return (
       <section>
         <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">ATS Score</h4>
-        <PremiumGate title="ATS score (Premium)" />
+        <PremiumGate feature="ats_check" title="ATS score (Premium)" />
       </section>
     );
   }
 
   const describe = (cause: unknown): string => {
-    if (cause instanceof ApiError) {
-      if (cause.isPremiumRequired) {
-        // Our copy of the plan is stale; re-read it so the gate takes over.
-        void refreshUser();
-        return 'The ATS score is a Premium feature and this account is not on Premium. Ask an admin to upgrade the plan.';
-      }
-      if (cause.isAiUnavailable) {
-        return 'The AI service is not answering right now. Nothing was lost — try again in a moment.';
-      }
-    }
-    return errorMessage(cause, 'Could not check the ATS score.');
+    // A plan refusal means our copy of the plan is stale; re-read it so the
+    // gate (or the new usage) takes over.
+    noteRefusal(cause);
+    return aiFailureMessage(cause, 'Could not check the ATS score.');
   };
 
   const check = async () => {

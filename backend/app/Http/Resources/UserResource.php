@@ -2,14 +2,15 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\AccountPlan;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * The client-facing shape of a user, matching AuthUser in
- * frontend/types/auth.ts: id, email, role, plan, createdAt, deactivatedAt,
- * preferences.
+ * frontend/types/auth.ts: id, email, role, plan, planExpiresAt,
+ * premiumRequestedAt, createdAt, deactivatedAt, preferences.
  *
  * The password hash is never a key here — this resource, not $hidden, is the
  * only thing that decides what a user serializes to.
@@ -30,6 +31,10 @@ class UserResource extends JsonResource
             'email' => $this->email,
             'role' => $this->role->value,
             'plan' => $this->effectivePlan()->value,
+            // A Premium plan's end date, kept once it passes so the admin
+            // screen can say it lapsed. Null for no end date, and on Free.
+            'planExpiresAt' => $this->plan === AccountPlan::Premium ? $this->plan_expires_at?->toIso8601String() : null,
+            'premiumRequestedAt' => $this->premium_requested_at?->toIso8601String(),
             'createdAt' => $this->created_at?->toIso8601String(),
             'deactivatedAt' => $this->deactivated_at?->toIso8601String(),
             'preferences' => $this->effectivePreferences(),

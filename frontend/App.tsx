@@ -11,9 +11,11 @@ import { ToastProvider } from './components/ToastProvider';
 import { AuthScreen } from './components/AuthScreen';
 import { AccountPage } from './components/AccountPage';
 import { AdminUsersPage } from './components/AdminUsersPage';
+import { AdminPlansPage } from './components/AdminPlansPage';
 import { SettingsPage } from './components/SettingsPage';
 import { PremiumGate } from './components/PremiumGate';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { SubscriptionProvider } from './contexts/SubscriptionContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import {
   DataProvider,
@@ -118,13 +120,14 @@ function AppRoutes() {
       <Route
         path="/mock"
         element={
-          <PremiumGate title="Mock interview (Premium)">
+          <PremiumGate feature="mock_interview" title="Mock interview (Premium)">
             <MockTest applications={applications} behavioralAnswers={answers} />
           </PremiumGate>
         }
       />
       <Route path="/account" element={<AccountPage />} />
       <Route path="/account/admin" element={<AdminUsersPage />} />
+      <Route path="/account/admin/plans" element={<AdminPlansPage />} />
       <Route path="/settings" element={<SettingsPage />} />
     </Routes>
   );
@@ -148,26 +151,28 @@ function AppShell() {
 
   return (
     // Signing out unmounts this whole subtree, so a different account never
-    // reuses the previous one's loaded data.
-    <DataProvider>
-      <BrowserRouter>
-        <div className="min-h-screen text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
-          <Sidebar
-            mobileOpen={mobileNavOpen}
-            onMobileClose={() => setMobileNavOpen(false)}
-          />
+    // reuses the previous one's loaded data or plan.
+    <SubscriptionProvider>
+      <DataProvider>
+        <BrowserRouter>
+          <div className="min-h-screen text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
+            <Sidebar
+              mobileOpen={mobileNavOpen}
+              onMobileClose={() => setMobileNavOpen(false)}
+            />
 
-          <div className="flex-1 lg:ml-64 min-h-screen flex flex-col">
-            <MobileHeader onMenuOpen={() => setMobileNavOpen(true)} />
-            <main className="flex-1 p-4 sm:p-6 lg:p-8">
-              <div className="max-w-6xl mx-auto">
-                <AppRoutes />
-              </div>
-            </main>
+            <div className="flex-1 lg:ml-64 min-h-screen flex flex-col">
+              <MobileHeader onMenuOpen={() => setMobileNavOpen(true)} />
+              <main className="flex-1 p-4 sm:p-6 lg:p-8">
+                <div className="max-w-6xl mx-auto">
+                  <AppRoutes />
+                </div>
+              </main>
+            </div>
           </div>
-        </div>
-      </BrowserRouter>
-    </DataProvider>
+        </BrowserRouter>
+      </DataProvider>
+    </SubscriptionProvider>
   );
 }
 

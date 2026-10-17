@@ -48,6 +48,28 @@ describe("the MCP server", () => {
       .route("GET", "/auth/me", () => ({
         json: { user: { id: 1, email: "a@b.test", role: "user", plan: "premium" } },
       }))
+      .route("GET", "/subscription", () => ({
+        json: {
+          plan: "premium",
+          planExpiresAt: "2026-11-17T12:00:00+00:00",
+          premiumRequestedAt: null,
+          requestsPerMinute: 30,
+          features: [
+            {
+              key: "tailored_cv",
+              name: "Tailored CV writer",
+              description: "Your CV tailored to the job.",
+              group: "Job applications",
+              enabled: true,
+              limit: 60,
+              period: "day",
+              used: 3,
+              resetsAt: "2026-10-18T00:00:00+00:00",
+            },
+          ],
+          plans: [],
+        },
+      }))
       .route("GET", "/applications", () => ({
         json: {
           data: [
@@ -162,6 +184,26 @@ describe("the MCP server", () => {
 
     assert.notEqual(result.isError, true);
     assert.equal(api.requests.at(-1)?.auth, "Bearer test-token");
+  });
+
+  it("says what the plan allows and how much of it is used", async () => {
+    const result = (await client.callTool({ name: "whoami", arguments: {} })) as CallToolResult;
+    const body = JSON.parse(text(result));
+
+    assert.equal(body.user.email, "a@b.test");
+    assert.equal(body.plan, "premium");
+    assert.equal(body.planExpiresAt, "2026-11-17T12:00:00+00:00");
+    assert.deepEqual(body.features, [
+      {
+        key: "tailored_cv",
+        name: "Tailored CV writer",
+        enabled: true,
+        limit: 60,
+        period: "day",
+        used: 3,
+        resetsAt: "2026-10-18T00:00:00+00:00",
+      },
+    ]);
   });
 
   it("filters the application list without asking the API to", async () => {

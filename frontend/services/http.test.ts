@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  aiFailureMessage,
   ApiError,
   apiRequest,
   apiResource,
@@ -16,6 +17,32 @@ function json(body: unknown, status = 200) {
 }
 
 describe('ApiError', () => {
+  it('flags each plan refusal, and only those, as a plan refusal', () => {
+    const unavailable = new ApiError(403, 'Off.', 'feature_unavailable');
+    const quota = new ApiError(429, 'Used up.', 'quota_exceeded');
+    const rate = new ApiError(429, 'Slow down.', 'rate_limited');
+
+    expect(unavailable.isFeatureUnavailable).toBe(true);
+    expect(quota.isQuotaExceeded).toBe(true);
+    expect(rate.isRateLimited).toBe(true);
+    for (const error of [unavailable, quota, rate, new ApiError(403, 'Premium.', 'premium_required')]) {
+      expect(error.isPlanRefusal).toBe(true);
+    }
+    expect(new ApiError(403, 'Admins only.', 'admin_required').isPlanRefusal).toBe(false);
+    expect(new ApiError(502, 'Down.', 'ai_unavailable').isPlanRefusal).toBe(false);
+  });
+
+  it('words an AI failure by its cause', () => {
+    expect(aiFailureMessage(new ApiError(429, 'You have reached your limit.', 'quota_exceeded'), 'x')).toBe(
+      'You have reached your limit.',
+    );
+    expect(aiFailureMessage(new ApiError(403, 'Tailored CV writer is a Premium feature.', 'premium_required'), 'x')).toBe(
+      'Tailored CV writer is a Premium feature. Request Premium on the Plan & usage page.',
+    );
+    expect(aiFailureMessage(new ApiError(502, 'raw', 'ai_unavailable'), 'x')).toMatch(/not answering right now/);
+    expect(aiFailureMessage(new Error(''), 'Fallback.')).toBe('Fallback.');
+  });
+
   it('flags a premium_required 403', () => {
     const error = new ApiError(403, 'Premium required.', 'premium_required');
 

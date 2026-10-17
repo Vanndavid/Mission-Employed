@@ -4,9 +4,15 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 const searchSeekJobs = vi.fn();
+const parseJobApplication = vi.fn();
 
 vi.mock('../services/seekClient', () => ({
   searchSeekJobs: (...args: unknown[]) => searchSeekJobs(...args),
+}));
+
+vi.mock('../services/apiClient', async () => ({
+  ...(await vi.importActual<typeof import('../services/apiClient')>('../services/apiClient')),
+  parseJobApplication: (...args: unknown[]) => parseJobApplication(...args),
 }));
 
 // The drawer's ATS panel reads the plan.
@@ -20,6 +26,7 @@ const { JobApplications } = await import('./JobApplications');
 const { ToastProvider } = await import('./ToastProvider');
 
 const { JobStatus } = await import('../types');
+const { ApiError } = await import('../services/http');
 
 function tracked(id: number, overrides: Record<string, unknown> = {}) {
   return {
@@ -430,5 +437,22 @@ describe('JobApplications — load and save state', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Could not save that change.');
     fireEvent.click(within(screen.getByRole('alert')).getByRole('button', { name: 'Retry' }));
     expect(onRetry).toHaveBeenCalledOnce();
+  });
+});
+
+describe('JobApplications natural language log', () => {
+  it('says why a parse was refused and keeps the text', async () => {
+    searchSeekJobs.mockResolvedValue({ jobs: [], total: 0 });
+    parseJobApplication.mockRejectedValue(
+      new ApiError(429, 'You have reached your Job description parsing limit (5 per month).', 'quota_exceeded'),
+    );
+    renderPage();
+
+    const box = screen.getByPlaceholderText('Describe the application in plain English...');
+    fireEvent.change(box, { target: { value: 'Applied to Acme for backend' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Parse & Add' }));
+
+    expect(await screen.findByText(/reached your Job description parsing limit/)).toBeTruthy();
+    expect(box).toHaveValue('Applied to Acme for backend');
   });
 });
