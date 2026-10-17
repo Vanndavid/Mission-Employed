@@ -63,13 +63,23 @@ Monitoring in DEPLOYMENT.md). The first real outage, on 2026-10-13, was a
 network-level blip at the host: the server and containers stayed up, and it
 was caught only because a run happened to land inside it.
 
+The second, on 2026-10-17 from 14:18 to about 15:12 UTC, was not caught at all.
+Hostinger powered the VM off from the hypervisor, and it booted again 34
+minutes later. The app containers came back, but the shared Traefik had no
+restart policy, so every site on the box stayed dark until someone noticed by
+hand. Traefik now has `restart: unless-stopped`. The last Uptime run had been
+at 13:13. Only a monitor outside the box can see a powered-off box.
+
 Once the user has a free UptimeRobot or Better Stack account, add HTTP(S)
 monitors at a 5-minute interval with email alerts for:
   https://mission-employed.vanndavidteng.com/                 (keyword: id="root")
   https://mission-employed.vanndavidteng.com/api/health        (keyword: "status":"ok")
   https://mission-employed.vanndavidteng.com/.well-known/oauth-protected-resource/mcp
 plus the service's SSL-expiry alert. The user does this in the service's UI,
-or gives you an API key for it; never commit that key.
+or gives you an API key for it; never commit that key. The user wants the
+other sites behind the same Traefik watched too, since they share its fate:
+pte-practice, aicompliance, api.aicompliance, chat, api.chat, vms and
+api.vms (all .vanndavidteng.com; api.vms answers /up with 200).
 
 Then update Monitoring in DEPLOYMENT.md to name the service as the alarm and
 uptime.yml as the backstop, keep uptime.yml (it costs nothing on a public
