@@ -70,6 +70,16 @@ restart policy, so every site on the box stayed dark until someone noticed by
 hand. Traefik now has `restart: unless-stopped`. The last Uptime run had been
 at 13:13. Only a monitor outside the box can see a powered-off box.
 
+The third ran for two days before a probe caught it. From 2026-11-23 11:39
+UTC a hung `docker logs --tail 25 video_nginx` (left over from debugging the
+VMS project) kept dockerd at 100% of one core. Chatroom's `redis`, published
+on 0.0.0.0:6379 with no password, held the other. By 15:00 Hostinger had capped
+the VM at about 30% CPU (`sar -u` showed 71% steal and 0% idle). The sites
+answered slowly until a probe at 2026-11-25 09:14 found them refusing
+connections. Fixed on 2026-11-25: the hung client was killed and redis
+unpublished, and steal dropped back to about 2%. A response-time alert would
+have caught it on day one.
+
 Once the user has a free UptimeRobot or Better Stack account, add HTTP(S)
 monitors at a 5-minute interval with email alerts for:
   https://mission-employed.vanndavidteng.com/                 (keyword: id="root")
