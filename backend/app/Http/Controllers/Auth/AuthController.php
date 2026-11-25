@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Resources\UserResource;
+use App\Models\TabSetting;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -45,6 +46,7 @@ class AuthController extends Controller
         return response()->json([
             'user' => new UserResource($user),
             'token' => $user->createToken(self::TOKEN_NAME)->plainTextToken,
+            'hiddenTabs' => TabSetting::hidden(),
         ], 201);
     }
 
@@ -80,13 +82,20 @@ class AuthController extends Controller
         return response()->json([
             'user' => new UserResource($user),
             'token' => $user->createToken(self::TOKEN_NAME)->plainTextToken,
+            'hiddenTabs' => TabSetting::hidden(),
         ]);
     }
 
+    /**
+     * The session payloads also carry the sidebar tabs an admin has hidden,
+     * so the client draws the right sidebar on its first frame. Site-wide, so
+     * it sits beside the user rather than in UserResource.
+     */
     public function me(Request $request): JsonResponse
     {
         return response()->json([
             'user' => new UserResource($request->user()),
+            'hiddenTabs' => TabSetting::hidden(),
         ]);
     }
 

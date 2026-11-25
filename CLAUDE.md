@@ -5,7 +5,8 @@ cover letters, rehearse interviews.
 
 **The rebuild is finished and the project is parked** (2026-10-03): live,
 deployed from `main`, nothing in flight. It was briefly unparked on 2026-10-17
-to make plans configurable (6.1 in `TASKS.md`). `TASKS.md` at the repo root
+to make plans configurable (6.1 in `TASKS.md`), and on 2026-11-26 to let an
+admin hide sidebar tabs (6.2). `TASKS.md` at the repo root
 records what was built and why, and ends with the follow-ups worth doing if
 work resumes — each as a copy-paste brief. Keep it updated as work lands rather
 than letting it go stale.
@@ -120,7 +121,9 @@ reintroduce it or build features that depend on it:
    an admin grants Premium by hand, for a period or with no end date. There is
    no payment integration yet (the follow-up in `TASKS.md` needs the user to
    pick a provider). An admin can also deactivate an account, which locks it
-   and revokes its tokens but keeps its data, and reactivate it later.
+   and revokes its tokens but keeps its data, and reactivate it later, and
+   **hide feature tabs** from every user's sidebar (Training Room is hidden by
+   default).
 2. **Coding practice** — software engineering only. Problem generation, AI tutor
    chat, attempt history.
 3. **Job application tracker** — CRUD, statuses, interview stages, paste-a-JD
@@ -174,6 +177,17 @@ the emergency modal.
   `AiPremiumGateTest`. Uses live in `feature_usages`, separate from `ai_usage`
   (tokens and cost): a use is what the plan promises, so a failed call leaves
   none.
+- **Hidden tabs are decluttering, not a gate.** `App\Enums\NavTab` lists the
+  feature tabs an admin can hide, site-wide (`tab_settings`; no row reads as
+  `NavTab::defaultHidden()`). The list rides beside `user` as `hiddenTabs` on
+  `/auth/me`, login and register; `PUT /api/admin/tabs` replaces it. Users
+  lose the tab and its route (`TabGate` sends them to the first visible tab);
+  admins still see it, marked. The plan still decides what the features
+  allow, so never use a hidden tab to restrict one. A new sidebar tab needs a
+  `NavTab` case, `NavTabKey` in `frontend/types/auth.ts`, an entry in
+  `frontend/utils/navTabs.ts` and a `TabGate` on its route. Pages people do
+  not use daily (Plan & Usage, Settings, admin) go in the sidebar's Account
+  group by Log out, not in the main list.
 - A Premium plan can end: past `users.plan_expires_at` the account reads as
   Free everywhere (`User::isPremium()`, `effectivePlan()`). An admin setting
   either plan clears `premium_requested_at`.

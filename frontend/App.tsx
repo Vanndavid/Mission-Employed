@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Sidebar, MobileHeader } from './components/Sidebar';
@@ -14,6 +13,8 @@ import { AdminUsersPage } from './components/AdminUsersPage';
 import { AdminPlansPage } from './components/AdminPlansPage';
 import { SettingsPage } from './components/SettingsPage';
 import { PremiumGate } from './components/PremiumGate';
+import { TabGate } from './components/TabGate';
+import { homePath } from './utils/navTabs';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SubscriptionProvider } from './contexts/SubscriptionContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -55,7 +56,7 @@ function AppRoutes() {
   // way Dashboard does; the two read-only consumers below still take it as a
   // prop.
   const { answers } = useBehavioralAnswers();
-  const { user, updatePreferences } = useAuth();
+  const { user, updatePreferences, isAdmin, hiddenTabs } = useAuth();
 
   const handleDelete = (id: number) => {
     if (window.confirm('Terminate mission record?')) {
@@ -65,64 +66,76 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      {/* The first tab this account can see; an admin may have hidden any. */}
+      <Route path="/" element={<Navigate to={homePath(hiddenTabs, isAdmin)} replace />} />
       <Route
         path="/dashboard"
         element={
-          <Dashboard
-            applications={applications}
-            codingHistory={codingHistory}
-            onCodingComplete={addAttempt}
-          />
+          <TabGate tab="mission_control">
+            <Dashboard applications={applications} codingHistory={codingHistory} onCodingComplete={addAttempt} />
+          </TabGate>
         }
       />
       <Route
         path="/applications"
         element={
-          <JobApplications
-            applications={applications}
-            behavioralAnswers={answers}
-            onAdd={addApplication}
-            onUpdateStatus={updateStatus}
-            onUpdateApplication={updateApplication}
-            onAddInterviewStage={addInterviewStage}
-            onRemoveInterviewStage={removeInterviewStage}
-            onDelete={handleDelete}
-            onCommitImport={commitImport}
-            onCheckAts={checkAtsScore}
-            loading={applicationsLoading}
-            loadError={applicationsError}
-            onRetry={() => void reloadApplications()}
-            baseCV={profile.baseCV}
-            coverLetterTemplate={profile.coverLetterTemplate}
-            cvTemplate={profile.cvTemplate}
-            portfolioUrl={profile.portfolioUrl}
-            pageSize={user?.preferences.applicationsPageSize}
-            onPageSizeChange={size => updatePreferences({ applicationsPageSize: size })}
-          />
+          <TabGate tab="applications">
+            <JobApplications
+              applications={applications}
+              behavioralAnswers={answers}
+              onAdd={addApplication}
+              onUpdateStatus={updateStatus}
+              onUpdateApplication={updateApplication}
+              onAddInterviewStage={addInterviewStage}
+              onRemoveInterviewStage={removeInterviewStage}
+              onDelete={handleDelete}
+              onCommitImport={commitImport}
+              onCheckAts={checkAtsScore}
+              loading={applicationsLoading}
+              loadError={applicationsError}
+              onRetry={() => void reloadApplications()}
+              baseCV={profile.baseCV}
+              coverLetterTemplate={profile.coverLetterTemplate}
+              cvTemplate={profile.cvTemplate}
+              portfolioUrl={profile.portfolioUrl}
+              pageSize={user?.preferences.applicationsPageSize}
+              onPageSizeChange={size => updatePreferences({ applicationsPageSize: size })}
+            />
+          </TabGate>
         }
       />
       <Route
         path="/applications/profile"
         element={
-          <Profile
-            baseCV={profile.baseCV}
-            cvFileName={profile.cvFileName}
-            baseCoverLetter={profile.baseCoverLetter}
-            portfolioUrl={profile.portfolioUrl}
-            coverLetterTemplate={profile.coverLetterTemplate}
-            cvTemplate={profile.cvTemplate}
-            onUpdate={updateProfile}
-          />
+          <TabGate tab="profile">
+            <Profile
+              baseCV={profile.baseCV}
+              cvFileName={profile.cvFileName}
+              baseCoverLetter={profile.baseCoverLetter}
+              portfolioUrl={profile.portfolioUrl}
+              coverLetterTemplate={profile.coverLetterTemplate}
+              cvTemplate={profile.cvTemplate}
+              onUpdate={updateProfile}
+            />
+          </TabGate>
         }
       />
-      <Route path="/prep" element={<PrepRoom />} />
+      <Route
+        path="/prep"
+        element={
+          <TabGate tab="training_room">
+            <PrepRoom />
+          </TabGate>
+        }
+      />
       <Route
         path="/mock"
         element={
-          <PremiumGate feature="mock_interview" title="Mock interview (Premium)">
-            <MockTest applications={applications} behavioralAnswers={answers} />
-          </PremiumGate>
+          <TabGate tab="mock_test">
+            <PremiumGate feature="mock_interview" title="Mock interview (Premium)">
+              <MockTest applications={applications} behavioralAnswers={answers} />
+            </PremiumGate>
+          </TabGate>
         }
       />
       <Route path="/account" element={<AccountPage />} />
@@ -156,10 +169,7 @@ function AppShell() {
       <DataProvider>
         <BrowserRouter>
           <div className="min-h-screen text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
-            <Sidebar
-              mobileOpen={mobileNavOpen}
-              onMobileClose={() => setMobileNavOpen(false)}
-            />
+            <Sidebar mobileOpen={mobileNavOpen} onMobileClose={() => setMobileNavOpen(false)} />
 
             <div className="flex-1 lg:ml-64 min-h-screen flex flex-col">
               <MobileHeader onMenuOpen={() => setMobileNavOpen(true)} />

@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { AuthUser, isPremiumUser, UserPreferences } from '../types/auth';
+import { AuthUser, isPremiumUser, NavTabKey, UserPreferences } from '../types/auth';
 import {
   fetchMe,
   getStoredToken,
@@ -21,6 +21,13 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   /**
+   * Sidebar tabs an admin has hidden from users, site-wide. Admins still see
+   * them, marked; see utils/navTabs.ts.
+   */
+  hiddenTabs: NavTabKey[];
+  /** After an admin saves the list, so their own sidebar follows at once. */
+  setHiddenTabs: (tabs: NavTabKey[]) => void;
+  /**
    * Applies at once and saves to the account. A failed save rejects, but the
    * choice stays for this session — the caller says it was not remembered.
    */
@@ -31,6 +38,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [hiddenTabs, setHiddenTabs] = useState<NavTabKey[]>([]);
   const [loading, setLoading] = useState(true);
 
   /** Drop the session locally. Used on sign-out and on any 401. */
@@ -54,8 +62,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     try {
-      const { user: me } = await fetchMe();
+      const { user: me, hiddenTabs: hidden } = await fetchMe();
       setUser(me);
+      setHiddenTabs(hidden ?? []);
     } catch {
       clearSession();
     } finally {
@@ -71,12 +80,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const result = await loginAccount(email, password);
     setStoredToken(result.token);
     setUser(result.user);
+    setHiddenTabs(result.hiddenTabs ?? []);
   }, []);
 
   const register = useCallback(async (email: string, password: string) => {
     const result = await registerAccount(email, password);
     setStoredToken(result.token);
     setUser(result.user);
+    setHiddenTabs(result.hiddenTabs ?? []);
   }, []);
 
   const updatePreferences = useCallback(async (patch: Partial<UserPreferences>) => {
@@ -112,6 +123,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         register,
         logout,
         refreshUser,
+        hiddenTabs,
+        setHiddenTabs,
         updatePreferences,
       }}
     >

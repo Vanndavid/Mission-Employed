@@ -1,6 +1,6 @@
 # Mission-Employed — task list
 
-**Branch:** `main` · **Status:** rebuild complete; project parked 2026-10-03, unparked 2026-10-17 for configurable plans (6.1, done). Live at mission-employed.vanndavidteng.com, nothing in flight.
+**Branch:** `main` · **Status:** rebuild complete; project parked 2026-10-03, unparked 2026-10-17 for configurable plans (6.1, done) and 2026-11-26 for a calmer sidebar (6.2, done). Live at mission-employed.vanndavidteng.com, nothing in flight.
 
 ## How to use this file
 
@@ -914,6 +914,35 @@ Decisions:
     per model call, this is what the plan promises. Admins are counted but
     never refused.
   - Payment is the open follow-up at the top of this file.
+
+### 6.2 A calmer sidebar: admin-hidden tabs, account links by Log out ✅
+
+- [x] Done, 2026-11-26. Asked for as "hide Training Room tab from user. better
+  have admin can hide tab from users. some tabs are just not useful and can
+  overwhelm users", then "Plan usage and setting should move to near logout,
+  they are not features that user use everyday".
+  - **One site-wide list, not per plan or per account.** `App\Enums\NavTab`
+    names the five feature tabs (Mission Control, Job Applications, CV &
+    Profile, Training Room, Mock Test); `tab_settings` holds one row per tab
+    once an admin saves. With no row, `NavTab::defaultHidden()` applies, and
+    only Training Room defaults to hidden, so it left users' sidebars on
+    deploy with nothing seeded.
+  - **It is decluttering, not a gate.** The features behind a hidden tab keep
+    their plan terms and the MCP tools keep working. To switch a feature off,
+    untick it in the plan matrix instead. Plan & usage still lists a hidden
+    tab's allowances; filtering those is a possible follow-up if it confuses
+    anyone.
+  - **API.** `hiddenTabs` rides beside `user` on `/auth/me`, login and
+    register (site-wide, so not in `UserResource`), which lets the first frame
+    draw the right sidebar. `PUT /api/admin/tabs {hiddenTabs: [...]}` replaces
+    the whole list; an empty list shows everything.
+  - **Screens.** Admin · Plans & limits gains "Tabs users see", whose switches
+    save at once. A user who opens a hidden tab's address (`TabGate`) and `/`
+    both go to the first tab they can see, or Plan & usage if none.
+    Admins still see hidden tabs, dimmed and marked "Hidden from users". Plan
+    & Usage, Settings and the two admin pages moved out of the main list into
+    a compact Account group above Log out. Labels and paths live in
+    `frontend/utils/navTabs.ts`.
 
 ---
 

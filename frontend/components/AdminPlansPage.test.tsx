@@ -19,7 +19,7 @@ vi.mock('../services/subscriptionClient', () => ({
 }));
 
 vi.mock('../contexts/AuthContext', () => ({
-  useAuth: () => ({ isAdmin, isPremium: true, user: { id: 9 }, refreshUser: vi.fn() }),
+  useAuth: () => ({ isAdmin, isPremium: true, user: { id: 9 }, refreshUser: vi.fn(), hiddenTabs: [], setHiddenTabs: vi.fn() }),
 }));
 
 const { AdminPlansPage } = await import('./AdminPlansPage');

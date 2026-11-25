@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AdminPlanController;
+use App\Http\Controllers\Auth\AdminTabController;
 use App\Http\Controllers\Auth\AdminUsageController;
 use App\Http\Controllers\Auth\AdminUserController;
 use App\Http\Controllers\Auth\AuthController;
@@ -48,4 +49,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
     // What each plan includes and how often: AccountPlan x Feature.
     Route::get('/plans', [AdminPlanController::class, 'index']);
     Route::patch('/plans/{plan}', [AdminPlanController::class, 'update']);
+
+    // Which sidebar tabs users see: {hiddenTabs: NavTab[]}, the whole list.
+    Route::put('/tabs', [AdminTabController::class, 'update']);
 });

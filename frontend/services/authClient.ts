@@ -3,11 +3,12 @@
  * and deactivation switches.
  *
  * Auth responses are deliberately NOT wrapped in a `data` envelope — register
- * and login answer with a flat `{ user, token }`, and `me` with `{ user }`.
+ * and login answer with a flat `{ user, token, hiddenTabs }`, and `me` with
+ * `{ user, hiddenTabs }`.
  * Only the tracker endpoints use Laravel's resource wrapper.
  */
 
-import { AccountPlan, AuthUser, UserPreferences } from '../types/auth';
+import { AccountPlan, AuthUser, NavTabKey, UserPreferences } from '../types/auth';
 import { apiRequest, getStoredToken, setStoredToken } from './http';
 
 // The token lives in localStorage under `mission_employed_token`; storage is
@@ -18,6 +19,8 @@ export { getStoredToken, setStoredToken };
 export interface AuthSession {
   user: AuthUser;
   token: string;
+  /** Site-wide, set by an admin. Optional so an older server reads as none. */
+  hiddenTabs?: NavTabKey[];
 }
 
 export async function registerAccount(email: string, password: string): Promise<AuthSession> {
@@ -36,8 +39,8 @@ export async function loginAccount(email: string, password: string): Promise<Aut
   });
 }
 
-export async function fetchMe(): Promise<{ user: AuthUser }> {
-  return apiRequest<{ user: AuthUser }>('/auth/me');
+export async function fetchMe(): Promise<{ user: AuthUser; hiddenTabs?: NavTabKey[] }> {
+  return apiRequest<{ user: AuthUser; hiddenTabs?: NavTabKey[] }>('/auth/me');
 }
 
 /** A partial save: keys left out keep their saved value. */
@@ -119,6 +122,11 @@ export async function setUserActive(userId: number, active: boolean): Promise<{ 
 }
 
 /** Unauthenticated smoke test, used by deploy checks. */
+/** Admin: the whole list of tabs users should not see. An empty list shows them all. */
+export async function updateHiddenTabs(hiddenTabs: NavTabKey[]): Promise<{ hiddenTabs: NavTabKey[] }> {
+  return apiRequest<{ hiddenTabs: NavTabKey[] }>('/admin/tabs', { method: 'PUT', body: { hiddenTabs } });
+}
+
 export async function checkHealth(): Promise<{ status: string }> {
   return apiRequest<{ status: string }>('/health', { anonymous: true });
 }

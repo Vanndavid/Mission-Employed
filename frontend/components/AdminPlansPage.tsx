@@ -7,6 +7,7 @@ import { fetchAdminPlans, updateAdminPlan } from '../services/subscriptionClient
 import { errorMessage } from '../services/http';
 import { FeatureDraft, isDirty, PlanDraft, toDraft, toPatch } from '../utils/planDraft';
 import { useToast } from './ToastProvider';
+import { AdminTabsSection } from './AdminTabsSection';
 
 const input =
   'w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 text-sm text-slate-800 dark:text-slate-100';
@@ -113,6 +114,8 @@ export function AdminPlansPage() {
           Users & usage →
         </NavLink>
       </div>
+
+      <AdminTabsSection />
 
       {loading ? (
         <p className="text-sm text-slate-500">Loading plans…</p>

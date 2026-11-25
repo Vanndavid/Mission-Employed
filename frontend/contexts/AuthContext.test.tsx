@@ -63,6 +63,35 @@ beforeEach(() => {
   updatePreferences.mockReset();
 });
 
+function Tabs() {
+  const { user, hiddenTabs } = useAuth();
+  if (!user) return null;
+  return <p>Hidden: {hiddenTabs.join(',') || 'none'}</p>;
+}
+
+describe('AuthContext hidden tabs', () => {
+  it('takes the site-wide hidden tabs from /auth/me', async () => {
+    fetchMe.mockResolvedValue({ user: ME, hiddenTabs: ['training_room', 'mock_test'] });
+    render(
+      <AuthProvider>
+        <Tabs />
+      </AuthProvider>,
+    );
+
+    expect(await screen.findByText('Hidden: training_room,mock_test')).toBeTruthy();
+  });
+
+  it('hides nothing when an older server leaves the list out', async () => {
+    render(
+      <AuthProvider>
+        <Tabs />
+      </AuthProvider>,
+    );
+
+    expect(await screen.findByText('Hidden: none')).toBeTruthy();
+  });
+});
+
 describe('AuthContext preferences', () => {
   it('applies a preference straight away and saves it on the account', async () => {
     let resolve!: () => void;

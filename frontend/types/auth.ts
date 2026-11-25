@@ -27,6 +27,12 @@ export interface UserPreferences {
   applicationsPageSize: number;
 }
 
+/**
+ * The sidebar tabs an admin can hide from users. Mirrors App\Enums\NavTab;
+ * their labels and paths are NAV_TABS in utils/navTabs.ts.
+ */
+export type NavTabKey = 'mission_control' | 'applications' | 'profile' | 'training_room' | 'mock_test';
+
 /** Mirrors App\Enums\Feature. Each is enforced server-side by the `feature` middleware. */
 export type FeatureKey =
   | 'coding_problem'
