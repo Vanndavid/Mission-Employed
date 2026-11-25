@@ -124,8 +124,13 @@ reintroduce it or build features that depend on it:
    and revokes its tokens but keeps its data, and reactivate it later, and
    **hide feature tabs** from every user's sidebar (Training Room is hidden by
    default).
-2. **Coding practice** — software engineering only. Problem generation, AI tutor
-   chat, attempt history.
+2. **Coding practice** — software engineering only, as modes on Mission
+   Control. **Problems**: problem generation, AI tutor chat, attempt history.
+   **Quiz**: multiple-choice questions on a language (JavaScript, Python, Java,
+   SQL) from a hand-written bank, in rounds of ten, each answer explained and
+   scored on the server in code, missed questions brought back later. The quiz
+   is free on every plan and never metered. More modes are planned on the same
+   question bank (epic #21, `TASKS.md` Wave 7).
 3. **Job application tracker** — CRUD, statuses, interview stages, paste-a-JD
    parsing, tailored CV and cover letter, and **spreadsheet import**: drop in an
    `.xlsx`/`.xls`/`.csv` whose columns are named anything at all, an AI proposes
@@ -156,8 +161,9 @@ the emergency modal.
 ## Conventions
 
 - Enums live in `backend/app/Enums` and are cast on the model (`JobStatus`,
-  `AccountPlan`, `AccountRole`, `Feature`, `QuotaPeriod`). Each has a
-  `values()` helper for validation rules.
+  `AccountPlan`, `AccountRole`, `Feature`, `QuotaPeriod`, `NavTab`,
+  `PracticeKind`, `PracticeLanguage`, `PracticeQuestionStatus`,
+  `PracticeQuestionSource`). Each has a `values()` helper for validation rules.
 - **Every paid route names its plan feature.** `routes/api/ai.php` puts
   `feature:<key>` on each route (`App\Http\Middleware\EnsureFeature`): it
   refuses a plan without the feature (403 `premium_required`, or
@@ -185,9 +191,44 @@ the emergency modal.
   admins still see it, marked. The plan still decides what the features
   allow, so never use a hidden tab to restrict one. A new sidebar tab needs a
   `NavTab` case, `NavTabKey` in `frontend/types/auth.ts`, an entry in
-  `frontend/utils/navTabs.ts` and a `TabGate` on its route. Pages people do
-  not use daily (Plan & Usage, Settings, admin) go in the sidebar's Account
-  group by Log out, not in the main list.
+  `frontend/utils/navTabs.ts` and a `TabGate` on its route. A **mode** is a
+  tab too: its entry in `navTabs.ts` has `modeOf` (Quiz is
+  `modeOf: 'mission_control'`), so it is drawn as a mode tab on that screen
+  (`ModeTabs`) instead of in the sidebar, is listed in the admin's "Tabs users
+  see" as "Mission Control · Quiz", and is a child route of the tab's path
+  behind its own `TabGate` (`/dashboard/quiz` under the `MissionControl`
+  layout). The sidebar entry stays while any of its modes is visible. Pages
+  people do not use daily (Plan & Usage, Settings, admin) go in the sidebar's
+  Account group by Log out, not in the main list.
+- **The quiz is scored in code, and its key stays on the server.** Practice
+  modes share one bank, `practice_questions` (`kind`, `language`, `topic`,
+  `options`, `answer` as per-kind JSON, `status` draft|published, `source`
+  seed|ai|admin, `external_id`), and one append-only `practice_attempts`
+  table (`response`, `score`/`max_score`, `correct`, `feedback`,
+  `rubric_version`). `answer` is hidden from serialization: a round
+  (`QuizQuestionResource`) carries no answer or explanation, and
+  `POST /api/practice/quiz/answers` is the only place an answer is compared
+  and the first place the key leaves the server. A draft, an unknown id and
+  another kind's question are the same bare 404. An open mistake is a
+  question whose latest attempt was wrong; progress is worked out from
+  attempts every time, not stored. The quiz never calls a model, so
+  `routes/api/practice.php` names no `feature:` and nothing is metered; keep it
+  that way (`PracticeQuizTest` asserts no `feature_usages` row and no Gemini
+  call). Topics are code, `PracticeLanguage::topics()`. Not in the MCP server
+  yet (#27).
+- **The hand-written bank ships with a deploy.** It lives in
+  `backend/resources/practice/<kind>/<language>.json` (format in
+  `App\Services\Practice\SeedBank`). `php artisan practice:sync` runs in
+  `docker/laravel-entrypoint.sh` after `migrate --force` and in
+  `DatabaseSeeder`: it upserts by `external_id` as published `seed` rows, puts
+  a seed row that left the files back to draft (attempts keep it), never
+  touches an `ai` or `admin` row, and running it twice changes nothing. A
+  malformed question fails it and writes nothing, which fails the boot and
+  rolls the deploy back. A wrong answer key is the worst bug the quiz can
+  have: `PracticeSeedContentTest` checks every question straight from the
+  files, and a new question's key should be run, not reasoned about, where
+  the language allows. An admin who edits a seed question must make it
+  `source` admin, or the next sync puts the file's version back.
 - A Premium plan can end: past `users.plan_expires_at` the account reads as
   Free everywhere (`User::isPremium()`, `effectivePlan()`). An admin setting
   either plan clears `premium_requested_at`.

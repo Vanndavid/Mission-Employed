@@ -1,0 +1,538 @@
+{
+  "language": "java",
+  "questions": [
+    {
+      "id": "quiz-java-basics-01",
+      "topic": "basics",
+      "difficulty": "easy",
+      "prompt": "What does this print?",
+      "code": "int a = 7;\nint b = 2;\nSystem.out.println(a / b + \" \" + a % b + \" \" + (double) a / b);",
+      "options": [
+        "3 1 3.5",
+        "3.5 1 3.5",
+        "3 1 3.0",
+        "3 0 3.5"
+      ],
+      "answer": "3 1 3.5",
+      "explanation": "Dividing two ints truncates to an int, so a / b is 3, and a % b is the remainder, 1. The cast applies to a before the division, so (double) a / b is 3.5; (double) (a / b) would be 3.0."
+    },
+    {
+      "id": "quiz-java-basics-02",
+      "topic": "basics",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "int max = Integer.MAX_VALUE;\nSystem.out.println(max + 1 == Integer.MIN_VALUE);",
+      "options": [
+        "true",
+        "false",
+        "It throws an ArithmeticException",
+        "It does not compile"
+      ],
+      "answer": "true",
+      "explanation": "int arithmetic wraps around silently when it overflows, so MAX_VALUE + 1 is MIN_VALUE. Math.addExact throws an ArithmeticException instead, or use a long."
+    },
+    {
+      "id": "quiz-java-basics-03",
+      "topic": "basics",
+      "difficulty": "easy",
+      "prompt": "What does this print?",
+      "code": "System.out.println(1 + 2 + \"3\" + 4 + 5);",
+      "options": [
+        "3345",
+        "12345",
+        "339",
+        "15"
+      ],
+      "answer": "3345",
+      "explanation": "+ is evaluated left to right. 1 + 2 is the int 3; adding \"3\" makes a String, and from then on every + is concatenation: \"33\", \"334\", \"3345\"."
+    },
+    {
+      "id": "quiz-java-basics-04",
+      "topic": "basics",
+      "difficulty": "medium",
+      "prompt": "What does this print, line by line?",
+      "code": "char c = 'a';\nc += 1;\nSystem.out.println(c);\nSystem.out.println('a' + 1);",
+      "options": [
+        "b, then 98",
+        "b, then b",
+        "98, then 98",
+        "It does not compile"
+      ],
+      "answer": "b, then 98",
+      "explanation": "A compound assignment casts its result back to the variable's type, so c += 1 compiles and makes c 'b' (c = c + 1 would not compile). In 'a' + 1 the char is promoted to int, so println gets the int 98."
+    },
+    {
+      "id": "quiz-java-basics-05",
+      "topic": "basics",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "int x = 5;\nint y = x++ + ++x;\nSystem.out.println(x + \" \" + y);",
+      "options": [
+        "7 12",
+        "7 11",
+        "6 11",
+        "7 13"
+      ],
+      "answer": "7 12",
+      "explanation": "x++ gives 5 and then makes x 6; ++x makes x 7 and gives 7. So y is 5 + 7 = 12, and x ends at 7."
+    },
+    {
+      "id": "quiz-java-basics-06",
+      "topic": "basics",
+      "difficulty": "medium",
+      "prompt": "What does this print, line by line?",
+      "code": "double d = 0.1 + 0.2;\nSystem.out.println(d == 0.3);\nSystem.out.println(new BigDecimal(\"0.1\").add(new BigDecimal(\"0.2\")).equals(new BigDecimal(\"0.3\")));",
+      "options": [
+        "false, then true",
+        "true, then true",
+        "false, then false",
+        "true, then false"
+      ],
+      "answer": "false, then true",
+      "explanation": "0.1 and 0.2 have no exact binary form, so the double sum is 0.30000000000000004 and is not == 0.3. BigDecimal built from strings does exact decimal arithmetic, so 0.1 + 0.2 equals 0.3; use it for money."
+    },
+    {
+      "id": "quiz-java-strings-01",
+      "topic": "strings",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "String a = \"hello\";\nString b = \"hello\";\nString c = new String(\"hello\");\nSystem.out.println((a == b) + \" \" + (a == c) + \" \" + a.equals(c));",
+      "options": [
+        "true false true",
+        "true true true",
+        "false false true",
+        "true false false"
+      ],
+      "answer": "true false true",
+      "explanation": "String literals are interned, so a and b are the same object. new String always makes a separate object, so == (same object?) is false while equals (same characters?) is true. Compare strings with equals."
+    },
+    {
+      "id": "quiz-java-strings-02",
+      "topic": "strings",
+      "difficulty": "hard",
+      "prompt": "What does this print, with default JVM settings?",
+      "code": "Integer a = 127, b = 127;\nInteger c = 128, d = 128;\nSystem.out.println((a == b) + \" \" + (c == d));",
+      "options": [
+        "true false",
+        "true true",
+        "false false",
+        "false true"
+      ],
+      "answer": "true false",
+      "explanation": "Autoboxing calls Integer.valueOf, which caches -128 to 127, so a and b are the same object. Each 128 is a new object, and == compares references. Compare boxed numbers with equals, or unbox them."
+    },
+    {
+      "id": "quiz-java-strings-03",
+      "topic": "strings",
+      "difficulty": "easy",
+      "prompt": "What does this print?",
+      "code": "String s = \"java\";\ns.replace(\"a\", \"o\");\nSystem.out.println(s);",
+      "options": [
+        "java",
+        "jovo",
+        "jova",
+        "It does not compile"
+      ],
+      "answer": "java",
+      "explanation": "Strings are immutable: replace returns a new string, which is thrown away here, and s still refers to \"java\". Write s = s.replace(\"a\", \"o\"); to keep the result, which is jovo, since replace changes every match."
+    },
+    {
+      "id": "quiz-java-strings-04",
+      "topic": "strings",
+      "difficulty": "easy",
+      "prompt": "Which is the efficient way to build a long string inside a loop?",
+      "options": [
+        "A StringBuilder, calling append() in the loop",
+        "String += in the loop",
+        "String.concat() in the loop",
+        "String.format() in the loop"
+      ],
+      "answer": "A StringBuilder, calling append() in the loop",
+      "explanation": "Each += or concat makes a new String and copies everything built so far, which is quadratic over the loop. A StringBuilder appends into one growing buffer. The compiler optimises a single + expression, but not across loop iterations."
+    },
+    {
+      "id": "quiz-java-strings-05",
+      "topic": "strings",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "String csv = \"a,b,,c,,\";\nSystem.out.println(csv.split(\",\").length);",
+      "options": [
+        "4",
+        "6",
+        "3",
+        "5"
+      ],
+      "answer": "4",
+      "explanation": "split keeps the empty strings between delimiters but drops the trailing ones, leaving a, b, the empty string and c. Pass a negative limit, split(\",\", -1), to keep them all (6 here)."
+    },
+    {
+      "id": "quiz-java-strings-06",
+      "topic": "strings",
+      "difficulty": "easy",
+      "prompt": "Which line throws?",
+      "code": "String name = null;\nint length = name == null ? 0 : name.length();\nboolean admin = \"admin\".equals(name);\nboolean root = name.equals(\"root\");",
+      "options": [
+        "Line 4",
+        "Line 2",
+        "Line 3",
+        "None of them"
+      ],
+      "answer": "Line 4",
+      "explanation": "Line 2 checks for null before calling length(), and on line 3 equals is called on the literal, which simply returns false for null. Line 4 calls a method on null and throws NullPointerException; write \"root\".equals(name) or Objects.equals(name, \"root\")."
+    },
+    {
+      "id": "quiz-java-oop-01",
+      "topic": "oop",
+      "difficulty": "easy",
+      "prompt": "What does this print?",
+      "code": "class Animal {\n    String sound() { return \"...\"; }\n}\nclass Cat extends Animal {\n    @Override\n    String sound() { return \"meow\"; }\n}\n\nAnimal a = new Cat();\nSystem.out.println(a.sound());",
+      "options": [
+        "meow",
+        "...",
+        "It does not compile",
+        "null"
+      ],
+      "answer": "meow",
+      "explanation": "Instance methods are dispatched on the object's runtime class, not the variable's declared type, so Cat's override runs."
+    },
+    {
+      "id": "quiz-java-oop-02",
+      "topic": "oop",
+      "difficulty": "hard",
+      "prompt": "What does this print?",
+      "code": "class Printer {\n    static void print(Object o) { System.out.println(\"object\"); }\n    static void print(String s) { System.out.println(\"string\"); }\n}\n\nObject value = \"hi\";\nPrinter.print(value);",
+      "options": [
+        "object",
+        "string",
+        "It does not compile",
+        "hi"
+      ],
+      "answer": "object",
+      "explanation": "Overloads are chosen at compile time from the declared types of the arguments. value is declared Object, so print(Object) is picked even though it holds a String. Overriding is what is decided at run time."
+    },
+    {
+      "id": "quiz-java-oop-03",
+      "topic": "oop",
+      "difficulty": "medium",
+      "prompt": "Which statement about this code is true?",
+      "code": "abstract class Shape {\n    abstract double area();\n}\ninterface Named {\n    default String name() { return \"shape\"; }\n}\nclass Square extends Shape implements Named {\n    double side = 2;\n    double area() { return side * side; }\n}",
+      "options": [
+        "It compiles, and new Square().name() returns shape",
+        "Square must override name() to compile",
+        "Shape can be created with new Shape()",
+        "A class cannot both extend a class and implement an interface"
+      ],
+      "answer": "It compiles, and new Square().name() returns shape",
+      "explanation": "A default method gives implementing classes a working method they may override but need not. An abstract class cannot be instantiated, and a class can extend one class while implementing any number of interfaces."
+    },
+    {
+      "id": "quiz-java-oop-04",
+      "topic": "oop",
+      "difficulty": "easy",
+      "prompt": "What does this print?",
+      "code": "class Account {\n    static int count = 0;\n    int id;\n    Account() { id = ++count; }\n}\n\nnew Account();\nnew Account();\nAccount c = new Account();\nSystem.out.println(c.id + \" \" + Account.count);",
+      "options": [
+        "3 3",
+        "1 3",
+        "1 1",
+        "3 1"
+      ],
+      "answer": "3 3",
+      "explanation": "A static field belongs to the class, so all three constructors increment the same count. Each account stores the value it saw, and the third account's id is 3."
+    },
+    {
+      "id": "quiz-java-oop-05",
+      "topic": "oop",
+      "difficulty": "medium",
+      "prompt": "You override equals() in a class used as a HashMap key. What else must you override?",
+      "options": [
+        "hashCode()",
+        "toString()",
+        "compareTo()",
+        "clone()"
+      ],
+      "answer": "hashCode()",
+      "explanation": "HashMap finds the bucket by hashCode before it calls equals. Equal objects must have equal hash codes, or looking up with an equal key can miss the entry."
+    },
+    {
+      "id": "quiz-java-oop-06",
+      "topic": "oop",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "record Point(int x, int y) {}\n\nPoint p = new Point(1, 2);\nPoint q = new Point(1, 2);\nSystem.out.println(p.equals(q) + \" \" + (p == q) + \" \" + p);",
+      "options": [
+        "true false Point[x=1, y=2]",
+        "true true Point[x=1, y=2]",
+        "false false Point[x=1, y=2]",
+        "true false Point(1, 2)"
+      ],
+      "answer": "true false Point[x=1, y=2]",
+      "explanation": "A record generates equals, hashCode and toString from its components, so two records with the same values are equal, and toString looks like Point[x=1, y=2]. == still compares references, and these are two objects."
+    },
+    {
+      "id": "quiz-java-collections-01",
+      "topic": "collections",
+      "difficulty": "medium",
+      "prompt": "What happens when this runs?",
+      "code": "List<Integer> nums = new ArrayList<>(List.of(1, 2, 3, 4));\nfor (Integer n : nums) {\n    if (n % 2 == 0) {\n        nums.remove(n);\n    }\n}",
+      "options": [
+        "It throws a ConcurrentModificationException",
+        "nums becomes [1, 3]",
+        "nums becomes [1, 3, 4]",
+        "It throws an IndexOutOfBoundsException"
+      ],
+      "answer": "It throws a ConcurrentModificationException",
+      "explanation": "Removing from a list while a for-each loop iterates over it makes the loop's iterator fail fast on its next step. Use nums.removeIf(n -> n % 2 == 0), or an explicit Iterator and its remove()."
+    },
+    {
+      "id": "quiz-java-collections-02",
+      "topic": "collections",
+      "difficulty": "easy",
+      "prompt": "What is the average time complexity of HashMap.get, and of ArrayList.contains, with n elements?",
+      "options": [
+        "O(1) and O(n)",
+        "O(1) and O(1)",
+        "O(log n) and O(n)",
+        "O(n) and O(n)"
+      ],
+      "answer": "O(1) and O(n)",
+      "explanation": "HashMap hashes the key straight to a bucket, constant time on average. ArrayList.contains walks the list calling equals on each element until it finds a match."
+    },
+    {
+      "id": "quiz-java-collections-03",
+      "topic": "collections",
+      "difficulty": "easy",
+      "prompt": "What happens when this runs?",
+      "code": "List<String> names = List.of(\"ann\", \"bob\");\nnames.add(\"cy\");",
+      "options": [
+        "It throws an UnsupportedOperationException",
+        "names becomes [ann, bob, cy]",
+        "It does not compile",
+        "It throws an IllegalStateException"
+      ],
+      "answer": "It throws an UnsupportedOperationException",
+      "explanation": "List.of returns an unmodifiable list: add, remove and set all throw UnsupportedOperationException. Copy it into a new ArrayList<>(...) when you need to change it."
+    },
+    {
+      "id": "quiz-java-collections-04",
+      "topic": "collections",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "Map<String, Integer> counts = new HashMap<>();\nfor (String w : new String[] {\"a\", \"b\", \"a\"}) {\n    counts.merge(w, 1, Integer::sum);\n}\nSystem.out.println(counts.get(\"a\") + \" \" + counts.getOrDefault(\"z\", 0));",
+      "options": [
+        "2 0",
+        "1 0",
+        "2 null",
+        "It throws a NullPointerException"
+      ],
+      "answer": "2 0",
+      "explanation": "merge stores 1 for a new key and otherwise combines the old and new values with Integer::sum, so a reaches 2. getOrDefault returns the default for a missing key instead of null."
+    },
+    {
+      "id": "quiz-java-collections-05",
+      "topic": "collections",
+      "difficulty": "medium",
+      "prompt": "Which map keeps its keys sorted, with O(log n) get and put?",
+      "options": [
+        "TreeMap",
+        "HashMap",
+        "LinkedHashMap",
+        "Hashtable"
+      ],
+      "answer": "TreeMap",
+      "explanation": "TreeMap is a red-black tree ordered by the keys' natural order or a Comparator, so get and put are O(log n). HashMap has no order, LinkedHashMap keeps insertion order, and Hashtable is the legacy synchronised HashMap."
+    },
+    {
+      "id": "quiz-java-collections-06",
+      "topic": "collections",
+      "difficulty": "hard",
+      "prompt": "What does this print?",
+      "code": "List<Integer> list = new ArrayList<>(List.of(10, 20, 30));\nlist.remove(1);\nlist.remove(Integer.valueOf(10));\nSystem.out.println(list);",
+      "options": [
+        "[30]",
+        "[20, 30]",
+        "[10, 30]",
+        "[20]"
+      ],
+      "answer": "[30]",
+      "explanation": "remove(int) removes by index, so remove(1) takes out 20. remove(Object) removes by value, so remove(Integer.valueOf(10)) then takes out 10."
+    },
+    {
+      "id": "quiz-java-exceptions-01",
+      "topic": "exceptions",
+      "difficulty": "medium",
+      "prompt": "What does value() return?",
+      "code": "static int value() {\n    try {\n        return 1;\n    } finally {\n        return 2;\n    }\n}",
+      "options": [
+        "2",
+        "1",
+        "It does not compile",
+        "It throws an exception"
+      ],
+      "answer": "2",
+      "explanation": "A return in finally replaces the try block's return value, and would swallow an exception too. That is why returning from finally is a well-known mistake (javac warns about it)."
+    },
+    {
+      "id": "quiz-java-exceptions-02",
+      "topic": "exceptions",
+      "difficulty": "easy",
+      "prompt": "Which of these is a checked exception, one a method must catch or declare?",
+      "options": [
+        "IOException",
+        "NullPointerException",
+        "IllegalArgumentException",
+        "ArithmeticException"
+      ],
+      "answer": "IOException",
+      "explanation": "Checked exceptions extend Exception but not RuntimeException, and the compiler makes you catch or declare them. The other three extend RuntimeException, so they are unchecked."
+    },
+    {
+      "id": "quiz-java-exceptions-03",
+      "topic": "exceptions",
+      "difficulty": "easy",
+      "prompt": "Which is the idiomatic way to make sure a reader is closed, even if reading throws?",
+      "options": [
+        "try (var reader = Files.newBufferedReader(path)) { ... }",
+        "Call reader.close() at the end of the try block",
+        "Close it in a catch (Exception e) block",
+        "Leave it to the garbage collector"
+      ],
+      "answer": "try (var reader = Files.newBufferedReader(path)) { ... }",
+      "explanation": "try-with-resources closes everything it declares when the block exits, normally or by an exception, and keeps any exception from close() as suppressed. A close() at the end of the try is skipped when something throws, and a catch block only runs on failure."
+    },
+    {
+      "id": "quiz-java-exceptions-04",
+      "topic": "exceptions",
+      "difficulty": "easy",
+      "prompt": "What does this print, line by line?",
+      "code": "try {\n    Object o = \"text\";\n    Integer i = (Integer) o;\n    System.out.println(\"cast\");\n} catch (ClassCastException e) {\n    System.out.println(\"class cast\");\n} catch (RuntimeException e) {\n    System.out.println(\"runtime\");\n} finally {\n    System.out.println(\"finally\");\n}",
+      "options": [
+        "class cast, then finally",
+        "runtime, then finally",
+        "class cast, then runtime, then finally",
+        "cast, then finally"
+      ],
+      "answer": "class cast, then finally",
+      "explanation": "Casting a String to Integer throws ClassCastException. Only the first matching catch runs, even though RuntimeException would also match, and finally runs afterwards either way."
+    },
+    {
+      "id": "quiz-java-exceptions-05",
+      "topic": "exceptions",
+      "difficulty": "medium",
+      "prompt": "riskyCall() is declared to throw IOException. Does this compile?",
+      "code": "try {\n    riskyCall();\n} catch (Exception e) {\n    System.out.println(\"any\");\n} catch (IOException e) {\n    System.out.println(\"io\");\n}",
+      "options": [
+        "No: the IOException catch can never be reached",
+        "Yes, and an IOException goes to the second catch",
+        "Yes, and both catches run for an IOException",
+        "No: you cannot catch Exception"
+      ],
+      "answer": "No: the IOException catch can never be reached",
+      "explanation": "Catch blocks are tried in order, and catch (Exception e) already catches every IOException, so the compiler rejects the later, narrower catch: exception IOException has already been caught. Put the more specific catch first."
+    },
+    {
+      "id": "quiz-java-exceptions-06",
+      "topic": "exceptions",
+      "difficulty": "hard",
+      "prompt": "What does this print?",
+      "code": "static int parse(String s) {\n    try {\n        return Integer.parseInt(s);\n    } catch (NumberFormatException e) {\n        return -1;\n    } finally {\n        System.out.print(\"done \");\n    }\n}\n\nSystem.out.println(parse(\"42\") + parse(\"x\"));",
+      "options": [
+        "done done 41",
+        "41 done done",
+        "done 42 done -1",
+        "done done 42-1"
+      ],
+      "answer": "done done 41",
+      "explanation": "Both calls run, each printing \"done \" from its finally, before println receives their sum. parse(\"x\") catches the NumberFormatException and returns -1, so the sum is 42 + -1 = 41: two ints, not strings."
+    },
+    {
+      "id": "quiz-java-streams-01",
+      "topic": "streams",
+      "difficulty": "easy",
+      "prompt": "What does this print?",
+      "code": "List<Integer> result = Stream.of(1, 2, 3, 4, 5)\n    .filter(n -> n % 2 == 1)\n    .map(n -> n * n)\n    .toList();\nSystem.out.println(result);",
+      "options": [
+        "[1, 9, 25]",
+        "[4, 16]",
+        "[1, 4, 9, 16, 25]",
+        "[1, 3, 5]"
+      ],
+      "answer": "[1, 9, 25]",
+      "explanation": "filter keeps the odd numbers 1, 3 and 5, and map squares them. toList() (Java 16+) collects the result into an unmodifiable list."
+    },
+    {
+      "id": "quiz-java-streams-02",
+      "topic": "streams",
+      "difficulty": "medium",
+      "prompt": "What happens when this runs?",
+      "code": "Stream<String> words = Stream.of(\"a\", \"b\");\nwords.forEach(System.out::print);\nwords.forEach(System.out::print);",
+      "options": [
+        "It prints ab, then throws an IllegalStateException",
+        "It prints abab",
+        "It prints ab",
+        "It does not compile"
+      ],
+      "answer": "It prints ab, then throws an IllegalStateException",
+      "explanation": "A stream can be consumed only once. The second terminal operation throws IllegalStateException: stream has already been operated upon or closed. Stream again from the source collection, or from a Supplier<Stream<String>>."
+    },
+    {
+      "id": "quiz-java-streams-03",
+      "topic": "streams",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "Stream.of(\"x\", \"y\", \"z\")\n    .peek(s -> System.out.print(s))\n    .map(String::toUpperCase);\nSystem.out.println(\"end\");",
+      "options": [
+        "end",
+        "xyzend",
+        "xyzXYZend",
+        "It does not compile"
+      ],
+      "answer": "end",
+      "explanation": "Intermediate operations are lazy: they run only when a terminal operation, such as toList() or forEach, pulls elements through. This pipeline has none, so peek never runs."
+    },
+    {
+      "id": "quiz-java-streams-04",
+      "topic": "streams",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "Map<Integer, List<String>> byLength = Stream.of(\"hi\", \"hey\", \"yo\", \"hello\")\n    .collect(Collectors.groupingBy(String::length));\nSystem.out.println(byLength.get(2) + \" \" + byLength.get(4));",
+      "options": [
+        "[hi, yo] null",
+        "[hi, yo] []",
+        "[hey] null",
+        "[hi, yo] [hello]"
+      ],
+      "answer": "[hi, yo] null",
+      "explanation": "groupingBy puts each word in the list for its length, in encounter order, so length 2 holds hi and yo. No word has 4 letters, so get returns null rather than an empty list."
+    },
+    {
+      "id": "quiz-java-streams-05",
+      "topic": "streams",
+      "difficulty": "medium",
+      "prompt": "findUser(id) returns Optional<User>. Which is the idiomatic way to get the user's email, or \"none\"?",
+      "options": [
+        "findUser(id).map(User::email).orElse(\"none\")",
+        "findUser(id).get().email()",
+        "findUser(id) == null ? \"none\" : findUser(id).get().email()",
+        "findUser(id).isPresent() ? findUser(id).email() : \"none\""
+      ],
+      "answer": "findUser(id).map(User::email).orElse(\"none\")",
+      "explanation": "map transforms the value when there is one and orElse supplies the fallback, with no null checks. get() throws NoSuchElementException on an empty Optional, an Optional itself is never meant to be null, and Optional has no email() method."
+    },
+    {
+      "id": "quiz-java-streams-06",
+      "topic": "streams",
+      "difficulty": "easy",
+      "prompt": "What does this print?",
+      "code": "int sum = IntStream.rangeClosed(1, 4).reduce(0, (a, b) -> a + b);\nlong count = IntStream.range(1, 4).count();\nSystem.out.println(sum + \" \" + count);",
+      "options": [
+        "10 3",
+        "10 4",
+        "6 3",
+        "6 4"
+      ],
+      "answer": "10 3",
+      "explanation": "rangeClosed includes its end, so it sums 1 to 4, which is 10. range excludes its end, so it yields 1, 2 and 3: a count of 3."
+    }
+  ]
+}

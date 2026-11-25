@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Sidebar, MobileHeader } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
+import { MissionControl } from './components/MissionControl';
+import { QuizMode } from './components/QuizMode';
 import { JobApplications } from './components/JobApplications';
 import { PrepRoom } from './components/PrepRoom';
 import { MockTest } from './components/MockTest';
@@ -68,14 +70,25 @@ function AppRoutes() {
     <Routes>
       {/* The first tab this account can see; an admin may have hidden any. */}
       <Route path="/" element={<Navigate to={homePath(hiddenTabs, isAdmin)} replace />} />
-      <Route
-        path="/dashboard"
-        element={
-          <TabGate tab="mission_control">
-            <Dashboard applications={applications} codingHistory={codingHistory} onCodingComplete={addAttempt} />
-          </TabGate>
-        }
-      />
+      {/* Mission Control's modes: Problems is the index, each mode a child route behind its own tab. */}
+      <Route path="/dashboard" element={<MissionControl />}>
+        <Route
+          index
+          element={
+            <TabGate tab="mission_control">
+              <Dashboard applications={applications} codingHistory={codingHistory} onCodingComplete={addAttempt} />
+            </TabGate>
+          }
+        />
+        <Route
+          path="quiz"
+          element={
+            <TabGate tab="practice_quiz">
+              <QuizMode />
+            </TabGate>
+          }
+        />
+      </Route>
       <Route
         path="/applications"
         element={

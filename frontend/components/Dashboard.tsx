@@ -17,8 +17,9 @@ import { UpcomingInterviews } from './UpcomingInterviews';
 import { PremiumGate } from './PremiumGate';
 
 /**
- * Mission Control — software engineering coding practice with the AI tutor,
- * plus a read-only summary of everything else in flight.
+ * Mission Control's Problems mode — software engineering coding practice with
+ * the AI tutor, plus a read-only summary of everything else in flight. The
+ * heading and the mode tabs (Problems, Quiz) are MissionControl's.
  *
  * The side panels are the three the rebuild kept: recent attempts and weak
  * topics, the application pipeline, upcoming interviews. Streaks, hunt personas
@@ -293,13 +294,7 @@ export const Dashboard = ({
 
   return (
     <div className="space-y-8">
-      <header>
-        <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-50">Mission Control</h2>
-        <p className="text-slate-500 dark:text-slate-400 mt-2">
-          Software engineering coding practice with an AI tutor, and where the rest of the hunt stands.
-        </p>
-      </header>
-
+      {/* The heading and mode tabs are MissionControl's, above this screen. */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white dark:bg-slate-800/50 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col h-[700px]">

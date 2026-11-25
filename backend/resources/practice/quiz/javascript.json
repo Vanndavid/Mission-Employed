@@ -1,0 +1,571 @@
+{
+  "language": "javascript",
+  "questions": [
+    {
+      "id": "quiz-js-scope-01",
+      "topic": "scope",
+      "difficulty": "easy",
+      "prompt": "What does this print?",
+      "code": "console.log(x);\nvar x = 5;",
+      "options": [
+        "undefined",
+        "5",
+        "ReferenceError",
+        "null"
+      ],
+      "answer": "undefined",
+      "explanation": "A var declaration is hoisted to the top of its scope and starts as undefined. Only the declaration moves: the assignment of 5 still happens on line 2, after the log."
+    },
+    {
+      "id": "quiz-js-scope-02",
+      "topic": "scope",
+      "difficulty": "easy",
+      "prompt": "What happens when this runs?",
+      "code": "console.log(y);\nlet y = 5;",
+      "options": [
+        "It throws a ReferenceError",
+        "It prints undefined",
+        "It prints 5",
+        "It prints null"
+      ],
+      "answer": "It throws a ReferenceError",
+      "explanation": "let and const are hoisted too, but they stay in the temporal dead zone until their declaration runs. Reading y before line 2 throws ReferenceError: Cannot access 'y' before initialization."
+    },
+    {
+      "id": "quiz-js-scope-03",
+      "topic": "scope",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "const fns = [];\nfor (var i = 0; i < 3; i++) {\n  fns.push(() => i);\n}\nconsole.log(fns.map(f => f()).join(' '));",
+      "options": [
+        "3 3 3",
+        "0 1 2",
+        "2 2 2",
+        "undefined undefined undefined"
+      ],
+      "answer": "3 3 3",
+      "explanation": "var is scoped to the function, not the loop body, so all three closures share one i, which is 3 once the loop ends. With let, each iteration gets its own i and this prints 0 1 2."
+    },
+    {
+      "id": "quiz-js-scope-04",
+      "topic": "scope",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "function counter() {\n  let count = 0;\n  return () => ++count;\n}\nconst a = counter();\nconst b = counter();\na();\na();\nconsole.log(a(), b());",
+      "options": [
+        "3 1",
+        "3 3",
+        "1 1",
+        "2 1"
+      ],
+      "answer": "3 1",
+      "explanation": "Each call to counter() creates a new count, and the arrow function it returns closes over that one. a has been called three times by the time it is logged; b only once."
+    },
+    {
+      "id": "quiz-js-scope-05",
+      "topic": "scope",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "console.log(typeof greet, typeof wave);\nfunction greet() {}\nvar wave = function () {};",
+      "options": [
+        "function undefined",
+        "function function",
+        "undefined undefined",
+        "undefined function"
+      ],
+      "answer": "function undefined",
+      "explanation": "A function declaration is hoisted together with its body, so greet is already a function. For var wave = function () {}, only the var is hoisted (as undefined); the function is assigned when line 3 runs."
+    },
+    {
+      "id": "quiz-js-scope-06",
+      "topic": "scope",
+      "difficulty": "easy",
+      "prompt": "Which line throws an error?",
+      "code": "const limit = 10;\nlet total = 0;\ntotal += limit;\nlimit = 20;\nconsole.log(total);",
+      "options": [
+        "Line 4",
+        "Line 1",
+        "Line 3",
+        "None: it prints 10"
+      ],
+      "answer": "Line 4",
+      "explanation": "const stops the variable from being reassigned, so line 4 throws TypeError: Assignment to constant variable. Reading limit on line 3 is fine, and total is a let, so it can change."
+    },
+    {
+      "id": "quiz-js-types-01",
+      "topic": "types",
+      "difficulty": "easy",
+      "prompt": "What does this print?",
+      "code": "console.log(typeof null);",
+      "options": [
+        "object",
+        "null",
+        "undefined",
+        "number"
+      ],
+      "answer": "object",
+      "explanation": "typeof null is 'object', a bug from the first version of JavaScript that was kept for compatibility. To test for null, compare with === null."
+    },
+    {
+      "id": "quiz-js-types-02",
+      "topic": "types",
+      "difficulty": "easy",
+      "prompt": "What does this print?",
+      "code": "console.log(1 + '2', '3' - 1);",
+      "options": [
+        "12 2",
+        "3 2",
+        "12 31",
+        "3 NaN"
+      ],
+      "answer": "12 2",
+      "explanation": "+ with a string operand concatenates, so 1 + '2' is '12'. - only works on numbers, so '3' is converted to 3 and '3' - 1 is 2."
+    },
+    {
+      "id": "quiz-js-types-03",
+      "topic": "types",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "console.log(NaN === NaN, Number.isNaN(NaN), [NaN].includes(NaN));",
+      "options": [
+        "false true true",
+        "true true true",
+        "false true false",
+        "false false true"
+      ],
+      "answer": "false true true",
+      "explanation": "NaN is the only value that is not equal to itself under ===. Number.isNaN tests for it directly, and includes uses SameValueZero, which treats NaN as equal to NaN (indexOf uses === and would return -1)."
+    },
+    {
+      "id": "quiz-js-types-04",
+      "topic": "types",
+      "difficulty": "easy",
+      "prompt": "What does this print?",
+      "code": "console.log(0.1 + 0.2 === 0.3);",
+      "options": [
+        "false",
+        "true",
+        "NaN",
+        "0.30000000000000004"
+      ],
+      "answer": "false",
+      "explanation": "Numbers are IEEE 754 doubles, and 0.1 and 0.2 have no exact binary form, so their sum is 0.30000000000000004. Compare with a tolerance, such as Math.abs(a - b) < Number.EPSILON, or work in whole cents."
+    },
+    {
+      "id": "quiz-js-types-05",
+      "topic": "types",
+      "difficulty": "easy",
+      "prompt": "Which of these comparisons is true?",
+      "options": [
+        "null == undefined",
+        "null === undefined",
+        "0 === '0'",
+        "NaN == NaN"
+      ],
+      "answer": "null == undefined",
+      "explanation": "Loose equality treats null and undefined as equal to each other and to nothing else. === also compares types, so null === undefined and 0 === '0' are false, and NaN equals nothing, itself included."
+    },
+    {
+      "id": "quiz-js-types-06",
+      "topic": "types",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "console.log(Boolean([]), [] == false, Boolean(''));",
+      "options": [
+        "true true false",
+        "false true false",
+        "true false false",
+        "false false true"
+      ],
+      "answer": "true true false",
+      "explanation": "Every object is truthy, even an empty array, so Boolean([]) is true. But == converts both sides to primitives: [] becomes '' and then 0, and false becomes 0, so [] == false is also true. The empty string is falsy."
+    },
+    {
+      "id": "quiz-js-async-01",
+      "topic": "async",
+      "difficulty": "medium",
+      "prompt": "In what order are the numbers logged?",
+      "code": "console.log(1);\nsetTimeout(() => console.log(2), 0);\nPromise.resolve().then(() => console.log(3));\nconsole.log(4);",
+      "options": [
+        "1, 4, 3, 2",
+        "1, 2, 3, 4",
+        "1, 4, 2, 3",
+        "1, 3, 4, 2"
+      ],
+      "answer": "1, 4, 3, 2",
+      "explanation": "Synchronous code runs first, logging 1 and 4. Then the microtask queue, where promise callbacks wait, is drained before the next task, so 3. The timer callback is a task and runs last, even with a 0 ms delay."
+    },
+    {
+      "id": "quiz-js-async-02",
+      "topic": "async",
+      "difficulty": "medium",
+      "prompt": "In what order are the numbers logged?",
+      "code": "async function run() {\n  console.log(1);\n  await null;\n  console.log(2);\n}\nrun();\nconsole.log(3);",
+      "options": [
+        "1, 3, 2",
+        "1, 2, 3",
+        "3, 1, 2",
+        "1, 3"
+      ],
+      "answer": "1, 3, 2",
+      "explanation": "An async function runs synchronously until its first await. The rest of it resumes as a microtask, after the code that called it has finished, so 3 is logged before 2."
+    },
+    {
+      "id": "quiz-js-async-03",
+      "topic": "async",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "Promise.allSettled([\n  Promise.resolve(1),\n  Promise.reject(new Error('no')),\n]).then(results => {\n  console.log(results.map(r => r.status).join(' '));\n});",
+      "options": [
+        "fulfilled rejected",
+        "It rejects with Error: no",
+        "fulfilled",
+        "resolved rejected"
+      ],
+      "answer": "fulfilled rejected",
+      "explanation": "Promise.allSettled waits for every promise and never rejects. Each result has a status of 'fulfilled' (with a value) or 'rejected' (with a reason). Promise.all would instead reject with the first error."
+    },
+    {
+      "id": "quiz-js-async-04",
+      "topic": "async",
+      "difficulty": "hard",
+      "prompt": "Roughly how long do a() and b() each take to settle?",
+      "code": "const wait = ms => new Promise(r => setTimeout(r, ms));\n\nasync function a() {\n  await wait(1000);\n  await wait(1000);\n}\n\nasync function b() {\n  await Promise.all([wait(1000), wait(1000)]);\n}",
+      "options": [
+        "a: 2 s, b: 1 s",
+        "a: 1 s, b: 1 s",
+        "a: 2 s, b: 2 s",
+        "a: 1 s, b: 2 s"
+      ],
+      "answer": "a: 2 s, b: 1 s",
+      "explanation": "In a(), the second wait only starts once the first has finished, so they run one after the other. In b(), both waits start before Promise.all is awaited, so they run at the same time."
+    },
+    {
+      "id": "quiz-js-async-05",
+      "topic": "async",
+      "difficulty": "easy",
+      "prompt": "What does this print?",
+      "code": "async function getValue() {\n  return 42;\n}\nconsole.log(getValue() instanceof Promise);",
+      "options": [
+        "true",
+        "false",
+        "42",
+        "undefined"
+      ],
+      "answer": "true",
+      "explanation": "An async function always returns a promise: return 42 resolves that promise with 42. Use await or .then to get at the value."
+    },
+    {
+      "id": "quiz-js-async-06",
+      "topic": "async",
+      "difficulty": "hard",
+      "prompt": "What does this print?",
+      "code": "const p = new Promise((resolve, reject) => {\n  resolve('first');\n  reject(new Error('second'));\n  resolve('third');\n});\np.then(v => console.log(v), e => console.log(e.message));",
+      "options": [
+        "first",
+        "second",
+        "third",
+        "first second third"
+      ],
+      "answer": "first",
+      "explanation": "A promise settles only once. The first call to resolve or reject wins and every later call is ignored, so the error is never seen."
+    },
+    {
+      "id": "quiz-js-async-07",
+      "topic": "async",
+      "difficulty": "medium",
+      "prompt": "Inside an async function, which line saves the items one at a time, each after the previous save has finished?",
+      "options": [
+        "for (const item of items) await save(item);",
+        "items.forEach(async item => await save(item));",
+        "await items.forEach(save);",
+        "items.map(item => save(item));"
+      ],
+      "answer": "for (const item of items) await save(item);",
+      "explanation": "await inside for...of pauses the loop until each save settles. forEach ignores the promises its callback returns, so every save starts at once and nothing waits for them; map also starts them all (wrap it in Promise.all when that is what you want)."
+    },
+    {
+      "id": "quiz-js-arrays-01",
+      "topic": "arrays",
+      "difficulty": "easy",
+      "prompt": "What does this print?",
+      "code": "console.log([10, 1, 2].sort().join(' '));",
+      "options": [
+        "1 10 2",
+        "1 2 10",
+        "10 2 1",
+        "2 10 1"
+      ],
+      "answer": "1 10 2",
+      "explanation": "Without a compare function, sort converts the elements to strings and compares them as text, so '10' comes before '2'. Sort numbers with sort((a, b) => a - b)."
+    },
+    {
+      "id": "quiz-js-arrays-02",
+      "topic": "arrays",
+      "difficulty": "easy",
+      "prompt": "What does this print?",
+      "code": "const a = [1, 2, 3];\nconst b = a;\nb.push(4);\nconsole.log(a.length);",
+      "options": [
+        "4",
+        "3",
+        "undefined",
+        "TypeError"
+      ],
+      "answer": "4",
+      "explanation": "Arrays are objects and are assigned by reference, so a and b are the same array. const only stops the variable from being reassigned; it does not freeze the array."
+    },
+    {
+      "id": "quiz-js-arrays-03",
+      "topic": "arrays",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "const original = { name: 'Ada', tags: ['math'] };\nconst copy = { ...original };\ncopy.name = 'Grace';\ncopy.tags.push('code');\nconsole.log(original.name, original.tags.length);",
+      "options": [
+        "Ada 2",
+        "Grace 2",
+        "Ada 1",
+        "Grace 1"
+      ],
+      "answer": "Ada 2",
+      "explanation": "Spread makes a shallow copy. Setting copy.name changes only the copy, but copy.tags is the same array as original.tags, so the push shows up in both. structuredClone makes a deep copy."
+    },
+    {
+      "id": "quiz-js-arrays-04",
+      "topic": "arrays",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "const m = new Map();\nm.set('1', 'string');\nm.set(1, 'number');\nconst o = {};\no['1'] = 'string';\no[1] = 'number';\nconsole.log(m.size, Object.keys(o).length);",
+      "options": [
+        "2 1",
+        "1 1",
+        "2 2",
+        "1 2"
+      ],
+      "answer": "2 1",
+      "explanation": "A Map keeps keys of any type, so the string '1' and the number 1 are two keys. A plain object's keys are strings, so o[1] is o['1'] and overwrites it."
+    },
+    {
+      "id": "quiz-js-arrays-05",
+      "topic": "arrays",
+      "difficulty": "medium",
+      "prompt": "What is the time complexity of arr.includes(x) on an array of n items, and of set.has(x) on a Set of n items?",
+      "options": [
+        "O(n) and O(1) on average",
+        "O(1) and O(1)",
+        "O(log n) and O(1)",
+        "O(n) and O(log n)"
+      ],
+      "answer": "O(n) and O(1) on average",
+      "explanation": "includes scans the array from the start until it finds a match. A Set is a hash table, so has is constant time on average. If you look things up many times, build a Set once."
+    },
+    {
+      "id": "quiz-js-arrays-06",
+      "topic": "arrays",
+      "difficulty": "easy",
+      "prompt": "What does this print?",
+      "code": "const nums = [1, 2, 3, 4];\nconst result = nums.filter(n => n % 2 === 0).map(n => n * 10);\nconsole.log(result.join(' '), nums.length);",
+      "options": [
+        "20 40 4",
+        "20 40 2",
+        "10 30 4",
+        "20 40"
+      ],
+      "answer": "20 40 4",
+      "explanation": "filter keeps the even numbers (2 and 4) and map multiplies them by 10. Both return new arrays and leave nums alone, so it still has four items."
+    },
+    {
+      "id": "quiz-js-arrays-07",
+      "topic": "arrays",
+      "difficulty": "hard",
+      "prompt": "What happens when this runs?",
+      "code": "const total = [].reduce((sum, n) => sum + n);\nconsole.log(total);",
+      "options": [
+        "It throws a TypeError",
+        "It prints 0",
+        "It prints undefined",
+        "It prints NaN"
+      ],
+      "answer": "It throws a TypeError",
+      "explanation": "Without an initial value, reduce starts from the first element, and an empty array has none, so it throws TypeError: Reduce of empty array with no initial value. Pass 0 as the second argument."
+    },
+    {
+      "id": "quiz-js-this-01",
+      "topic": "this",
+      "difficulty": "medium",
+      "prompt": "What happens when the last line runs?",
+      "code": "class Counter {\n  count = 0;\n  increment() {\n    this.count++;\n  }\n}\nconst c = new Counter();\nconst inc = c.increment;\ninc();",
+      "options": [
+        "It throws a TypeError",
+        "c.count becomes 1",
+        "A global count is created",
+        "Nothing: c.count stays 0"
+      ],
+      "answer": "It throws a TypeError",
+      "explanation": "A method taken off its object loses its this. Class bodies are always in strict mode, so inside inc() this is undefined and reading this.count throws. Use c.increment.bind(c), or define increment as an arrow function field."
+    },
+    {
+      "id": "quiz-js-this-02",
+      "topic": "this",
+      "difficulty": "medium",
+      "prompt": "Clicking the button never changes c.count. Which line fixes it?",
+      "code": "class Counter {\n  count = 0;\n  increment() {\n    this.count++;\n  }\n}\nconst c = new Counter();\nbutton.addEventListener('click', c.increment);",
+      "options": [
+        "button.addEventListener('click', () => c.increment());",
+        "button.addEventListener('click', c.increment());",
+        "button.addEventListener('click', c.increment.bind(button));",
+        "button.addEventListener('click', Counter.increment);"
+      ],
+      "answer": "button.addEventListener('click', () => c.increment());",
+      "explanation": "A function passed as a listener is called with this set to the element, so increment updates button.count instead. The arrow function calls increment on c, so this is c (c.increment.bind(c) works too). c.increment() runs once straight away and registers its return value, undefined; binding to button keeps the bug; and Counter.increment does not exist, because increment is on the prototype, not static."
+    },
+    {
+      "id": "quiz-js-this-03",
+      "topic": "this",
+      "difficulty": "easy",
+      "prompt": "What does this print?",
+      "code": "class Animal {\n  speak() { return 'generic'; }\n}\nclass Dog extends Animal {\n  speak() { return 'woof ' + super.speak(); }\n}\nconst d = new Dog();\nconsole.log(d.speak(), d instanceof Animal);",
+      "options": [
+        "woof generic true",
+        "woof true",
+        "generic true",
+        "woof generic false"
+      ],
+      "answer": "woof generic true",
+      "explanation": "Dog overrides speak, and super.speak() calls Animal's version. Dog.prototype inherits from Animal.prototype, so d instanceof Animal is true."
+    },
+    {
+      "id": "quiz-js-this-04",
+      "topic": "this",
+      "difficulty": "hard",
+      "prompt": "What does this print?",
+      "code": "function Person(name) {\n  this.name = name;\n}\nPerson.prototype.hello = function () {\n  return 'I am ' + this.name;\n};\nconst p = new Person('Lin');\nconsole.log(p.hello(), Object.hasOwn(p, 'hello'));",
+      "options": [
+        "I am Lin false",
+        "I am Lin true",
+        "I am undefined false",
+        "It throws a TypeError"
+      ],
+      "answer": "I am Lin false",
+      "explanation": "hello lives on Person.prototype and is shared by every instance. p finds it through its prototype chain, and this is p because it is called as p.hello(), but it is not an own property of p."
+    },
+    {
+      "id": "quiz-js-this-05",
+      "topic": "this",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "const timer = {\n  seconds: 0,\n  start() {\n    [1, 2, 3].forEach(() => {\n      this.seconds++;\n    });\n    return this.seconds;\n  },\n};\nconsole.log(timer.start());",
+      "options": [
+        "3",
+        "0",
+        "NaN",
+        "It throws a TypeError"
+      ],
+      "answer": "3",
+      "explanation": "An arrow function has no this of its own; it uses the this of the code around it, which is timer inside start(). A regular function callback would get a different this and the count would not change on timer."
+    },
+    {
+      "id": "quiz-js-this-06",
+      "topic": "this",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "class Temperature {\n  #celsius = 20;\n  get fahrenheit() {\n    return this.#celsius * 9 / 5 + 32;\n  }\n}\nconst t = new Temperature();\nconsole.log(t.fahrenheit, t.celsius);",
+      "options": [
+        "68 undefined",
+        "68 20",
+        "undefined undefined",
+        "It throws a SyntaxError"
+      ],
+      "answer": "68 undefined",
+      "explanation": "A getter is read like a property, without parentheses: 20 * 9 / 5 + 32 is 68. #celsius is a private field, and t.celsius is an unrelated property that does not exist, so it is undefined. Writing t.#celsius outside the class would be a SyntaxError."
+    },
+    {
+      "id": "quiz-js-syntax-01",
+      "topic": "syntax",
+      "difficulty": "easy",
+      "prompt": "What does this print?",
+      "code": "const count = 0;\nconsole.log(count || 10, count ?? 10);",
+      "options": [
+        "10 0",
+        "0 0",
+        "10 10",
+        "0 10"
+      ],
+      "answer": "10 0",
+      "explanation": "|| falls back on any falsy value, and 0 is falsy. ?? falls back only on null or undefined, so it keeps the 0. Use ?? for defaults when 0 or an empty string is a real value."
+    },
+    {
+      "id": "quiz-js-syntax-02",
+      "topic": "syntax",
+      "difficulty": "easy",
+      "prompt": "What does this print?",
+      "code": "const user = { profile: null };\nconsole.log(user.profile?.email, user.settings?.theme ?? 'light');",
+      "options": [
+        "undefined light",
+        "null light",
+        "It throws a TypeError",
+        "undefined undefined"
+      ],
+      "answer": "undefined light",
+      "explanation": "Optional chaining stops and gives undefined as soon as the left side is null or undefined, instead of throwing. ?? then supplies the default for the missing setting."
+    },
+    {
+      "id": "quiz-js-syntax-03",
+      "topic": "syntax",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "const [first, , third = 'none', ...rest] = ['a', 'b', undefined, 'd', 'e'];\nconsole.log(first, third, rest.length);",
+      "options": [
+        "a none 2",
+        "a undefined 2",
+        "a none 3",
+        "a b 2"
+      ],
+      "answer": "a none 2",
+      "explanation": "The empty slot skips 'b'. A default applies when the value is undefined, so third is 'none'. The rest element collects what is left, 'd' and 'e'."
+    },
+    {
+      "id": "quiz-js-syntax-04",
+      "topic": "syntax",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "function greet({ name = 'friend', greeting = 'Hello' } = {}) {\n  return `${greeting}, ${name}`;\n}\nconsole.log(greet({ name: 'Sam' }), '|', greet());",
+      "options": [
+        "Hello, Sam | Hello, friend",
+        "Hello, Sam | Hello, undefined",
+        "undefined, Sam | Hello, friend",
+        "Hello, Sam | TypeError"
+      ],
+      "answer": "Hello, Sam | Hello, friend",
+      "explanation": "The destructured parameter fills missing properties with their defaults, and = {} gives greet an empty object when it is called with nothing. Without = {}, greet() would throw, because you cannot destructure undefined."
+    },
+    {
+      "id": "quiz-js-syntax-05",
+      "topic": "syntax",
+      "difficulty": "easy",
+      "prompt": "Which line makes a new config from defaults, overridden by options, without changing either object?",
+      "options": [
+        "const config = { ...defaults, ...options };",
+        "const config = Object.assign(defaults, options);",
+        "const config = { ...options, ...defaults };",
+        "const config = defaults.concat(options);"
+      ],
+      "answer": "const config = { ...defaults, ...options };",
+      "explanation": "Later spreads win, so options overrides defaults, and the result is a new object. Object.assign(defaults, options) writes into defaults itself; the reversed spread lets defaults win; concat is an array method."
+    },
+    {
+      "id": "quiz-js-syntax-06",
+      "topic": "syntax",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "const key = 'color';\nconst item = { [key]: 'red', [`${key}Code`]: '#f00' };\nconsole.log(Object.keys(item).join(' '));",
+      "options": [
+        "color colorCode",
+        "key keyCode",
+        "key colorCode",
+        "color color"
+      ],
+      "answer": "color colorCode",
+      "explanation": "Square brackets in an object literal make a computed key: the expression inside is evaluated, and its value becomes the property name."
+    }
+  ]
+}

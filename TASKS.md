@@ -1,6 +1,6 @@
 # Mission-Employed — task list
 
-**Branch:** `main` · **Status:** rebuild complete; project parked 2026-10-03, unparked 2026-10-17 for configurable plans (6.1, done) and 2026-11-26 for a calmer sidebar (6.2, done). Live at mission-employed.vanndavidteng.com, nothing in flight.
+**Branch:** `main` · **Status:** rebuild complete; project parked 2026-10-03, unparked 2026-10-17 for configurable plans (6.1, done) and 2026-11-26 for a calmer sidebar (6.2, done), then practice modes (Wave 7, epic #21: 7.1 done, #23 to #27 to follow). Live at mission-employed.vanndavidteng.com.
 
 ## How to use this file
 
@@ -943,6 +943,75 @@ Decisions:
     & Usage, Settings and the two admin pages moved out of the main list into
     a compact Account group above Log out. Labels and paths live in
     `frontend/utils/navTabs.ts`.
+
+---
+
+## Wave 7 — Practice modes
+
+Epic #21: Mission Control gets mode tabs beside Problems, after the practice
+design in Eleph (`~/code/pte-practice`). 7.1 lays the shared tables and the
+mode tabs; the admin question bank (#23), code review (#24), system design
+(#25), progress and coach (#26) and MCP tools (#27) build on them.
+
+### 7.1 Language quizzes, multiple choice scored in code ✅
+
+- [x] Done, 2026-11-26. Issue #22, modelled on Eleph's Grammar Sprint
+  (`src/features/grammar/`) and its objective scoring.
+  - **One bank and one attempts table for every mode.** `practice_questions`
+    (kind, language, topic, difficulty, prompt, code, options, answer,
+    explanation, status, source, external_id) and `practice_attempts` (user,
+    question, kind, response, score, max_score, correct, feedback,
+    rubric_version, created_at; append-only). `PracticeKind` already names
+    `code_review` and `system_design`; `coding_attempts` stays the tutor's.
+    `answer` is per-kind JSON (`{"choice": "…"}` for the quiz) and hidden from
+    serialization.
+  - **Scored in code, never metered.** `routes/api/practice.php` names no
+    `feature:`, nothing reaches Gemini and no `feature_usages` row is written;
+    the quiz is on every plan (`ALWAYS_INCLUDED`). A round carries no answer
+    or explanation; `POST /answers` is the only place an answer is compared,
+    and its response is the first time the key leaves the server. A choice
+    that is not one of the options is a 422; a draft, unknown or other-kind
+    question is a bare 404.
+  - **Rounds are picked on the server**, as Eleph's `buildRound` does it: up
+    to 3 open mistakes (latest attempt wrong), then never-answered questions,
+    then the least recently answered; a Mistakes round is only open mistakes.
+    Progress is accuracy per topic over every answer, plus open mistakes, on
+    published questions only. No day streaks: they stay deleted.
+  - **Content ships with a deploy.** 147 hand-written questions in
+    `backend/resources/practice/quiz/<language>.json`: JavaScript 38, Python
+    37, Java 36, SQL 36, six topics each (`PracticeLanguage::topics()`), mixing
+    what-does-this-print, which-line-throws, idiomatic and complexity
+    questions. 83 keys were checked by running code (node, python3, and
+    SQLite for the SQL whose behaviour is standard); Java had no runtime here
+    and was traced by hand, as were the conceptual questions.
+    `php artisan practice:sync` runs in the entrypoint after `migrate --force`
+    and in `DatabaseSeeder`: it upserts by external_id as published seed rows,
+    takes a seed row that has left the files back to draft (its attempts keep
+    it), never touches ai or admin rows, and changes nothing the second time.
+    One malformed question fails it with nothing written, so a deploy rolls
+    back rather than publish a broken key. `PracticeSeedContentTest` checks
+    every question straight from the files.
+  - **Mode tabs.** Mission Control is a layout route (`MissionControl.tsx`):
+    Problems is the index, Quiz is `/dashboard/quiz`, each behind its own
+    `TabGate`. `practice_quiz` is a `NavTab`, marked
+    `modeOf: 'mission_control'` in `navTabs.ts`, so it is a mode tab
+    (`ModeTabs`) rather than a sidebar entry and shows in "Tabs users see" as
+    "Mission Control · Quiz". The Mission Control entry stays in the sidebar
+    while any of its modes is visible and leads to the first one.
+  - **Screen.** `QuizMode.tsx`: a language, then a topic, Mixed or Mistakes;
+    the snippet monospaced with line numbers (`CodeSnippet`); keys 1-4 or A-D;
+    an optional 20-second timer; right or wrong and the explanation after each
+    answer; a summary whose Retry mistakes replays this round's misses with
+    the options reshuffled. Round state is the pure reducer
+    `utils/quizRound.ts`.
+  - **API.** `GET /api/practice/quiz/catalog`,
+    `POST /api/practice/quiz/rounds {language, topic | 'mixed' | 'mistakes'}`,
+    `POST /api/practice/quiz/answers {questionId, choice | null}` →
+    `{correct, answer, explanation}` (null is the timer running out),
+    `GET /api/practice/quiz/progress?language=`.
+  - For #23: sync owns only `source = seed` rows, so an admin edit to a seeded
+    question should make it `admin`, or the next deploy puts the file's
+    version back. Not in the MCP server yet (#27).
 
 ---
 

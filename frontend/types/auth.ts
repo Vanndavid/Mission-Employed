@@ -28,10 +28,17 @@ export interface UserPreferences {
 }
 
 /**
- * The sidebar tabs an admin can hide from users. Mirrors App\Enums\NavTab;
- * their labels and paths are NAV_TABS in utils/navTabs.ts.
+ * The tabs an admin can hide from users, modes included. Mirrors
+ * App\Enums\NavTab; their labels, paths and which tab a mode belongs to are
+ * NAV_TABS in utils/navTabs.ts.
  */
-export type NavTabKey = 'mission_control' | 'applications' | 'profile' | 'training_room' | 'mock_test';
+export type NavTabKey =
+  | 'mission_control'
+  | 'practice_quiz'
+  | 'applications'
+  | 'profile'
+  | 'training_room'
+  | 'mock_test';
 
 /** Mirrors App\Enums\Feature. Each is enforced server-side by the `feature` middleware. */
 export type FeatureKey =
@@ -105,6 +112,7 @@ export const ALWAYS_INCLUDED = [
   'Spreadsheet import and CSV export',
   'Rejection insights',
   'Coding attempt history',
+  'Language quizzes',
   'Interview fact bank',
   'Connect an AI agent (MCP)',
 ] as const;

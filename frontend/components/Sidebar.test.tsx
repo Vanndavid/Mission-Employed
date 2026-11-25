@@ -32,9 +32,9 @@ vi.mock('../contexts/SubscriptionContext', () => ({
 
 const { Sidebar } = await import('./Sidebar');
 
-const renderSidebar = () =>
+const renderSidebar = (at = '/') =>
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[at]}>
       <Sidebar mobileOpen={false} onMobileClose={vi.fn()} />
     </MemoryRouter>,
   );
@@ -65,6 +65,13 @@ describe('Sidebar', () => {
     const link = main().getByRole('link', { name: /Training Room/ });
     expect(within(link).getByText('Hidden from users')).toBeTruthy();
     expect(within(main().getByRole('link', { name: /Mock Test/ })).queryByText('Hidden from users')).toBeNull();
+  });
+
+  it('draws Quiz as a mode of Mission Control, not a sidebar entry, and keeps Mission Control lit on it', () => {
+    renderSidebar('/dashboard/quiz');
+
+    expect(main().queryByRole('link', { name: /Quiz/ })).toBeNull();
+    expect(main().getByRole('link', { name: /Mission Control/ })).toHaveAttribute('aria-current', 'page');
   });
 
   it('keeps Plan & Usage and Settings beside Log out, not among the features', () => {

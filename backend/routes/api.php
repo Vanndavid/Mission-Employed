@@ -22,3 +22,4 @@ Route::get('/health', HealthController::class);
 require __DIR__.'/api/auth.php';
 require __DIR__.'/api/tracker.php';
 require __DIR__.'/api/ai.php';
+require __DIR__.'/api/practice.php';

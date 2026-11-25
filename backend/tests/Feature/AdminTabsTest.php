@@ -73,6 +73,15 @@ class AdminTabsTest extends TestCase
         $this->getJson('/api/auth/me')->assertJsonPath('hiddenTabs', ['mission_control', 'mock_test']);
     }
 
+    public function test_the_quiz_is_a_mode_an_admin_can_hide_like_a_tab(): void
+    {
+        Sanctum::actingAs(User::factory()->admin()->create());
+
+        $this->putJson('/api/admin/tabs', ['hiddenTabs' => ['practice_quiz']])
+            ->assertOk()
+            ->assertExactJson(['hiddenTabs' => ['practice_quiz']]);
+    }
+
     public function test_an_empty_list_shows_every_tab(): void
     {
         Sanctum::actingAs(User::factory()->admin()->create());

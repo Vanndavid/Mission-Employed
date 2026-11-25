@@ -26,6 +26,13 @@ php artisan config:clear
 
 php artisan migrate --force
 
+# The hand-written practice questions (backend/resources/practice) ship in the
+# image; this publishes what changed since the last boot. Idempotent, and it
+# never touches a question an admin or the AI wrote. A malformed answer key
+# fails it, which stops the boot here, so the deploy's health check rolls back
+# rather than serving a wrong key.
+php artisan practice:sync
+
 # Registration only ever produces a free `user`, and an admin is the only role
 # that can upgrade a plan, so without this a fresh deployment comes up with
 # nobody able to administer it. Idempotent, and a no-op unless both ADMIN_EMAIL
