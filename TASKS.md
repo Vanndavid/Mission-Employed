@@ -1,6 +1,6 @@
 # Mission-Employed — task list
 
-**Branch:** `main` · **Status:** rebuild complete; project parked 2026-10-03, unparked 2026-10-17 for configurable plans (6.1, done) and 2026-11-26 for a calmer sidebar (6.2, done), then practice modes (Wave 7, epic #21: 7.1 to 7.6 done, generators for code review and system design to follow). Live at mission-employed.vanndavidteng.com.
+**Branch:** `main` · **Status:** rebuild complete; project parked 2026-10-03, unparked 2026-10-17 for configurable plans (6.1, done) and 2026-11-26 for a calmer sidebar (6.2, done), then practice modes (Wave 7, epic #21: 7.1 to 7.6 done). Live at mission-employed.vanndavidteng.com.
 
 ## How to use this file
 
