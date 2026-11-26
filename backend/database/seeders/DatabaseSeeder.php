@@ -17,6 +17,7 @@ use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
 
 /**
@@ -50,6 +51,10 @@ class DatabaseSeeder extends Seeder
 
         $this->seedAdminData($admin);
         $this->seedMemberData($member);
+
+        // The quiz bank is real content, not demo data: the same command the
+        // container runs on boot.
+        Artisan::call('practice:sync');
     }
 
     private function makeUser(string $email, string $password, string $name, AccountRole $role, AccountPlan $plan): User

@@ -1,6 +1,6 @@
 # Mission-Employed — task list
 
-**Branch:** `main` · **Status:** rebuild complete; project parked 2026-10-03, unparked 2026-10-17 for configurable plans (6.1, done) and 2026-11-26 for a calmer sidebar (6.2, done). Live at mission-employed.vanndavidteng.com, nothing in flight.
+**Branch:** `main` · **Status:** rebuild complete; project parked 2026-10-03, unparked 2026-10-17 for configurable plans (6.1, done) and 2026-11-26 for a calmer sidebar (6.2, done), then practice modes (Wave 7, epic #21: 7.1 to 7.6 done). Live at mission-employed.vanndavidteng.com.
 
 ## How to use this file
 
@@ -943,6 +943,418 @@ Decisions:
     & Usage, Settings and the two admin pages moved out of the main list into
     a compact Account group above Log out. Labels and paths live in
     `frontend/utils/navTabs.ts`.
+
+---
+
+## Wave 7 — Practice modes
+
+Epic #21: Mission Control gets mode tabs beside Problems, after the practice
+design in Eleph (`~/code/pte-practice`). 7.1 lays the shared tables and the
+mode tabs; the admin question bank (#23), code review (#24), system design
+(#25), progress and coach (#26) and MCP tools (#27) build on them.
+
+### 7.1 Language quizzes, multiple choice scored in code ✅
+
+- [x] Done, 2026-11-26. Issue #22, modelled on Eleph's Grammar Sprint
+  (`src/features/grammar/`) and its objective scoring.
+  - **One bank and one attempts table for every mode.** `practice_questions`
+    (kind, language, topic, difficulty, prompt, code, options, answer,
+    explanation, status, source, external_id) and `practice_attempts` (user,
+    question, kind, response, score, max_score, correct, feedback,
+    rubric_version, created_at; append-only). `PracticeKind` already names
+    `code_review` and `system_design`; `coding_attempts` stays the tutor's.
+    `answer` is per-kind JSON (`{"choice": "…"}` for the quiz) and hidden from
+    serialization.
+  - **Scored in code, never metered.** `routes/api/practice.php` names no
+    `feature:`, nothing reaches Gemini and no `feature_usages` row is written;
+    the quiz is on every plan (`ALWAYS_INCLUDED`). A round carries no answer
+    or explanation; `POST /answers` is the only place an answer is compared,
+    and its response is the first time the key leaves the server. A choice
+    that is not one of the options is a 422; a draft, unknown or other-kind
+    question is a bare 404.
+  - **Rounds are picked on the server**, as Eleph's `buildRound` does it: up
+    to 3 open mistakes (latest attempt wrong), then never-answered questions,
+    then the least recently answered; a Mistakes round is only open mistakes.
+    Progress is accuracy per topic over every answer, plus open mistakes, on
+    published questions only. No day streaks: they stay deleted.
+  - **Content ships with a deploy.** 147 hand-written questions in
+    `backend/resources/practice/quiz/<language>.json`: JavaScript 38, Python
+    37, Java 36, SQL 36, six topics each (`PracticeLanguage::topics()`), mixing
+    what-does-this-print, which-line-throws, idiomatic and complexity
+    questions. 83 keys were checked by running code (node, python3, and
+    SQLite for the SQL whose behaviour is standard); Java had no runtime here
+    and was traced by hand, as were the conceptual questions.
+    `php artisan practice:sync` runs in the entrypoint after `migrate --force`
+    and in `DatabaseSeeder`: it upserts by external_id as published seed rows,
+    takes a seed row that has left the files back to draft (its attempts keep
+    it), never touches ai or admin rows, and changes nothing the second time.
+    One malformed question fails it with nothing written, so a deploy rolls
+    back rather than publish a broken key. `PracticeSeedContentTest` checks
+    every question straight from the files.
+  - **Mode tabs.** Mission Control is a layout route (`MissionControl.tsx`):
+    Problems is the index, Quiz is `/dashboard/quiz`, each behind its own
+    `TabGate`. `practice_quiz` is a `NavTab`, marked
+    `modeOf: 'mission_control'` in `navTabs.ts`, so it is a mode tab
+    (`ModeTabs`) rather than a sidebar entry and shows in "Tabs users see" as
+    "Mission Control · Quiz". The Mission Control entry stays in the sidebar
+    while any of its modes is visible and leads to the first one.
+  - **Screen.** `QuizMode.tsx`: a language, then a topic, Mixed or Mistakes;
+    the snippet monospaced with line numbers (`CodeSnippet`); keys 1-4 or A-D;
+    an optional 20-second timer; right or wrong and the explanation after each
+    answer; a summary whose Retry mistakes replays this round's misses with
+    the options reshuffled. Round state is the pure reducer
+    `utils/quizRound.ts`.
+  - **API.** `GET /api/practice/quiz/catalog`,
+    `POST /api/practice/quiz/rounds {language, topic | 'mixed' | 'mistakes'}`,
+    `POST /api/practice/quiz/answers {questionId, choice | null}` →
+    `{correct, answer, explanation}` (null is the timer running out),
+    `GET /api/practice/quiz/progress?language=`.
+  - For #23: sync owns only `source = seed` rows, so an admin edit to a seeded
+    question should make it `admin`, or the next deploy puts the file's
+    version back. Not in the MCP server yet (#27).
+
+### 7.2 Admin question bank, AI drafts reviewed before publishing ✅
+
+- [x] Done, 2026-11-26. Issue #23, after Eleph's admin generator
+  (`src/features/pte/lib/generateExercise/`) and its Questions tab.
+  - **The AI drafts, code checks, an admin publishes.**
+    `POST /api/admin/practice/questions/generate {kind, count <= 5, ...}` makes
+    one `generateJson` call with a response schema; each item is mapped,
+    normalized and checked in code, and repeats of the bank or the batch are
+    dropped. Valid items are saved as `draft`, `source` ai; the rest come back
+    as `rejected: [{index, prompt, reasons}]`. A Gemini failure is a 502
+    `ai_unavailable` with nothing saved. The model is shown what the bank
+    already has on that language and topic so it does not repeat it.
+  - **`QuizDraftValidator`**: exactly four distinct non-empty options (each at
+    most 500 characters, so it can be sent back as an answer), the answer one
+    of them, a prompt and an explanation, a snippet of at most 40 lines, a
+    known language, one of its topics and a difficulty; for a draft, the
+    language and topic asked for (the model echoes both, so a drifted draft is
+    caught rather than misfiled). The model's answer is untrusted: odd types
+    become blanks the checks name, Markdown fences are stripped.
+  - **Review notes.** The model also writes one line per wrong option on why
+    it is wrong, stored in `practice_questions.review_notes` and hidden from
+    serialization like `answer`. The admin reads them beside the key; a note
+    written against the answer is flagged, which is how a bad key shows.
+  - **The admin bank.** `GET /api/admin/practice/questions?kind=&status=&language=&topic=&source=&reported=1&page=`
+    (25 a page, open reports first, then newest, every kind) carries the key,
+    notes, attempt count and open reports, plus `generators`, the kinds the AI
+    can draft (all three). `PATCH /{id}` edits any content field or publishes and
+    unpublishes, and re-runs the kind's validator on the whole question every
+    time. `DELETE /{id}` deletes a question nobody answered and otherwise
+    unpublishes it. Seed rows are read-only (422 naming the file's id): the fix
+    belongs in the JSON file, or `practice:sync` puts it back. Admin routes
+    take no `feature:`; the draft call's tokens are recorded as
+    `admin/practice/questions/generate`, "Question bank drafts".
+  - **Reports.** `POST /api/practice/questions/{id}/report {reason}`, a
+    "Report this question" link under every quiz verdict. One row per user per
+    question (`practice_question_reports`): a second while it is open is 409
+    `already_reported`, one after a resolution reopens it; a draft is a bare
+    404. `POST /api/admin/practice/questions/{id}/reports/resolve` clears the
+    open count and keeps the rows, seed rows included.
+  - **Screen.** Admin · Question bank (`/account/admin/questions`), in the
+    sidebar's Account group beside the other admin pages: a generate form,
+    filters, and a card per question showing it as a user would see it, then
+    the answer, explanation, review notes and open reports with their reasons;
+    Edit (each kind's own form), Publish, Unpublish, Delete, Resolve reports.
+  - **Every kind drafts.** A kind plugs into the same endpoint with a
+    `DraftKind` (request rules, pinned columns, prompt, schema, item mapping,
+    draft-only checks, `DraftValidator`) and one line in `DraftKinds::KINDS`;
+    a kind with none would be refused with a 422 naming it. Code review
+    (`CodeReviewDrafts`, `{language, difficulty}`) and system design
+    (`SystemDesignDrafts`, `{difficulty}`) followed the quiz, each with its
+    own generate fields and edit form on the admin page (see 7.3 and 7.4).
+    Their validators wrap the seed files' item rules rather than restating
+    them, and `DraftFields::keyed()` files each item message under the field
+    to fix (`answer`, `answer.1`, ...).
+
+### 7.3 Code review, the AI matches and code scores ✅
+
+- [x] Done, 2026-11-26. Issue #24. Same split as the ATS check, after Eleph's
+  versioned rubric (`src/features/pte/lib/writingRubric.ts`).
+  - **Content.** `practice_questions` with kind `code_review`: the title in
+    `topic`, what the code is meant to do in `prompt`, 20 to 80 lines in
+    `code`, the takeaway in `explanation`, and in `answer` (never sent before
+    a review is scored) 2 to 6 planted issues, each
+    `{id, lines: [start, end], category, severity 1-3, summary, fix}`;
+    categories are `CodeReviewCategory` (bug, security, performance,
+    concurrency, readability, testing). Ten hand-written snippets in
+    `backend/resources/practice/code_review/<language>.json` (JavaScript 3,
+    Python 3, Java 2, SQL 2; 44 planted issues), code stored one string per
+    line so a range can be read off the file. Every JavaScript and Python
+    issue was run against the snippet (node, python3); the SQL join, count
+    and sum behaviour was run in SQLite; Java was traced by hand.
+    `CodeReviewItemValidator` holds the rules (ranges inside the snippet,
+    starting and ending on a line with code, at most 15 lines; unique slug
+    ids; a fix for each; severity 1-3); `CodeReviewSeed` parses the files
+    for `SeedBank`, and `PracticeCodeReviewSeedTest` checks them straight
+    from disk too.
+  - **Scoring.** One `generateJson` call (`CodeReviewGrader`,
+    `CodeReviewPrompts`) gets the planted issues and the numbered comments,
+    each flagged with the issues whose lines it sits on; the model says which
+    comment indexes identify each issue, whether the fix is yes, partial or
+    no, and which other comments make a valid point (bonus). Ids outside the
+    planted list, indexes that do not exist and duplicates are dropped, and
+    a bonus that also matched an issue is not a bonus. `CodeReviewScorer` is
+    a pure function out of 100: detection 70 x severity found / severity
+    total, fixes 20 (severity-weighted, partial is half), precision 10 x
+    useful comments / comments, each part rounded so the breakdown adds up.
+    Stored as a `practice_attempt` with `rubric_version` `cr-1`, `correct`
+    null, `response` `{comments: [{line, body}], summary}` and `feedback`
+    `{breakdown, issues (each planted issue copied whole, plus found,
+    comments, fixVerdict), bonus, takeaway}`.
+  - **API**, the `code_review` plan feature (off on Free, 30 a day on
+    Premium; group Coding practice):
+    `GET /api/practice/code-review/next?language=&difficulty=&exclude=`
+    (`,access`: `{snippet | null, reviewedBefore, total, unreviewed}`,
+    never-reviewed first, then the least recently reviewed);
+    `POST /api/practice/code-review/{question}/reviews
+    {comments: [{line, body}] (1 to 40), summary?}` (one use; 201 with the
+    score, breakdown, every issue revealed, bonus and the comments marked);
+    `GET /api/practice/code-review/reviews/{attempt}` (`,access`: the same
+    shape read back; someone else's is a 404). Ids are looked up after the
+    gate, so a free account gets 403 whatever the id; a draft, unknown or
+    quiz question is a bare 404; a line past the snippet is a 422 before any
+    model call. A Gemini failure is 502 `ai_unavailable`, with no use
+    counted and nothing stored.
+  - **Screen.** `CodeReviewMode.tsx` at `/dashboard/code-review`, NavTab
+    `practice_code_review` (a mode of Mission Control, behind `TabGate` and
+    `PremiumGate feature="code_review"`). Language and level filters; the
+    snippet in `CodeSnippet`, which gained optional line buttons, line
+    highlights, content under a line and wrapping (the quiz's rendering is
+    unchanged, except that an unwrapped snippet now has size containment, so
+    a long line scrolls inside the box rather than widening a 390px phone
+    screen); click a line number to comment, edit or delete; an optional
+    summary; Submit. The result highlights each planted issue's lines, green
+    if found and amber if missed, with its summary, fix and the fix verdict
+    under its last line, marks every comment (found, valid point, or matched
+    nothing), lists the bonus findings and the takeaway, and shows the three
+    score bars with "How this was scored". The draft is the pure reducer in
+    `utils/codeReview.ts`.
+  - **AI drafts.** `kind: code_review` on the admin bank's generate endpoint
+    takes `{language, difficulty}`. The model writes the code as a list of
+    lines (line n is the nth string, as in the seed files) and, beside each
+    issue's numbers, copies the text of its first and last lines.
+    `CodeReviewDraftValidator` maps the bank's columns onto
+    `CodeReviewItemValidator::errors()` (title in `topic`, issues in
+    `answer.issues`), adds the language, and stores `answer()` as the key, so
+    a draft and every admin edit meet the seed files' rules. Its tidying never
+    moves a line (Windows line ends, trailing spaces, trailing blank lines and
+    a wrapping Markdown fence go; blank lines at the top stay), so ranges are
+    checked against the code exactly as the viewer numbers it;
+    `CodeReviewDrafts::draftErrors()` then refuses an issue whose numbers do
+    not land on the lines it quoted, which is how a model that miscounted (or
+    counted its fence) is caught. Types are normalised ("12" and 12.0 are
+    line 12, "Security" is security). The admin card shows the snippet with
+    each planted issue highlighted on its lines and spelled out under the last
+    one; the edit form has the title, prompt, code (with a live preview of the
+    ranges), each issue's id, lines, category, severity, summary and fix, and
+    the takeaway. For #26: the found rate per category is in
+    `feedback.issues[].category` and `.found`. For #27: the three routes
+    above; `next` never carries the issues. Not in the MCP server yet.
+
+### 7.4 System design, scored against a fixed rubric ✅
+
+- [x] Done, 2026-11-26. Issue #25, modelled on Eleph's writing rubric
+  (`src/features/pte/lib/writingRubric.ts`, `src/shared/server/writingScorer.ts`)
+  and its score breakdown. **A scope change:** "system design drills" were on
+  CLAUDE.md's deleted list since e0db404; the owner asked for system design
+  practice back on 2026-11-26. What was cut was a free-form mentor chat with an
+  unstructured evaluation; this is a structured answer scored against a fixed
+  rubric, so scores are comparable over time. CLAUDE.md's scope and deleted
+  list say so.
+  - **Code decides what it can count; the AI only rates.**
+    `SystemDesignRubric` (`sd-1`) has seven answer sections (Requirements,
+    Estimates, API, Data model, High-level design, Deep dive and scaling,
+    Trade-offs and failure modes) and seven traits rated 0 to 4 (requirements
+    and scope 12 points, estimation 12, API and data model 16, architecture
+    20, scalability 16, reliability and trade-offs 16, communication 8), each
+    with five written descriptors. A trait whose sections have under 15 words
+    between them scores 0 and is left out of the prompt; communication reads
+    the whole answer. The model rates the rest, each with a quote, an
+    improvement and the expected key points covered; `SystemDesignScorer`
+    clamps scores, drops a quote that is not in the answer, ignores unknown
+    traits and key point numbers, and fails the call (502, nothing stored,
+    no use) when a trait asked about comes back unrated. Weights are
+    multiples of 4, so the total out of 100 is exact. Default model
+    (`gemini-3.7-flash`), already priced.
+  - **The key stays on the server.** Key points are `answer`
+    `{"keyPoints": {trait: [...]}}`; `next` serves id, title (the bank's
+    `topic`), difficulty and prompt plus the rubric, never key points or the
+    explanation. Attempts store `response` `{sections}`, `score` out of
+    `max_score` 100, `correct` null, `feedback` `{traits: [...]}` (the
+    report's traits as returned) and `rubric_version` `sd-1`.
+  - **Content.** Nine hand-written scenarios in
+    `backend/resources/practice/system_design/<slug>.json`, one a file (id
+    `sd-<slug>`): URL shortener and game leaderboard (easy); API rate limiter,
+    notification service, search typeahead and concert ticket booking
+    (medium); social news feed, chat messaging and ride-hailing driver
+    matching (hard). Each prompt has real scale numbers, each trait 2 to 4
+    key points (the estimation ones carry the worked figures, checked by
+    hand), and an explanation of what the scenario tests, shown after
+    scoring. `SystemDesignItemValidator` holds the well-formedness rules (every
+    trait and only rubric traits, 2 to 6 distinct key points under 200
+    characters, a title that fits `topic`, scale numbers in the prompt), for
+    the seed files and AI drafts alike. `PracticeSystemDesignContentTest`
+    reads the files directly.
+  - **AI drafts.** `kind: system_design` on the admin bank's generate endpoint
+    takes `{difficulty}`. The prompt gives every trait with its full-marks
+    descriptor, asks for worked numbers in the estimation key points, and
+    lists every scenario already in the bank whatever its difficulty, so a
+    new one is not the same system again. `SystemDesignDraftValidator` runs
+    `SystemDesignItemValidator::errors()` on every draft and admin edit and
+    stores `columns()` (key points in rubric order; language, code and
+    options always null); key points are trimmed and blank ones dropped. The
+    admin card lists the key points per trait; the edit form has the title,
+    difficulty, scenario, a box per trait with one key point a line, and the
+    explanation.
+  - **Plan.** New `Feature::SystemDesign` (`system_design`, group Coding
+    practice): off on Free, 20 a day on Premium. `GET next` is
+    `feature:system_design,access`; `POST answers` counts one use and is
+    under `throttle:features`. An answer under 15 words in all is a 422 before
+    the model, so every scored answer is one model call.
+  - **Screen.** `SystemDesignMode.tsx` at `/dashboard/system-design`, a mode tab
+    (`practice_system_design`) behind a `TabGate` and a `PremiumGate`: a
+    difficulty filter and Another scenario, the scenario card, a box per
+    section with its word count and a warning when a trait would be gated,
+    the gate rule and the traits that would score 0 before submitting, then
+    the report: the total, a bar per trait with the descriptor met, its
+    quote and its improvement, key points covered and missed, what the
+    scenario tests, and "How this was scored" folding out every descriptor.
+    The answer in progress is kept in localStorage with its scenario and
+    account (`utils/systemDesign.ts`) until it is scored.
+  - **API.** `GET /api/practice/system-design/next?difficulty=&skip=` →
+    `{question: {id, title, difficulty, prompt} | null, rubric}` (never
+    answered first, then least recently answered; `skip` passes over the one
+    on screen); `POST /api/practice/system-design/{question}/answers
+    {sections: {requirements, estimates, api, data_model, high_level,
+    deep_dive, tradeoffs}}` → `{attemptId, questionId, score, maxScore,
+    rubricVersion, traits: [{key, label, score, max, points, maxPoints, gated,
+    words, descriptor, evidence, improvement, keyPoints: {covered, missed}}],
+    explanation}`. A draft, unknown or other-kind question is a bare 404.
+  - Later, not this task: a "defend your design" follow-up chat on
+    `ai_sessions` that probes the weakest trait. Not in the MCP server yet
+    (#27).
+
+### 7.5 Progress, history and a coach across the modes ✅
+
+- [x] Done, 2026-11-26. Issue #26, after Eleph's skill coach
+  (`src/features/pte/lib/skillCoach.ts`) and its history with a page per
+  item. No AI: everything is worked out from `practice_attempts` each time
+  it is read, nothing is stored, and no route names a `feature:` or calls a
+  model, so an account that has lost Premium keeps its reviews and designs.
+  Problems keeps `coding_attempts`. No streaks and no daily goals.
+  - **Progress.** `GET /api/practice/progress`
+    (`App\Services\Practice\PracticeProgressReport`): per mode, attempts and
+    the average score over the last 30 days and when it was last practised;
+    the quiz's accuracy per language and topic plus open mistakes (published
+    questions only, like the quiz's own progress), code review's found rate
+    per issue category (from `feedback.issues`), system design's average
+    points per trait (from `feedback.traits`). Every topic, category and
+    trait is listed, practised or not. Each also carries `recent`: its
+    latest 10 results however old, newest first, as `{at, points,
+    maxPoints}` (a quiz answer 1 or 0 of 1; a category the detection points
+    its planted issues carried in that review, 70 shared by severity; a
+    trait its points of its weight). No option, planted issue or key point
+    is in it.
+  - **History.** `GET /api/practice/attempts?kind=&page=` (newest first, 20
+    a page, `{attempts, meta}`; a quiz attempt is titled by its question with
+    the topic's name, the others by the bank's `topic`; never an answer) and
+    `GET /api/practice/attempts/{id}` (`PracticeAttemptDetailResource`):
+    `result` is what that mode's result screen draws. The quiz's is the
+    question with its options in bank order, the choice, and the key and
+    explanation it was told; code review's is `CodeReviewResultResource`,
+    byte for byte what `GET /api/practice/code-review/reviews/{id}` answers;
+    system design's is the report as scored (traits from the stored
+    feedback), the scenario, the answer's sections and the rubric. Someone
+    else's attempt is a bare 404. A quiz answer whose question has since
+    been unpublished still reads back, marked so.
+  - **Coach.** `frontend/utils/practiceCoach.ts`, a pure function: every
+    quiz topic, review category and design trait is an area, ranked by the
+    points it costs on a 100-point attempt at a recent average where each
+    older result weighs 0.7 of the next newer one (latest 10). A trait's
+    points are already out of 100, a category's are its detection points,
+    and a quiz topic counts 100 over the language's topics, its share of a
+    mixed round. Ties go to the area practised longest ago, then the key.
+    Areas with nothing lost are left out; a mode never tried is suggested
+    only once the weak areas run out; a mode an admin hid or the plan lacks
+    is never suggested. The card (`PracticeCoach.tsx`) shows three, each with
+    a one-click start: a quiz round on the topic (and "Retry N mistakes" when
+    the language has open mistakes), a code review in the category, a system
+    design scenario. Starts travel in the mode's query string
+    (`utils/practiceLinks.ts`): `QuizModeRoute` and `CodeReviewModeRoute`
+    (`PracticeModeRoutes.tsx`) hand them to the modes as props, the quiz
+    starts the round once its catalog is in and tidies the address, and code
+    review shows "Focus: Security issues" until cleared.
+    `GET /api/practice/code-review/next` gained `category=`, a snippet with
+    an issue of that category planted (filtered in PHP, so no JSON SQL).
+  - **Screens.** The coach heads the side column on Problems; Recent
+    attempts merges Problems' attempts with the other modes' scored ones
+    (`utils/recentAttempts.ts`), each linking to its page; Weak topics
+    (`computeWeakTopics(history, min, progress)`) adds quiz topics by answers
+    right, review categories by issues found and design traits by points.
+    Practice history at `/dashboard/history` (`PracticeHistory.tsx`): each
+    mode's last 30 days, the coach, a mode filter and the paged list. An
+    attempt's page at `/dashboard/history/:id` (`PracticeAttemptPage.tsx`)
+    draws the mode's own result view, now exported without its
+    after-scoring buttons: the quiz's `AnswerVerdict` under the options
+    marked, code review's `ReviewResult`, system design's `ScenarioCard` and
+    `ScoreReport` plus the answer that was scored. History is not a mode tab
+    and has no `TabGate`: Mission Control links to it ("Progress & history"),
+    as do the coach and Recent attempts. Mission Control's subtitle names
+    every mode.
+  - For #27: the three read routes above are the MCP server's way to show
+    progress and history; none of them is metered.
+
+### 7.6 MCP tools for the practice modes ✅
+
+- [x] Done, 2026-11-26. Issue #27. "Quiz me on Python", "give me some code to
+  review" and "run a system design question" work from Claude through the
+  Mission-Employed connector, hosted and local alike.
+  - **Thirteen tools** in `mcp/src/tools/practice.ts`: `quiz_catalog`,
+    `start_quiz_round` (`{language, topic}`, topic defaulting to `mixed`),
+    `answer_quiz_question` (`{questionId, choice}`, choice the option's text
+    or null to pass), `quiz_progress` (`?language=`); `next_code_review`
+    (`?language=&difficulty=&category=&exclude=`), `submit_code_review`
+    (`{comments: [{line, body}], summary?}`), `get_code_review`;
+    `next_system_design` (`?difficulty=&skip=`), `submit_system_design`
+    (`{sections}`, only the sections the user wrote);
+    `report_practice_question` (`{reason}`); and 7.5's reads,
+    `practice_progress` (`GET /api/practice/progress`),
+    `list_practice_attempts` (`?kind=&page=`) and `get_practice_attempt`
+    (`/attempts/{id}`). The admin bank is not exposed.
+  - **Still a thin client.** No scoring, no key and no plan rule in `mcp/`:
+    the API picks the questions and scores every answer. A plan refusal (403
+    `premium_required`, 429 `quota_exceeded`), a 422 such as "Write at least
+    15 words" and the 409 `already_reported` reach the model word for word.
+    The quiz is free and unmetered; opening a snippet or scenario needs its
+    feature and uses none of it, as in the web app.
+  - **The user answers.** The tool descriptions and the server instructions
+    tell the client to ask each question, wait, and send the user's own
+    answer in their words: never answer, review or write a design for them,
+    and never reveal or hint at an answer before they have answered. The
+    "before answering" tools pass on only the fields a question is served
+    with (as `whoami` picks its fields), so a key could not reach the model
+    through them even if the API sent one; the tests plant one to prove it.
+  - **Progress and history.** `practice_progress` leaves out each area's
+    `recent` list (the latest ten results the web app's coach ranks by)
+    unless asked for with `recent: true`: the averages say the same in a
+    fraction of the text. It leads with one line per mode, and the server
+    instructions point at it for what to practise next. A read-back attempt
+    shows its answer, so `get_practice_attempt` tells the client not to
+    read back a question the user is about to answer again in a mistakes
+    round.
+  - **Snippets come numbered.** `next_code_review` sends the code as
+    `n | line`, counted the way `CodeReviewItemValidator::lines()` counts
+    (trailing newlines are not a line), so the user's line numbers are the
+    API's.
+  - 35 new `node:test` tests against the fake API (`src/practice.test.ts`, 68
+    in the package): each tool's route, method, body and query; refusals word
+    for word; no key in any output before answering; the descriptions and
+    instructions. The fake API now also matches a route by its path without
+    the query. Plus a manual run of every tool against `php artisan serve` on
+    a throwaway database, with model-backed submissions stopped at validation
+    so nothing reached Gemini.
 
 ---
 

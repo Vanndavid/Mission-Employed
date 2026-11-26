@@ -23,6 +23,7 @@ const renderAt = () =>
     <MemoryRouter initialEntries={['/prep']}>
       <Routes>
         <Route path="/dashboard" element={<p>Mission Control</p>} />
+        <Route path="/dashboard/quiz" element={<p>Quiz</p>} />
         <Route path="/applications" element={<p>Job Applications</p>} />
         <Route
           path="/prep"
@@ -47,11 +48,19 @@ describe('TabGate', () => {
 
   it('sends a user to the first visible tab when it is hidden', () => {
     isAdmin = false;
-    hiddenTabs = ['training_room', 'mission_control'];
+    hiddenTabs = ['training_room', 'mission_control', 'practice_quiz', 'practice_code_review', 'practice_system_design'];
     renderAt();
 
     expect(screen.getByText('Job Applications')).toBeTruthy();
     expect(screen.queryByText('Training Room')).toBeNull();
+  });
+
+  it('sends a user to a visible mode when the rest of its tab is hidden', () => {
+    isAdmin = false;
+    hiddenTabs = ['training_room', 'mission_control'];
+    renderAt();
+
+    expect(screen.getByText('Quiz')).toBeTruthy();
   });
 
   it('still lets an admin open a hidden tab', () => {

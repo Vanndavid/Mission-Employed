@@ -1,0 +1,42 @@
+{
+  "id": "sd-notification-service",
+  "title": "Notification service",
+  "difficulty": "medium",
+  "prompt": "Design a notification service that other teams' services call to reach users by push, email and SMS. It sends 500 million notifications a day, and marketing campaigns burst to 50,000 a second. Users choose which kinds of notification they get on which channel, and quiet hours in their own time zone. Security codes must arrive within 10 seconds; marketing can wait minutes. Delivery goes through third-party providers (APNs, FCM, an email provider, an SMS provider) with their own rate limits and outages, and nobody should receive the same notification twice.",
+  "explanation": "Most of the work is outside your control: providers throttle, fail and get retried. What it tests is keeping urgent messages away from bulk traffic with separate queues, honouring preferences, and getting delivery that looks exactly-once from parts that are at-least-once.",
+  "keyPoints": {
+    "requirements": [
+      "Separates channels, user preferences, quiet hours and priority levels",
+      "Gives different delivery targets for transactional messages (seconds) and marketing (minutes)",
+      "Makes no duplicates and a delivery status per notification explicit requirements"
+    ],
+    "estimation": [
+      "About 5,800 notifications a second on average (500 million ÷ 86,400), with bursts of 50,000",
+      "A delivery log of about 250 GB a day at roughly 500 bytes a notification, several terabytes for a month"
+    ],
+    "api_data_model": [
+      "A send call taking user, template, data, priority and an idempotency key, returning a notification id",
+      "Tables for preferences and device tokens, templates, and a delivery log with a status per channel",
+      "Uses the idempotency key to ignore a repeated send from a caller that retried"
+    ],
+    "architecture": [
+      "An API that validates and enqueues, then workers that apply preferences, render templates and call providers",
+      "Separate queues per priority and per channel, so a campaign cannot delay security codes",
+      "Looks up preferences, quiet hours and device tokens before fanning out to channels"
+    ],
+    "scalability": [
+      "Queues absorb campaign bursts and workers drain them at the rate the providers accept",
+      "Throttles each provider to its limits and scales workers for each channel independently",
+      "Partitions queues by user id so one user's notifications stay in order"
+    ],
+    "reliability": [
+      "Retries with exponential backoff and parks notifications that keep failing in a dead-letter queue",
+      "Dedupes on the notification id or idempotency key so a retry is not delivered twice",
+      "Fails over to a second provider when one is down, and drops a security code that has expired rather than send it late"
+    ],
+    "communication": [
+      "Follows one security code from the calling service to the user's phone",
+      "Explains how the design stops marketing bursts from delaying urgent messages"
+    ]
+  }
+}

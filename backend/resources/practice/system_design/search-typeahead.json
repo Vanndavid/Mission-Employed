@@ -1,0 +1,42 @@
+{
+  "id": "sd-search-typeahead",
+  "title": "Search typeahead",
+  "difficulty": "medium",
+  "prompt": "Design search-as-you-type suggestions for a large online store's search box. 10 million people search each day, about 4 searches each, and every keystroke after the second character asks for suggestions, about 6 requests a search. Suggestions are the 10 most popular past queries that start with what has been typed, in the user's country. They must come back in under 100 ms at the 99th percentile, and a query that starts trending today should appear within the hour.",
+  "explanation": "Reads dwarf everything else and must finish in tens of milliseconds, so nothing can be computed at query time. What it tests is a precomputed prefix index served from memory, and a separate pipeline that rebuilds it from the search logs.",
+  "keyPoints": {
+    "requirements": [
+      "Suggestions by prefix, ranked by popularity, per country, at most 10",
+      "Puts numbers on latency (under 100 ms at p99) and freshness (trending queries within the hour)",
+      "Draws scope: no spelling correction or personalisation, and offensive suggestions filtered out"
+    ],
+    "estimation": [
+      "About 240 million suggestion requests a day (10 million × 4 × 6), close to 3,000 a second on average and several times that at peak",
+      "The few million most popular queries and their prefixes fit in memory, in gigabytes rather than terabytes"
+    ],
+    "api_data_model": [
+      "GET /suggestions?q={prefix}&country={code} returning up to 10 strings",
+      "A trie or prefix table in which each prefix stores its precomputed top 10 queries",
+      "Query counts aggregated from the search logs per country and time window"
+    ],
+    "architecture": [
+      "A serving path that answers from an in-memory prefix index without scanning",
+      "A separate batch or streaming pipeline that aggregates the logs and rebuilds the index",
+      "Debouncing on the client, and caching responses for prefixes already typed"
+    ],
+    "scalability": [
+      "Precomputes the top 10 at each prefix so a lookup is one read, not a search of a subtree",
+      "Replicates the index across servers, and shards it by prefix range or by country when it outgrows one",
+      "Caches popular short prefixes at the CDN or edge with a short TTL"
+    ],
+    "reliability": [
+      "Weighs freshness against cost: hourly rebuilds against streaming updates with decaying counts",
+      "Swaps a newly built index in atomically, and keeps serving the old one if a build fails",
+      "Accepts slightly stale suggestions as a deliberate trade for latency"
+    ],
+    "communication": [
+      "Keeps the serving path clearly apart from the path that builds the index",
+      "Uses the latency target to justify precomputing rather than computing at query time"
+    ]
+  }
+}

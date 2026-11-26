@@ -1,0 +1,43 @@
+{
+  "id": "sd-ride-matching",
+  "title": "Ride-hailing driver matching",
+  "difficulty": "hard",
+  "prompt": "Design driver matching for a ride-hailing app in one large region. 500,000 drivers are online at peak, and each driver's phone sends its location every 4 seconds. Riders request about 50,000 rides an hour at peak, and each request should be offered to a nearby available driver within 5 seconds. A driver must never be offered two rides at once, and a ride must never go to two drivers. Once matched, the rider watches the driver's car move on a map.",
+  "explanation": "The volume is in location updates, 125,000 a second, but each one is disposable; the correctness is in matching, a handful of requests a second that must never double-assign. Strong answers split the two and use a geospatial index for nearby.",
+  "keyPoints": {
+    "requirements": [
+      "Covers location updates, matching a request to a nearby available driver, and live tracking for the rider",
+      "Puts numbers on matching time (5 seconds) and on how stale a driver's location may be",
+      "Makes one ride per driver and one driver per ride an explicit correctness requirement"
+    ],
+    "estimation": [
+      "125,000 location updates a second (500,000 drivers ÷ 4 seconds)",
+      "Current positions are only about 50 MB, so they fit in memory, and ride requests are only about 14 a second",
+      "Keeping every location point would be about 1 TB a day, so history goes to cheap storage, off the hot path"
+    ],
+    "api_data_model": [
+      "A location update (driver id, latitude, longitude, timestamp, status) and a ride request returning a ride id",
+      "A geospatial index of available drivers by cell (geohash, S2 or H3), held in memory",
+      "Rides with a state machine: requested, offered, accepted, en route, completed or cancelled"
+    ],
+    "architecture": [
+      "A location service that feeds updates into the in-memory geo index, separate from the matching service",
+      "Matching searches nearby cells, ranks candidates by ETA, and offers to one driver at a time with a timeout",
+      "Live tracking pushes the assigned driver's position to the rider over a WebSocket"
+    ],
+    "scalability": [
+      "Shards the geo index by cell so updates and searches spread across nodes",
+      "Handles dense city-centre cells with smaller cells or by splitting hot cells",
+      "Writes location history asynchronously through a stream such as Kafka, off the matching path"
+    ],
+    "reliability": [
+      "Claims a driver atomically when offering (compare-and-set on driver status) so two requests cannot take one driver",
+      "Times out an unanswered offer and moves on to the next driver",
+      "Treats locations as soft state that the next update rebuilds within 4 seconds, so losing a node is survivable"
+    ],
+    "communication": [
+      "Follows one ride request from the rider's tap to a driver accepting it",
+      "Keeps the high-volume location stream clearly apart from the low-volume, correctness-critical matching flow"
+    ]
+  }
+}

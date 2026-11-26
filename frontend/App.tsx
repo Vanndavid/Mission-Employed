@@ -2,6 +2,11 @@ import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Sidebar, MobileHeader } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
+import { MissionControl } from './components/MissionControl';
+import { SystemDesignMode } from './components/SystemDesignMode';
+import { CodeReviewModeRoute, QuizModeRoute } from './components/PracticeModeRoutes';
+import { PracticeHistory } from './components/PracticeHistory';
+import { PracticeAttemptPage } from './components/PracticeAttemptPage';
 import { JobApplications } from './components/JobApplications';
 import { PrepRoom } from './components/PrepRoom';
 import { MockTest } from './components/MockTest';
@@ -11,6 +16,7 @@ import { AuthScreen } from './components/AuthScreen';
 import { AccountPage } from './components/AccountPage';
 import { AdminUsersPage } from './components/AdminUsersPage';
 import { AdminPlansPage } from './components/AdminPlansPage';
+import { AdminQuestionBankPage } from './components/AdminQuestionBankPage';
 import { SettingsPage } from './components/SettingsPage';
 import { PremiumGate } from './components/PremiumGate';
 import { TabGate } from './components/TabGate';
@@ -68,14 +74,48 @@ function AppRoutes() {
     <Routes>
       {/* The first tab this account can see; an admin may have hidden any. */}
       <Route path="/" element={<Navigate to={homePath(hiddenTabs, isAdmin)} replace />} />
-      <Route
-        path="/dashboard"
-        element={
-          <TabGate tab="mission_control">
-            <Dashboard applications={applications} codingHistory={codingHistory} onCodingComplete={addAttempt} />
-          </TabGate>
-        }
-      />
+      {/* Mission Control's modes: Problems is the index, each mode a child route behind its own tab. */}
+      <Route path="/dashboard" element={<MissionControl />}>
+        <Route
+          index
+          element={
+            <TabGate tab="mission_control">
+              <Dashboard applications={applications} codingHistory={codingHistory} onCodingComplete={addAttempt} />
+            </TabGate>
+          }
+        />
+        <Route
+          path="quiz"
+          element={
+            <TabGate tab="practice_quiz">
+              <QuizModeRoute />
+            </TabGate>
+          }
+        />
+        <Route
+          path="code-review"
+          element={
+            <TabGate tab="practice_code_review">
+              <PremiumGate feature="code_review" title="Code review (Premium)">
+                <CodeReviewModeRoute />
+              </PremiumGate>
+            </TabGate>
+          }
+        />
+        <Route
+          path="system-design"
+          element={
+            <TabGate tab="practice_system_design">
+              <PremiumGate feature="system_design" title="System design (Premium)">
+                <SystemDesignMode />
+              </PremiumGate>
+            </TabGate>
+          }
+        />
+        {/* Progress and history across the modes (7.5): the user's own data, so no TabGate or plan gate. */}
+        <Route path="history" element={<PracticeHistory />} />
+        <Route path="history/:id" element={<PracticeAttemptPage />} />
+      </Route>
       <Route
         path="/applications"
         element={
@@ -141,6 +181,7 @@ function AppRoutes() {
       <Route path="/account" element={<AccountPage />} />
       <Route path="/account/admin" element={<AdminUsersPage />} />
       <Route path="/account/admin/plans" element={<AdminPlansPage />} />
+      <Route path="/account/admin/questions" element={<AdminQuestionBankPage />} />
       <Route path="/settings" element={<SettingsPage />} />
     </Routes>
   );
@@ -171,7 +212,7 @@ function AppShell() {
           <div className="min-h-screen text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
             <Sidebar mobileOpen={mobileNavOpen} onMobileClose={() => setMobileNavOpen(false)} />
 
-            <div className="flex-1 lg:ml-64 min-h-screen flex flex-col">
+            <div className="flex-1 min-w-0 lg:ml-64 min-h-screen flex flex-col">
               <MobileHeader onMenuOpen={() => setMobileNavOpen(true)} />
               <main className="flex-1 p-4 sm:p-6 lg:p-8">
                 <div className="max-w-6xl mx-auto">

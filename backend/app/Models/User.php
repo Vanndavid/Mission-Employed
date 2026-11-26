@@ -117,6 +117,12 @@ class User extends Authenticatable
         return $this->hasMany(CodingAttempt::class);
     }
 
+    /** @return HasMany<PracticeAttempt, $this> */
+    public function practiceAttempts(): HasMany
+    {
+        return $this->hasMany(PracticeAttempt::class);
+    }
+
     /** @return HasMany<BehavioralAnswer, $this> */
     public function behavioralAnswers(): HasMany
     {

@@ -41,6 +41,7 @@ export const Sidebar = ({ mobileOpen, onMobileClose }: SidebarProps) => {
       ? [
           { path: '/account/admin', label: 'Admin', icon: '🔑' },
           { path: '/account/admin/plans', label: 'Plans & Limits', icon: '🎛️' },
+          { path: '/account/admin/questions', label: 'Question Bank', icon: '🗂️' },
         ]
       : []),
     { path: '/account', label: 'Plan & Usage', icon: '👤' },

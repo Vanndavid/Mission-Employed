@@ -1,0 +1,174 @@
+{
+  "language": "java",
+  "snippets": [
+    {
+      "id": "review-java-bank-transfer",
+      "title": "Moving money between accounts",
+      "difficulty": "hard",
+      "prompt": "An in-memory bank used by a multi-threaded payments simulator. Accounts are opened while transfers run on other threads, and transfer may be called concurrently in any direction. total() is used by a health check that runs while transfers are in flight.",
+      "code": [
+        "import java.util.HashMap;",
+        "import java.util.Map;",
+        "",
+        "public class Bank {",
+        "    private final Map<String, Account> accounts = new HashMap<>();",
+        "",
+        "    public void open(String id, double openingBalance) {",
+        "        accounts.put(id, new Account(id, openingBalance));",
+        "    }",
+        "",
+        "    public void transfer(String fromId, String toId, double amount) {",
+        "        Account from = accounts.get(fromId);",
+        "        Account to = accounts.get(toId);",
+        "",
+        "        synchronized (from) {",
+        "            synchronized (to) {",
+        "                if (from.balance >= amount) {",
+        "                    from.balance -= amount;",
+        "                    to.balance += amount;",
+        "                }",
+        "            }",
+        "        }",
+        "    }",
+        "",
+        "    public double total() {",
+        "        double sum = 0;",
+        "        for (Account account : accounts.values()) {",
+        "            sum += account.balance;",
+        "        }",
+        "        return sum;",
+        "    }",
+        "",
+        "    static class Account {",
+        "        final String id;",
+        "        double balance;",
+        "",
+        "        Account(String id, double balance) {",
+        "            this.id = id;",
+        "            this.balance = balance;",
+        "        }",
+        "    }",
+        "}"
+      ],
+      "issues": [
+        {
+          "id": "lock-order-deadlock",
+          "lines": [15, 16],
+          "category": "concurrency",
+          "severity": 3,
+          "summary": "Locks are taken in argument order. transfer(a, b) on one thread and transfer(b, a) on another each take their first lock and wait forever for the second: a deadlock.",
+          "fix": "Always lock the two accounts in one global order, for example by id (lock the smaller id first), or use a single lock for transfers."
+        },
+        {
+          "id": "double-for-money",
+          "lines": [35, 35],
+          "category": "bug",
+          "severity": 2,
+          "summary": "Balances are doubles, so amounts like 0.10 are not exact and repeated transfers drift by fractions of a cent.",
+          "fix": "Hold money as a long count of cents, or BigDecimal."
+        },
+        {
+          "id": "negative-amount",
+          "lines": [17, 19],
+          "category": "security",
+          "severity": 2,
+          "summary": "A negative amount is not rejected: it passes the balance check and moves money from the destination into the source, so anyone who can call transfer can drain any account.",
+          "fix": "Throw IllegalArgumentException unless amount > 0."
+        },
+        {
+          "id": "unsafe-hashmap",
+          "lines": [5, 5],
+          "category": "concurrency",
+          "severity": 2,
+          "summary": "A plain HashMap is read and written from several threads (open runs while transfers do), which can corrupt it or hide new accounts; total() also reads balances with no lock, so it can see a transfer half done.",
+          "fix": "Use a ConcurrentHashMap, and read the balances under the same locking the transfers use."
+        },
+        {
+          "id": "unknown-account",
+          "lines": [12, 15],
+          "category": "bug",
+          "severity": 1,
+          "summary": "An unknown id gives a null account, and synchronized (null) throws a NullPointerException that says nothing about the bad id.",
+          "fix": "Check both lookups and throw an IllegalArgumentException naming the unknown account."
+        }
+      ],
+      "explanation": "Two locks taken in caller-chosen order is the textbook deadlock. With money, also check the type that holds it and every value a caller controls, including the sign."
+    },
+    {
+      "id": "review-java-csv-admins",
+      "title": "Reading admins from a CSV file",
+      "difficulty": "easy",
+      "prompt": "Imports users from a CSV export with lines like 'ada@example.com,Ada Lovelace,admin' and returns the admins; contains() checks whether a user is in a list. The export ends with a blank line.",
+      "code": [
+        "import java.io.BufferedReader;",
+        "import java.io.FileReader;",
+        "import java.io.IOException;",
+        "import java.util.ArrayList;",
+        "import java.util.List;",
+        "",
+        "public class CsvImporter {",
+        "",
+        "    public List<User> readAdmins(String path) throws IOException {",
+        "        List<User> admins = new ArrayList<>();",
+        "        BufferedReader reader = new BufferedReader(new FileReader(path));",
+        "        String line;",
+        "        while ((line = reader.readLine()) != null) {",
+        "            String[] parts = line.split(\",\");",
+        "            String role = parts[2].trim();",
+        "            if (role == \"admin\") {",
+        "                admins.add(new User(parts[0], parts[1]));",
+        "            }",
+        "        }",
+        "        return admins;",
+        "    }",
+        "",
+        "    public boolean contains(List<User> users, User candidate) {",
+        "        for (int i = 0; i <= users.size(); i++) {",
+        "            if (users.get(i).equals(candidate)) {",
+        "                return true;",
+        "            }",
+        "        }",
+        "        return false;",
+        "    }",
+        "",
+        "    record User(String email, String name) {}",
+        "}"
+      ],
+      "issues": [
+        {
+          "id": "string-identity",
+          "lines": [16, 16],
+          "category": "bug",
+          "severity": 3,
+          "summary": "role == \"admin\" compares references, not text. The role comes from split and trim, a different String object, so the test is never true and no admin is ever returned.",
+          "fix": "Compare contents: \"admin\".equals(role)."
+        },
+        {
+          "id": "loop-past-end",
+          "lines": [24, 25],
+          "category": "bug",
+          "severity": 3,
+          "summary": "i <= users.size() runs one past the end, so whenever the candidate is not in the list, users.get(size) throws IndexOutOfBoundsException instead of returning false.",
+          "fix": "Use i < users.size(), or simply return users.contains(candidate) (records compare by value)."
+        },
+        {
+          "id": "reader-not-closed",
+          "lines": [11, 11],
+          "category": "bug",
+          "severity": 2,
+          "summary": "The reader is never closed, so every call leaks a file handle, and an exception mid-file leaks it too.",
+          "fix": "Open it in try-with-resources: try (BufferedReader reader = new BufferedReader(new FileReader(path))) { ... }."
+        },
+        {
+          "id": "short-line-crash",
+          "lines": [14, 15],
+          "category": "bug",
+          "severity": 2,
+          "summary": "The blank last line splits into one empty field, so parts[2] throws ArrayIndexOutOfBoundsException and the whole import fails.",
+          "fix": "Skip blank lines and check parts.length >= 3 (reporting a malformed line) before reading the fields."
+        }
+      ],
+      "explanation": "Java's == on objects, an off-by-one bound and an unclosed resource are the three bugs a reviewer should spot on sight. Then feed the parser the input the prompt promised: a blank line."
+    }
+  ]
+}

@@ -2,7 +2,8 @@
 
 Exposes the Mission-Employed API as [MCP](https://modelcontextprotocol.io) tools,
 so an MCP client — Claude Code, Claude Desktop, Cowork — can track a job
-application, tailor a CV, or run a mock interview without opening the web app.
+application, tailor a CV, run a mock interview, or quiz you on a language
+without opening the web app.
 
 It is a thin client over the Laravel API in `../backend`. There is no second copy
 of any business rule here: ownership, validation, the status timeline and the
@@ -125,6 +126,10 @@ running the sync again is a no-op. In Cowork this can run on a schedule.
 | **AI — documents** | `generate_cover_letter`, `generate_tailored_cv`, `check_ats_score` |
 | **AI — coding** | `generate_coding_problem`, `start_coding_tutor`, `send_session_message`, `get_session` |
 | **AI — interviews** | `behavioral_practice_question`, `start_mock_interview`, `mock_interview_turn`, `mock_interview_report`, `list_mock_interviews` |
+| **Practice — quiz** | `quiz_catalog`, `start_quiz_round`, `answer_quiz_question`, `quiz_progress` |
+| **Practice — code review** | `next_code_review`, `submit_code_review`, `get_code_review` |
+| **Practice — system design** | `next_system_design`, `submit_system_design` |
+| **Practice — any mode** | `practice_progress`, `list_practice_attempts`, `get_practice_attempt`, `report_practice_question` |
 
 Prompt: `sync_job_emails`, described above. `login` and `logout` exist only in
 the local modes: over OAuth the connector owns the token.
@@ -133,7 +138,8 @@ Everything under **AI** is a plan feature, gated and metered by the API: a
 plan without it, or with its allowance used up, gets the API's own readable
 refusal (which feature, which limit, when it resets) rather than an error.
 `whoami` reports the effective plan and, per feature, whether it is included,
-its limit and how much is used.
+its limit and how much is used. Code review and system design practice are plan
+features the same way (`code_review`, `system_design`); the quiz is not.
 
 Three API features are deliberately not exposed: evaluating a spoken behavioral
 answer, text-to-speech, and the spoken mock interview over Gemini Live
@@ -155,6 +161,49 @@ profile, so a normal call is just `{ applicationId: 12, save: true }`.
 `source: "base"`, the profile's) against its job description and stores the
 report on the application. The API does the scoring; the model only lists the
 job's keywords, once per job, so checking again after an edit is free.
+
+### Practice modes
+
+The quiz, code review and system design modes on Mission Control — "quiz me on
+Python", "give me some code to review", "run a system design question" — are
+tools over `/api/practice/*`. The person practising is the user, so every tool
+is written for a client that asks: show the question, wait, send exactly what
+the user said. The descriptions and the server instructions tell the client
+never to answer for the user, and never to reveal or hint at an answer before
+they have answered.
+
+- **Quiz.** `start_quiz_round` serves up to ten questions on one topic, `mixed`
+  or `mistakes`, with their options and no answers; `answer_quiz_question`
+  sends the user's choice (the option's text, or null to pass) and gets back
+  whether it was right, the answer and the explanation. `quiz_progress` is
+  accuracy per topic and open mistakes. Free on every plan and never metered.
+- **Code review.** `next_code_review` serves a snippet with its lines numbered
+  as comments refer to them (`category` asks for one with an issue of that kind
+  planted); `submit_code_review` sends the user's
+  `{line, body}` comments and optional summary and returns the score, the
+  breakdown and every planted issue, found or missed. `get_code_review` reads a
+  scored review back.
+- **System design.** `next_system_design` serves a scenario and the rubric it
+  is scored against; `submit_system_design` sends the user's sections and
+  returns the score, each trait's rating and the key points covered and missed.
+- **Progress and history.** `practice_progress` is the last 30 days in every
+  mode: quiz accuracy per language and topic with open mistakes, code review's
+  found rate per issue category, system design's average per trait, enough to
+  say what to practise next. Each area's latest ten results, which the web
+  app's coach ranks by, are left out unless asked for with `recent: true`.
+  `list_practice_attempts` pages through attempts newest first, never with
+  answers; `get_practice_attempt` reads one back as it was scored, answer
+  included. All three are free on every plan.
+- `report_practice_question` flags a question, snippet or scenario the user
+  says is wrong, for an admin to review.
+
+The API picks the questions, scores every answer and keeps every key: a round,
+a snippet and a scenario carry no answer, planted issue or key point, and only
+the scored answer reveals them. The "before answering" tools also pass on only
+the fields a question is served with, so a key could not reach the model
+through them even if the API ever sent one. Opening a snippet or scenario
+needs its plan feature but uses none of the allowance; each scored submission
+is one use. The admin question bank is not exposed.
 
 ## Tests
 

@@ -98,6 +98,15 @@ Live mock interview's `/live` and `/exchanges`) are deliberately not exposed:
 they only make sense in the browser. The typed mock `/turns` route stays for the
 MCP tools. See `mcp/README.md`.
 
+The practice modes are tools too (`mcp/src/tools/practice.ts`): the quiz, code
+review and system design routes, progress and history, and reporting a question,
+never the admin bank.
+The user is the one practising, so the tool descriptions and the server
+instructions tell the client to ask each question and send the user's own
+answer, never to answer for them or reveal an answer first. The tools that serve
+a question pass on only the fields it is served with, so no key reaches the
+model before the user has answered. A new practice route gets its tool there.
+
 It is deployed as the `mcp` compose service. It serves OAuth plus `/mcp`, so
 Claude and Cowork can add it as a custom connector. All of its OAuth state is
 sealed with `MCP_OAUTH_SECRET` from the server `.env`, and it keeps no database.
@@ -124,8 +133,24 @@ reintroduce it or build features that depend on it:
    and revokes its tokens but keeps its data, and reactivate it later, and
    **hide feature tabs** from every user's sidebar (Training Room is hidden by
    default).
-2. **Coding practice** — software engineering only. Problem generation, AI tutor
-   chat, attempt history.
+2. **Coding practice** — software engineering only, as modes on Mission
+   Control. **Problems**: problem generation, AI tutor chat, attempt history.
+   **Quiz**: multiple-choice questions on a language (JavaScript, Python, Java,
+   SQL) from a hand-written bank, in rounds of ten, each answer explained and
+   scored on the server in code, missed questions brought back later. The quiz
+   is free on every plan and never metered. **Code review**: review a 20 to
+   80 line snippet like a pull request, commenting on lines; the AI matches
+   the comments to the issues planted in it and the score is computed from
+   that (the `code_review` plan feature). **System design**: a scenario with
+   scale numbers ("a URL shortener for 100M new links a month") answered in
+   seven fixed sections, scored out of 100 against a fixed rubric (code applies
+   the word gates and adds up, the AI rates the traits against written
+   descriptors and the scenario's key points), with a report on how the score
+   was reached; the `system_design` plan feature. More modes are planned on
+   the same question bank (epic #21, `TASKS.md` Wave 7). An admin grows the bank on
+   **Admin · Question bank**: the AI drafts questions, code checks each one,
+   and users only ever see what an admin has reviewed and published. Users can
+   report a question they think is wrong.
 3. **Job application tracker** — CRUD, statuses, interview stages, paste-a-JD
    parsing, tailored CV and cover letter, and **spreadsheet import**: drop in an
    `.xlsx`/`.xls`/`.csv` whose columns are named anything at all, an AI proposes
@@ -138,7 +163,7 @@ reintroduce it or build features that depend on it:
 5. **Full mock interview** — multi-turn session ending in a written report.
 
 Deleted and staying deleted: talent ranking, analytics, contacts, the Codex/rules
-page, offer tools and negotiation scripts, follow-up emails, system design drills,
+page, offer tools and negotiation scripts, follow-up emails,
 hunt personas and onboarding, criteria scoring, daily logs and task streaks,
 the emergency modal.
 
@@ -150,14 +175,20 @@ the emergency modal.
 > The ATS check is not "criteria scoring". That scored a job against the user's
 > own wish-list and never read the CV; this scores the CV against the job.
 
-> `system_design` is still a valid **interview stage type** in the tracker — people
-> get scheduled for one. Only the practice drill was cut.
+> This list used to say "system design drills". What was cut (e0db404) was a
+> free-form mentor chat ending in an unstructured evaluation. The owner asked for
+> system design practice back on 2026-11-26, and the rubric-scored mode in 2
+> above replaced it: a structured answer scored against a fixed rubric, so
+> scores are consistent and comparable. Do not bring back the chat drill.
+> `system_design` is also still a valid **interview stage type** in the
+> tracker — people get scheduled for one.
 
 ## Conventions
 
 - Enums live in `backend/app/Enums` and are cast on the model (`JobStatus`,
-  `AccountPlan`, `AccountRole`, `Feature`, `QuotaPeriod`). Each has a
-  `values()` helper for validation rules.
+  `AccountPlan`, `AccountRole`, `Feature`, `QuotaPeriod`, `NavTab`,
+  `PracticeKind`, `PracticeLanguage`, `PracticeQuestionStatus`,
+  `PracticeQuestionSource`). Each has a `values()` helper for validation rules.
 - **Every paid route names its plan feature.** `routes/api/ai.php` puts
   `feature:<key>` on each route (`App\Http\Middleware\EnsureFeature`): it
   refuses a plan without the feature (403 `premium_required`, or
@@ -185,9 +216,86 @@ the emergency modal.
   admins still see it, marked. The plan still decides what the features
   allow, so never use a hidden tab to restrict one. A new sidebar tab needs a
   `NavTab` case, `NavTabKey` in `frontend/types/auth.ts`, an entry in
-  `frontend/utils/navTabs.ts` and a `TabGate` on its route. Pages people do
-  not use daily (Plan & Usage, Settings, admin) go in the sidebar's Account
-  group by Log out, not in the main list.
+  `frontend/utils/navTabs.ts` and a `TabGate` on its route. A **mode** is a
+  tab too: its entry in `navTabs.ts` has `modeOf` (Quiz is
+  `modeOf: 'mission_control'`), so it is drawn as a mode tab on that screen
+  (`ModeTabs`) instead of in the sidebar, is listed in the admin's "Tabs users
+  see" as "Mission Control · Quiz", and is a child route of the tab's path
+  behind its own `TabGate` (`/dashboard/quiz` under the `MissionControl`
+  layout). The sidebar entry stays while any of its modes is visible. Pages
+  people do not use daily (Plan & Usage, Settings, admin) go in the sidebar's
+  Account group by Log out, not in the main list.
+- **The quiz is scored in code, and its key stays on the server.** Practice
+  modes share one bank, `practice_questions` (`kind`, `language`, `topic`,
+  `options`, `answer` as per-kind JSON, `status` draft|published, `source`
+  seed|ai|admin, `external_id`), and one append-only `practice_attempts`
+  table (`response`, `score`/`max_score`, `correct`, `feedback`,
+  `rubric_version`). `answer` is hidden from serialization: a round
+  (`QuizQuestionResource`) carries no answer or explanation, and
+  `POST /api/practice/quiz/answers` is the only place an answer is compared
+  and the first place the key leaves the server. A draft, an unknown id and
+  another kind's question are the same bare 404. An open mistake is a
+  question whose latest attempt was wrong; progress is worked out from
+  attempts every time, not stored. The quiz never calls a model, so its
+  routes in `routes/api/practice.php` name no `feature:` and nothing is metered;
+  keep it that way (`PracticeQuizTest` asserts no `feature_usages` row and no Gemini
+  call). Topics are code, `PracticeLanguage::topics()`. The MCP server wraps
+  these routes (`mcp/src/tools/practice.ts`, 7.6).
+- **The hand-written bank ships with a deploy.** It lives in
+  `backend/resources/practice/<kind>/<language>.json` (format in
+  `App\Services\Practice\SeedBank`). `php artisan practice:sync` runs in
+  `docker/laravel-entrypoint.sh` after `migrate --force` and in
+  `DatabaseSeeder`: it upserts by `external_id` as published `seed` rows, puts
+  a seed row that left the files back to draft (attempts keep it), never
+  touches an `ai` or `admin` row, and running it twice changes nothing. A
+  malformed question fails it and writes nothing, which fails the boot and
+  rolls the deploy back. A wrong answer key is the worst bug the quiz can
+  have: `PracticeSeedContentTest` checks every question straight from the
+  files, and a new question's key should be run, not reasoned about, where
+  the language allows. Seed rows are read-only on the question bank (422): a
+  seeded question is fixed in its file, or the next sync would put the file's
+  version back.
+- **AI drafts are reviewed before users see them.** `POST
+  /api/admin/practice/questions/generate` makes one `generateJson` call, and
+  every item goes through the kind's checks in code before anything is saved
+  (`QuizDraftValidator` for the quiz: four distinct options, the answer one of
+  them, an explanation, a snippet of at most 40 lines, the language and topic
+  asked for; `CodeReviewDraftValidator` and `SystemDesignDraftValidator`
+  wrap the seed files' item validators, so a draft meets the hand-written
+  rules, and a code review draft's ranges must land on the lines the model
+  quoted). What passes is saved as a `draft` with `source` ai, which no
+  user route serves; what fails comes back with its reasons. The model's
+  one-line note per wrong option goes in `review_notes`, hidden from
+  serialization like `answer`. Every admin save (`PATCH`, publishing
+  included) re-runs the same validator, so an edit cannot publish what a
+  draft could not. Deleting a question with attempts unpublishes it instead.
+  A kind plugs in with a `DraftKind` (request rules, prompt, schema, item
+  mapping, validator) registered in `App\Services\Practice\DraftKinds`; an
+  unregistered kind is a 422. These are admin routes
+  (`routes/api/practice_bank.php`), so they take no `feature:`; the draft
+  call's tokens are recorded as usual. Reports (`practice_question_reports`)
+  are one per user per question; an admin resolving them keeps the rows and
+  clears the open count.
+- **A system design score is computed by the rubric; the AI only rates.**
+  `App\Services\Practice\SystemDesignRubric` (`VERSION` `sd-1`) owns the seven
+  sections, the seven traits with their weights and descriptors (product copy,
+  shown under "How this was scored"), the gate and the sum. A trait whose
+  sections have fewer than 15 words between them scores 0 and is left out of
+  the prompt: no name, descriptors or key points. The model rates only the
+  rest, 0 to 4, each with a quote, an improvement and the key points covered;
+  `SystemDesignScorer::sanitise()` clamps, drops a quote that is not in the
+  answer, and ignores unknown traits and key points, and a reply that leaves a
+  trait unrated is a 502 with nothing stored or charged. Changing a
+  descriptor, a weight or the gate is a new `VERSION`: every attempt stores
+  the one it was scored against. Key points are the key, `answer`
+  `{"keyPoints": {trait: [...]}}`, and leave the server only in a scored
+  answer; the scenario's title is the bank's `topic`, and `language` is null.
+  Seeds are one scenario a file in `backend/resources/practice/system_design/`
+  (`SystemDesignSeed`), and `SystemDesignItemValidator` holds the rules a
+  scenario must meet, the same ones an AI draft has to pass. The routes
+  (`/api/practice/system-design/*`) are behind `feature:system_design` and
+  `throttle:features`; an answer under 15 words in all is a 422 before any of
+  it. The MCP server wraps these routes too (7.6).
 - A Premium plan can end: past `users.plan_expires_at` the account reads as
   Free everywhere (`User::isPremium()`, `effectivePlan()`). An admin setting
   either plan clears `premium_requested_at`.
@@ -208,6 +316,18 @@ the emergency modal.
   deterministically. Keywords are cached on the application under a hash of
   role + JD, so re-checking an edited CV makes no model call. `ats_keywords` and
   `ats_report` are server-owned: never fillable, never in `COLUMN_MAP`.
+- **Code review: the AI matches, code scores.** A snippet's planted issues
+  (`answer.issues`: id, lines, category, severity 1-3, summary, fix) never
+  leave the server before a review is scored. One model call
+  (`CodeReviewGrader`, prompt in `App\Services\Ai\CodeReviewPrompts`) says
+  which comment indexes identify which issue and how good the suggested fix
+  is; comments on an issue's lines are flagged as candidates, but the model
+  decides. Its answer is sanitised (unknown ids, missing indexes and
+  duplicates dropped), and `CodeReviewScorer` computes the score as a pure
+  function: detection 70 by severity, fixes 20, precision 10. The attempt
+  stores `rubric_version` `cr-1`; change it with the weights. What makes a
+  snippet publishable is `CodeReviewItemValidator`, for seed files and AI
+  drafts alike. A snippet's title is stored in `topic`.
 - **`Ghosted` is set by the server.** An application at Applied with no status
   change and no interview stage for `Application::GHOSTED_AFTER_DAYS` (30) is
   moved to Ghosted when the tracker is read (`ghostUnanswered()` on `index` and
@@ -241,3 +361,14 @@ the emergency modal.
 - Login and registration are rate limited (`AppServiceProvider`), which relies
   on `bootstrap/app.php` trusting the private Docker ranges as proxies so
   `$request->ip()` is the visitor and not nginx.
+- **Practice progress, history and the coach are reads, not features.**
+  `GET /api/practice/progress` (`PracticeProgressReport`) and
+  `/api/practice/attempts[/{id}]` are worked out from `practice_attempts`
+  every time, name no `feature:` and never call a model; someone else's
+  attempt is a bare 404. Progress carries no answer key. An attempt's page
+  reuses its mode's result view (`AnswerVerdict`, `ReviewResult`,
+  `ScoreReport`), so a change to what a mode stores in `feedback` changes
+  `PracticeAttemptDetailResource` and the progress report with it. The coach
+  is the pure `frontend/utils/practiceCoach.ts`; its one-click starts are
+  query strings the mode routes read (`utils/practiceLinks.ts`). A new mode
+  adds its areas to both. No streaks or daily goals.

@@ -18,6 +18,9 @@ const FEATURE_LABELS: Record<string, string> = {
   'ai/cv/generate': 'Tailored CV',
   'ai/applications/{application}/ats': 'ATS score check',
   'ai/tts': 'Spoken playback',
+  'practice/code-review/{question}/reviews': 'Code review',
+  'practice/system-design/{question}/answers': 'System design score',
+  'admin/practice/questions/generate': 'Question bank drafts',
 };
 
 export function featureLabel(feature: string): string {

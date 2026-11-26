@@ -43,8 +43,20 @@ describe('AdminTabsSection', () => {
     renderSection();
 
     expect(toggle('Training Room').checked).toBe(false);
-    expect(toggle('Mission Control').checked).toBe(true);
+    expect(toggle('Mission Control · Problems').checked).toBe(true);
     expect(toggle('Mock Test').checked).toBe(true);
+  });
+
+  it('lists a mode as its own switch, named with its tab', async () => {
+    updateHiddenTabs.mockResolvedValue({ hiddenTabs: ['practice_quiz', 'training_room'] });
+    renderSection();
+
+    expect(toggle('Mission Control · Quiz').checked).toBe(true);
+    fireEvent.click(toggle('Mission Control · Quiz'));
+
+    await waitFor(() => expect(setHiddenTabs).toHaveBeenCalledWith(['practice_quiz', 'training_room']));
+    expect(updateHiddenTabs).toHaveBeenCalledWith(['practice_quiz', 'training_room']);
+    expect(await screen.findByText(/Mission Control · Quiz is hidden from users/)).toBeTruthy();
   });
 
   it('saves the whole list when a tab is switched and applies the answer', async () => {

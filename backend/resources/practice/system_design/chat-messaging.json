@@ -1,0 +1,43 @@
+{
+  "id": "sd-chat-messaging",
+  "title": "Chat messaging",
+  "difficulty": "hard",
+  "prompt": "Design a chat service with one-to-one conversations and groups of up to 500 members. It has 50 million daily active users who send 40 messages each a day, and up to 10 million are connected at once at peak. A message must reach an online recipient within a second, wait for an offline one and arrive when they reconnect, and keep the order it was sent in within its conversation. Users see delivered and read receipts, and their full history on every device.",
+  "explanation": "The hard parts are stateful: ten million open connections, knowing which server each user is on, and ordering per conversation that survives retries and crashes. Storage is large but straightforward once messages are partitioned by conversation.",
+  "keyPoints": {
+    "requirements": [
+      "Covers one-to-one and group chat up to 500, offline delivery, receipts and history on every device",
+      "Puts a number on delivery latency and says ordering is per conversation, not global",
+      "Draws scope: voice and video, or end-to-end encryption, are left out or handled explicitly"
+    ],
+    "estimation": [
+      "About 2 billion messages a day, roughly 23,000 a second on average and about three times that at peak",
+      "About 400 GB of messages a day at around 200 bytes each, over 100 TB a year",
+      "10 million open connections at about 50,000 a server means around 200 connection servers"
+    ],
+    "api_data_model": [
+      "A persistent connection (WebSocket) to send, receive and acknowledge, and HTTP to page through history with a cursor",
+      "Messages stored by conversation id and a per-conversation sequence number, in a wide-column store such as Cassandra",
+      "For each user and device, the last delivered and last read sequence in each conversation"
+    ],
+    "architecture": [
+      "Gateway servers hold the WebSocket connections, and a session registry maps each user to their gateway",
+      "A message service stores each message first, then routes it to the recipients' gateways",
+      "An offline recipient gets a push notification and fetches what it missed when it reconnects"
+    ],
+    "scalability": [
+      "Partitions messages by conversation id so a conversation's history and order live together",
+      "Fans group messages out through a queue or pub/sub per gateway, not one call per member",
+      "Scales gateways horizontally; a client can reconnect to any of them because the registry tracks where it is"
+    ],
+    "reliability": [
+      "Acknowledges a message only once it is stored, and dedupes client retries by a client-generated message id",
+      "Orders messages by a server-assigned sequence per conversation, never by client clocks",
+      "Survives a gateway crash: clients reconnect elsewhere and sync from the last sequence they saw"
+    ],
+    "communication": [
+      "Follows one message from the sender to an online recipient and to an offline one",
+      "Explains how ordering and dedupe work together when a client retries"
+    ]
+  }
+}

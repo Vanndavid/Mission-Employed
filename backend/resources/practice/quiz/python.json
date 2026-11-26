@@ -1,0 +1,550 @@
+{
+  "language": "python",
+  "questions": [
+    {
+      "id": "quiz-py-types-01",
+      "topic": "types",
+      "difficulty": "easy",
+      "prompt": "What does this print?",
+      "code": "a = [1, 2, 3]\nb = a\nb.append(4)\nprint(a)",
+      "options": [
+        "[1, 2, 3, 4]",
+        "[1, 2, 3]",
+        "None",
+        "[4]"
+      ],
+      "answer": "[1, 2, 3, 4]",
+      "explanation": "Assignment binds a second name to the same list; it does not copy it. append changes that one list in place, so a sees the 4 too. Use a.copy() or list(a) for a copy."
+    },
+    {
+      "id": "quiz-py-types-02",
+      "topic": "types",
+      "difficulty": "easy",
+      "prompt": "Which of these can be used as a dictionary key?",
+      "options": [
+        "(1, 2)",
+        "[1, 2]",
+        "{1, 2}",
+        "{'a': 1}"
+      ],
+      "answer": "(1, 2)",
+      "explanation": "Dictionary keys must be hashable. A tuple of immutable values is; lists, sets and dicts are mutable and unhashable, so using one as a key raises TypeError."
+    },
+    {
+      "id": "quiz-py-types-03",
+      "topic": "types",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "grid = [[0] * 3] * 3\ngrid[0][0] = 1\nprint(grid)",
+      "options": [
+        "[[1, 0, 0], [1, 0, 0], [1, 0, 0]]",
+        "[[1, 0, 0], [0, 0, 0], [0, 0, 0]]",
+        "[[1, 1, 1], [0, 0, 0], [0, 0, 0]]",
+        "[[1, 1, 1], [1, 1, 1], [1, 1, 1]]"
+      ],
+      "answer": "[[1, 0, 0], [1, 0, 0], [1, 0, 0]]",
+      "explanation": "Multiplying the outer list repeats a reference to the same inner list three times, so changing one row changes them all. Build independent rows with [[0] * 3 for _ in range(3)]."
+    },
+    {
+      "id": "quiz-py-types-04",
+      "topic": "types",
+      "difficulty": "easy",
+      "prompt": "What does this print?",
+      "code": "print(7 // 2, -7 // 2, 7 / 2)",
+      "options": [
+        "3 -4 3.5",
+        "3 -3 3.5",
+        "3 -4 3",
+        "3.5 -3.5 3.5"
+      ],
+      "answer": "3 -4 3.5",
+      "explanation": "// is floor division: it rounds toward negative infinity, so -7 // 2 is -4, not -3. / always returns a float, even for two ints."
+    },
+    {
+      "id": "quiz-py-types-05",
+      "topic": "types",
+      "difficulty": "easy",
+      "prompt": "What does this print?",
+      "code": "a = [1, 2]\nb = [1, 2]\nprint(a == b, a is b)",
+      "options": [
+        "True False",
+        "True True",
+        "False False",
+        "False True"
+      ],
+      "answer": "True False",
+      "explanation": "== compares values and is compares identity. Two lists built separately are equal but are different objects. Use is for None and other singletons, and == for values."
+    },
+    {
+      "id": "quiz-py-types-06",
+      "topic": "types",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "t = (1, [2, 3])\nt[1].append(4)\nprint(t)",
+      "options": [
+        "(1, [2, 3, 4])",
+        "(1, [2, 3])",
+        "It raises TypeError",
+        "It raises AttributeError"
+      ],
+      "answer": "(1, [2, 3, 4])",
+      "explanation": "A tuple cannot change which objects it holds, but a mutable object inside it can still change. t[1] = [2, 3, 4] would raise TypeError; t[1].append(4) changes the list itself."
+    },
+    {
+      "id": "quiz-py-functions-01",
+      "topic": "functions",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "def add(item, bucket=[]):\n    bucket.append(item)\n    return bucket\n\nadd(1)\nprint(add(2))",
+      "options": [
+        "[1, 2]",
+        "[2]",
+        "[1]",
+        "None"
+      ],
+      "answer": "[1, 2]",
+      "explanation": "A default value is evaluated once, when def runs, so every call that leaves out bucket shares the same list. Use bucket=None and create the list inside the function."
+    },
+    {
+      "id": "quiz-py-functions-02",
+      "topic": "functions",
+      "difficulty": "easy",
+      "prompt": "What does this print?",
+      "code": "def describe(*args, **kwargs):\n    print(args, kwargs)\n\ndescribe(1, 2, mode='fast')",
+      "options": [
+        "(1, 2) {'mode': 'fast'}",
+        "[1, 2] {'mode': 'fast'}",
+        "(1, 2, 'fast') {}",
+        "(1, 2) ('mode', 'fast')"
+      ],
+      "answer": "(1, 2) {'mode': 'fast'}",
+      "explanation": "*args collects the extra positional arguments into a tuple, and **kwargs collects the keyword arguments into a dict."
+    },
+    {
+      "id": "quiz-py-functions-03",
+      "topic": "functions",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "funcs = [lambda: i for i in range(3)]\nprint([f() for f in funcs])",
+      "options": [
+        "[2, 2, 2]",
+        "[0, 1, 2]",
+        "[3, 3, 3]",
+        "[0, 0, 0]"
+      ],
+      "answer": "[2, 2, 2]",
+      "explanation": "A closure looks up i when it is called, not when it is created, and by then the comprehension has finished with i at 2. Capture the value at creation with a default argument: lambda i=i: i."
+    },
+    {
+      "id": "quiz-py-functions-04",
+      "topic": "functions",
+      "difficulty": "medium",
+      "prompt": "What happens when this runs?",
+      "code": "count = 0\n\ndef increment():\n    count += 1\n\nincrement()",
+      "options": [
+        "It raises UnboundLocalError",
+        "count becomes 1",
+        "count stays 0 and nothing is raised",
+        "It raises SyntaxError"
+      ],
+      "answer": "It raises UnboundLocalError",
+      "explanation": "Assigning to count anywhere in the function makes count local to the whole function, so count += 1 reads a local variable that has no value yet. Declare global count, or better, return the new value."
+    },
+    {
+      "id": "quiz-py-functions-05",
+      "topic": "functions",
+      "difficulty": "easy",
+      "prompt": "What does this print?",
+      "code": "def make_multiplier(n):\n    def multiply(x):\n        return x * n\n    return multiply\n\ndouble = make_multiplier(2)\ntriple = make_multiplier(3)\nprint(double(5), triple(5))",
+      "options": [
+        "10 15",
+        "15 15",
+        "10 10",
+        "25 25"
+      ],
+      "answer": "10 15",
+      "explanation": "Each call to make_multiplier creates a new scope with its own n, and the inner function closes over that call's n."
+    },
+    {
+      "id": "quiz-py-functions-06",
+      "topic": "functions",
+      "difficulty": "hard",
+      "prompt": "What does this print?",
+      "code": "def f(a, b=2, *, c):\n    return a + b + c\n\nprint(f(1, c=3))",
+      "options": [
+        "6",
+        "It raises TypeError",
+        "4",
+        "3"
+      ],
+      "answer": "6",
+      "explanation": "Parameters after a bare * are keyword-only, so c must be passed by name, and here it is. b takes its default of 2, giving 1 + 2 + 3. f(1, 2, 3) would raise TypeError."
+    },
+    {
+      "id": "quiz-py-iteration-01",
+      "topic": "iteration",
+      "difficulty": "easy",
+      "prompt": "What does this print?",
+      "code": "print([x * x for x in range(5) if x % 2 == 0])",
+      "options": [
+        "[0, 4, 16]",
+        "[4, 16]",
+        "[0, 1, 4, 9, 16]",
+        "[1, 9]"
+      ],
+      "answer": "[0, 4, 16]",
+      "explanation": "range(5) is 0 to 4. The if keeps the even numbers 0, 2 and 4, and squaring them gives 0, 4 and 16."
+    },
+    {
+      "id": "quiz-py-iteration-02",
+      "topic": "iteration",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "squares = (n * n for n in range(3))\nprint(list(squares), list(squares))",
+      "options": [
+        "[0, 1, 4] []",
+        "[0, 1, 4] [0, 1, 4]",
+        "[] []",
+        "It raises StopIteration"
+      ],
+      "answer": "[0, 1, 4] []",
+      "explanation": "A generator expression is an iterator, and an iterator can be consumed only once. The second list() finds it exhausted and returns an empty list."
+    },
+    {
+      "id": "quiz-py-iteration-03",
+      "topic": "iteration",
+      "difficulty": "easy",
+      "prompt": "Which is the idiomatic way to loop over a list with each item's index?",
+      "options": [
+        "for i, item in enumerate(items):",
+        "for i in range(len(items)):",
+        "for item in items: i = items.index(item)",
+        "for i, item in items.items():"
+      ],
+      "answer": "for i, item in enumerate(items):",
+      "explanation": "enumerate yields (index, item) pairs. range(len(items)) works but you then index by hand; index() rescans the list each time and returns the first match for duplicates; lists have no items() method."
+    },
+    {
+      "id": "quiz-py-iteration-04",
+      "topic": "iteration",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "def countdown(n):\n    while n > 0:\n        yield n\n        n -= 1\n\ngen = countdown(3)\nprint(next(gen), next(gen), list(gen))",
+      "options": [
+        "3 2 [1]",
+        "3 2 [3, 2, 1]",
+        "3 3 [3, 2, 1]",
+        "3 2 []"
+      ],
+      "answer": "3 2 [1]",
+      "explanation": "Each next() runs the generator until its next yield and pauses there. After two values, list() collects whatever is left, which is just 1."
+    },
+    {
+      "id": "quiz-py-iteration-05",
+      "topic": "iteration",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "names = ['ann', 'bob', 'cy']\nages = [31, 25]\nprint(dict(zip(names, ages)))",
+      "options": [
+        "{'ann': 31, 'bob': 25}",
+        "{'ann': 31, 'bob': 25, 'cy': None}",
+        "It raises ValueError",
+        "[('ann', 31), ('bob', 25)]"
+      ],
+      "answer": "{'ann': 31, 'bob': 25}",
+      "explanation": "zip stops at the shortest input, so 'cy' is dropped without a word. From Python 3.10, zip(names, ages, strict=True) raises ValueError instead."
+    },
+    {
+      "id": "quiz-py-iteration-06",
+      "topic": "iteration",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "words = ['apple', 'pear', 'kiwi', 'fig']\nprint({len(w): w for w in words})",
+      "options": [
+        "{5: 'apple', 4: 'kiwi', 3: 'fig'}",
+        "{5: 'apple', 4: 'pear', 3: 'fig'}",
+        "{5: 'apple', 4: ['pear', 'kiwi'], 3: 'fig'}",
+        "It raises KeyError"
+      ],
+      "answer": "{5: 'apple', 4: 'kiwi', 3: 'fig'}",
+      "explanation": "A dict comprehension assigns one key at a time, so when two words have the same length the later one overwrites the earlier: 'kiwi' replaces 'pear'. The key keeps the position where it was first inserted."
+    },
+    {
+      "id": "quiz-py-classes-01",
+      "topic": "classes",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "class Dog:\n    tricks = []\n\n    def add_trick(self, trick):\n        self.tricks.append(trick)\n\na = Dog()\nb = Dog()\na.add_trick('sit')\nprint(b.tricks)",
+      "options": [
+        "['sit']",
+        "[]",
+        "It raises AttributeError",
+        "None"
+      ],
+      "answer": "['sit']",
+      "explanation": "tricks is a class attribute, shared by every instance, and append changes that one list. Give each instance its own list in __init__ with self.tricks = []."
+    },
+    {
+      "id": "quiz-py-classes-02",
+      "topic": "classes",
+      "difficulty": "easy",
+      "prompt": "What does this print?",
+      "code": "class Point:\n    def __init__(self, x, y):\n        self.x, self.y = x, y\n\n    def __repr__(self):\n        return f'Point({self.x}, {self.y})'\n\nprint([Point(1, 2)])",
+      "options": [
+        "[Point(1, 2)]",
+        "[<__main__.Point object at 0x...>]",
+        "[(1, 2)]",
+        "Point(1, 2)"
+      ],
+      "answer": "[Point(1, 2)]",
+      "explanation": "A list shows its items with repr(), so __repr__ is used. Without it you would see the default <__main__.Point object at 0x…>."
+    },
+    {
+      "id": "quiz-py-classes-03",
+      "topic": "classes",
+      "difficulty": "easy",
+      "prompt": "You want a small class holding a name and an age, with __init__, __repr__ and __eq__ written for you. What is the idiomatic choice?",
+      "options": [
+        "A @dataclass with name: str and age: int fields",
+        "A class with __slots__ = ('name', 'age')",
+        "A dict subclass with name and age keys",
+        "A class with name and age as class attributes"
+      ],
+      "answer": "A @dataclass with name: str and age: int fields",
+      "explanation": "@dataclass (from dataclasses) generates __init__, __repr__ and __eq__ from the annotated fields. __slots__ only restricts which attributes exist, and class attributes are shared by every instance."
+    },
+    {
+      "id": "quiz-py-classes-04",
+      "topic": "classes",
+      "difficulty": "hard",
+      "prompt": "What does this print?",
+      "code": "class A:\n    def hello(self):\n        return 'A'\n\nclass B(A):\n    def hello(self):\n        return 'B' + super().hello()\n\nclass C(A):\n    def hello(self):\n        return 'C' + super().hello()\n\nclass D(B, C):\n    pass\n\nprint(D().hello())",
+      "options": [
+        "BCA",
+        "BA",
+        "BACA",
+        "CBA"
+      ],
+      "answer": "BCA",
+      "explanation": "super() follows the method resolution order of the instance's class, D → B → C → A, not just B's own parent. So B's super().hello() reaches C, and C's reaches A."
+    },
+    {
+      "id": "quiz-py-classes-05",
+      "topic": "classes",
+      "difficulty": "hard",
+      "prompt": "What happens when this runs?",
+      "code": "class Money:\n    def __init__(self, cents):\n        self.cents = cents\n\n    def __eq__(self, other):\n        return self.cents == other.cents\n\nprint(Money(100) == Money(100), Money(100) in {Money(100)})",
+      "options": [
+        "It raises TypeError: unhashable type",
+        "It prints True True",
+        "It prints True False",
+        "It prints False False"
+      ],
+      "answer": "It raises TypeError: unhashable type",
+      "explanation": "A class that defines __eq__ without __hash__ gets __hash__ set to None, so its instances cannot go in a set or be dict keys, and building the set raises. Define __hash__ to match __eq__, or use @dataclass(frozen=True)."
+    },
+    {
+      "id": "quiz-py-classes-06",
+      "topic": "classes",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "class Temperature:\n    def __init__(self, celsius):\n        self.celsius = celsius\n\n    @property\n    def fahrenheit(self):\n        return self.celsius * 9 / 5 + 32\n\nt = Temperature(100)\nt.celsius = 0\nprint(t.fahrenheit)",
+      "options": [
+        "32.0",
+        "212.0",
+        "32",
+        "It raises AttributeError"
+      ],
+      "answer": "32.0",
+      "explanation": "A property is computed every time it is read, so it reflects the new celsius. / returns a float, hence 32.0 rather than 32."
+    },
+    {
+      "id": "quiz-py-errors-01",
+      "topic": "errors",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "def f():\n    try:\n        return 'try'\n    finally:\n        print('finally', end=' ')\n\nprint(f())",
+      "options": [
+        "finally try",
+        "try finally",
+        "try",
+        "finally"
+      ],
+      "answer": "finally try",
+      "explanation": "finally runs on the way out of the function: after the return value is worked out, but before the caller receives it. So its print comes first, then the outer print shows the returned value."
+    },
+    {
+      "id": "quiz-py-errors-02",
+      "topic": "errors",
+      "difficulty": "easy",
+      "prompt": "Which is the idiomatic way to read a file so it is closed even if reading raises?",
+      "options": [
+        "with open(path) as f: data = f.read()",
+        "f = open(path); data = f.read(); f.close()",
+        "data = open(path).read()",
+        "try: f = open(path) except OSError: f.close()"
+      ],
+      "answer": "with open(path) as f: data = f.read()",
+      "explanation": "with closes the file on the way out of the block, whether it finishes or raises. The explicit close() is skipped if read() raises, and the one-liner leaves closing to the garbage collector."
+    },
+    {
+      "id": "quiz-py-errors-03",
+      "topic": "errors",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "try:\n    int('abc')\nexcept ValueError:\n    print('value', end=' ')\nexcept Exception:\n    print('exception', end=' ')\nelse:\n    print('else', end=' ')\nfinally:\n    print('done')",
+      "options": [
+        "value done",
+        "value exception done",
+        "exception done",
+        "value else done"
+      ],
+      "answer": "value done",
+      "explanation": "int('abc') raises ValueError. Only the first matching except runs; else runs only when nothing was raised; finally always runs."
+    },
+    {
+      "id": "quiz-py-errors-04",
+      "topic": "errors",
+      "difficulty": "easy",
+      "prompt": "What happens when this runs?",
+      "code": "d = {'a': 1}\nprint(d.get('b'), d.get('b', 0))\nprint(d['b'])",
+      "options": [
+        "It prints None 0, then raises KeyError",
+        "It prints None 0, then None",
+        "It raises KeyError on the first print",
+        "It prints 0 0, then raises KeyError"
+      ],
+      "answer": "It prints None 0, then raises KeyError",
+      "explanation": "get returns None, or the default you pass, when the key is missing. Indexing with d[key] raises KeyError for a missing key."
+    },
+    {
+      "id": "quiz-py-errors-05",
+      "topic": "errors",
+      "difficulty": "medium",
+      "prompt": "Which line raises, and with what?",
+      "code": "values = [10, 0, 'x']\ntotal = 0\nfor v in values:\n    total += 100 / v\nprint(total)",
+      "options": [
+        "Line 4, ZeroDivisionError",
+        "Line 4, TypeError",
+        "Line 5, NameError",
+        "None: it prints 10.0"
+      ],
+      "answer": "Line 4, ZeroDivisionError",
+      "explanation": "The loop reaches 0 before 'x', and 100 / 0 raises ZeroDivisionError on line 4. The TypeError that 'x' would cause is never reached."
+    },
+    {
+      "id": "quiz-py-errors-06",
+      "topic": "errors",
+      "difficulty": "medium",
+      "prompt": "Inside except KeyError as err:, which line raises your own ConfigError with the KeyError recorded as its direct cause?",
+      "options": [
+        "raise ConfigError('bad config') from err",
+        "raise ConfigError('bad config', err)",
+        "raise err as ConfigError('bad config')",
+        "raise ConfigError('bad config') with err"
+      ],
+      "answer": "raise ConfigError('bad config') from err",
+      "explanation": "raise ... from err sets __cause__, and the traceback says the KeyError was the direct cause. Passing err as an argument only puts it in args, and the last two lines are not valid Python."
+    },
+    {
+      "id": "quiz-py-performance-01",
+      "topic": "performance",
+      "difficulty": "easy",
+      "prompt": "What is the average time complexity of x in s when s is a set of n items, and when s is a list of n items?",
+      "options": [
+        "O(1) for the set, O(n) for the list",
+        "O(n) for both",
+        "O(log n) for the set, O(n) for the list",
+        "O(1) for both"
+      ],
+      "answer": "O(1) for the set, O(n) for the list",
+      "explanation": "A set is a hash table, so a membership test is constant time on average. A list is checked item by item from the start."
+    },
+    {
+      "id": "quiz-py-performance-02",
+      "topic": "performance",
+      "difficulty": "medium",
+      "prompt": "Which is the efficient way to build one string from a list of many parts?",
+      "options": [
+        "''.join(parts)",
+        "for p in parts: s += p",
+        "sum(parts, '')",
+        "functools.reduce(lambda a, b: a + b, parts)"
+      ],
+      "answer": "''.join(parts)",
+      "explanation": "join works out the final size and copies each part once. Repeated + can copy the growing string every time, quadratic in the worst case; reduce does the same; and sum() refuses strings outright with a TypeError."
+    },
+    {
+      "id": "quiz-py-performance-03",
+      "topic": "performance",
+      "difficulty": "medium",
+      "prompt": "What is the time complexity of lst.pop(0) on a list of n items, and of dq.popleft() on a collections.deque of n items?",
+      "options": [
+        "O(n) and O(1)",
+        "O(1) and O(1)",
+        "O(n) and O(n)",
+        "O(1) and O(n)"
+      ],
+      "answer": "O(n) and O(1)",
+      "explanation": "Removing the first item of a list shifts every remaining item down one place. A deque is built to add and remove at both ends in constant time, which is why queues use it."
+    },
+    {
+      "id": "quiz-py-performance-04",
+      "topic": "performance",
+      "difficulty": "medium",
+      "prompt": "What is the worst-case time complexity of this function?",
+      "code": "def has_duplicate(items):\n    for i in range(len(items)):\n        for j in range(i + 1, len(items)):\n            if items[i] == items[j]:\n                return True\n    return False",
+      "options": [
+        "O(n^2)",
+        "O(n)",
+        "O(n log n)",
+        "O(2^n)"
+      ],
+      "answer": "O(n^2)",
+      "explanation": "Every pair is compared, n(n-1)/2 comparisons when there is no duplicate. For hashable items, len(set(items)) != len(items) answers the same question in O(n) on average."
+    },
+    {
+      "id": "quiz-py-performance-05",
+      "topic": "performance",
+      "difficulty": "medium",
+      "prompt": "What does this print?",
+      "code": "from functools import lru_cache\n\ncalls = 0\n\n@lru_cache(maxsize=None)\ndef fib(n):\n    global calls\n    calls += 1\n    return n if n < 2 else fib(n - 1) + fib(n - 2)\n\nfib(30)\nprint(calls)",
+      "options": [
+        "31",
+        "2692537",
+        "30",
+        "832040"
+      ],
+      "answer": "31",
+      "explanation": "With the cache, each fib(n) is computed once, for n from 0 to 30: 31 calls. Without it, the plain recursion makes 2,692,537 calls for fib(30); 832040 is the value of fib(30)."
+    },
+    {
+      "id": "quiz-py-performance-06",
+      "topic": "performance",
+      "difficulty": "easy",
+      "prompt": "What is the worst-case time complexity of sorted(items) on n items?",
+      "options": [
+        "O(n log n)",
+        "O(n)",
+        "O(n^2)",
+        "O(log n)"
+      ],
+      "answer": "O(n log n)",
+      "explanation": "Python's sort (Timsort) is O(n log n) in the worst case, and close to O(n) on data that is already mostly in order."
+    },
+    {
+      "id": "quiz-py-performance-07",
+      "topic": "performance",
+      "difficulty": "easy",
+      "prompt": "Which is the idiomatic way to count how often each word appears in a list of words?",
+      "options": [
+        "collections.Counter(words)",
+        "{w: words.count(w) for w in words}",
+        "dict.fromkeys(words, 1)",
+        "len(set(words))"
+      ],
+      "answer": "collections.Counter(words)",
+      "explanation": "Counter counts in a single pass, O(n). Calling words.count(w) for every word rescans the list each time, O(n^2); fromkeys sets every count to 1; len(set(words)) is the number of distinct words, not how often each appears."
+    }
+  ]
+}

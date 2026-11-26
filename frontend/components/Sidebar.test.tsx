@@ -32,9 +32,9 @@ vi.mock('../contexts/SubscriptionContext', () => ({
 
 const { Sidebar } = await import('./Sidebar');
 
-const renderSidebar = () =>
+const renderSidebar = (at = '/') =>
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[at]}>
       <Sidebar mobileOpen={false} onMobileClose={vi.fn()} />
     </MemoryRouter>,
   );
@@ -67,6 +67,13 @@ describe('Sidebar', () => {
     expect(within(main().getByRole('link', { name: /Mock Test/ })).queryByText('Hidden from users')).toBeNull();
   });
 
+  it('draws Quiz as a mode of Mission Control, not a sidebar entry, and keeps Mission Control lit on it', () => {
+    renderSidebar('/dashboard/quiz');
+
+    expect(main().queryByRole('link', { name: /Quiz/ })).toBeNull();
+    expect(main().getByRole('link', { name: /Mission Control/ })).toHaveAttribute('aria-current', 'page');
+  });
+
   it('keeps Plan & Usage and Settings beside Log out, not among the features', () => {
     renderSidebar();
 
@@ -75,5 +82,18 @@ describe('Sidebar', () => {
     expect(account().getByRole('link', { name: /Plan & Usage/ })).toBeTruthy();
     expect(account().getByRole('link', { name: /Settings/ })).toBeTruthy();
     expect(account().getByRole('button', { name: 'Log out' })).toBeTruthy();
+  });
+
+  it('does not show a user the question bank', () => {
+    renderSidebar();
+    expect(account().queryByRole('link', { name: /Question Bank/ })).toBeNull();
+  });
+
+  it('shows an admin the question bank beside the other admin pages', () => {
+    isAdmin = true;
+    renderSidebar();
+
+    expect(account().getByRole('link', { name: /Question Bank/ })).toHaveAttribute('href', '/account/admin/questions');
+    expect(main().queryByRole('link', { name: /Question Bank/ })).toBeNull();
   });
 });

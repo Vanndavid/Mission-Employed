@@ -1,0 +1,536 @@
+{
+  "language": "sql",
+  "questions": [
+    {
+      "id": "quiz-sql-filtering-01",
+      "topic": "filtering",
+      "difficulty": "easy",
+      "prompt": "How many rows does this return?",
+      "code": "-- users: 5 rows, 2 of them with phone NULL\nSELECT * FROM users WHERE phone = NULL;",
+      "options": [
+        "0",
+        "2",
+        "3",
+        "5"
+      ],
+      "answer": "0",
+      "explanation": "Comparing anything with NULL using = gives NULL (unknown), never true, so no row matches, not even the two with a NULL phone. Write WHERE phone IS NULL."
+    },
+    {
+      "id": "quiz-sql-filtering-02",
+      "topic": "filtering",
+      "difficulty": "medium",
+      "prompt": "How many rows does this return?",
+      "code": "-- orders.status: 'paid', 'paid', 'refunded', NULL\nSELECT * FROM orders WHERE status <> 'paid';",
+      "options": [
+        "1",
+        "2",
+        "0",
+        "4"
+      ],
+      "answer": "1",
+      "explanation": "NULL <> 'paid' is unknown, not true, so the NULL row is filtered out along with the paid ones, leaving only refunded. Add OR status IS NULL, or use status IS DISTINCT FROM 'paid', to keep it."
+    },
+    {
+      "id": "quiz-sql-filtering-03",
+      "topic": "filtering",
+      "difficulty": "easy",
+      "prompt": "What does this return?",
+      "code": "SELECT COALESCE(NULL, NULL, 'fallback', 'other');",
+      "options": [
+        "fallback",
+        "NULL",
+        "other",
+        "An error"
+      ],
+      "answer": "fallback",
+      "explanation": "COALESCE returns its first argument that is not NULL, and ignores the rest."
+    },
+    {
+      "id": "quiz-sql-filtering-04",
+      "topic": "filtering",
+      "difficulty": "medium",
+      "prompt": "Why does this query fail in PostgreSQL?",
+      "code": "SELECT price * quantity AS total\nFROM order_items\nWHERE total > 100;",
+      "options": [
+        "WHERE is evaluated before SELECT, so the alias total does not exist there yet",
+        "AS cannot name a calculated column",
+        "total is a reserved word",
+        "WHERE cannot compare a calculation with a number"
+      ],
+      "answer": "WHERE is evaluated before SELECT, so the alias total does not exist there yet",
+      "explanation": "Logically, FROM and WHERE run before the SELECT list, so a column alias is not visible in WHERE. Repeat the expression, WHERE price * quantity > 100, or wrap the query in a subquery. ORDER BY runs after SELECT and can use the alias."
+    },
+    {
+      "id": "quiz-sql-filtering-05",
+      "topic": "filtering",
+      "difficulty": "easy",
+      "prompt": "Which names does this match?",
+      "code": "SELECT name FROM products WHERE name LIKE 'ca_%';",
+      "options": [
+        "Names that start with ca and have at least 3 characters",
+        "Names that start with ca_",
+        "Names exactly 3 characters long that start with ca",
+        "Names that contain ca anywhere"
+      ],
+      "answer": "Names that start with ca and have at least 3 characters",
+      "explanation": "In LIKE, _ matches exactly one character and % matches any number of characters, including none. So 'ca_%' needs ca, then one more character, then anything: cat and cable, but not ca. Escape the _ to match a literal underscore."
+    },
+    {
+      "id": "quiz-sql-filtering-06",
+      "topic": "filtering",
+      "difficulty": "medium",
+      "prompt": "In PostgreSQL, in what order does this return the points?",
+      "code": "-- scores.points: 10, NULL, 30, 20\nSELECT points FROM scores ORDER BY points DESC;",
+      "options": [
+        "NULL, 30, 20, 10",
+        "30, 20, 10, NULL",
+        "30, 20, 10",
+        "10, 20, 30, NULL"
+      ],
+      "answer": "NULL, 30, 20, 10",
+      "explanation": "PostgreSQL sorts NULL as larger than every value, so it comes first in descending order and last in ascending order. MySQL and SQLite do the opposite, which is a good reason to say NULLS LAST or NULLS FIRST explicitly."
+    },
+    {
+      "id": "quiz-sql-joins-01",
+      "topic": "joins",
+      "difficulty": "easy",
+      "prompt": "How many rows does this return?",
+      "code": "-- customers: ids 1, 2, 3, 4\n-- orders: 3 rows, for customers 1, 1 and 2\nSELECT c.id, o.id\nFROM customers c\nLEFT JOIN orders o ON o.customer_id = c.id;",
+      "options": [
+        "5",
+        "4",
+        "3",
+        "12"
+      ],
+      "answer": "5",
+      "explanation": "A LEFT JOIN keeps every customer. Customer 1 appears once per order (2 rows), customer 2 once, and customers 3 and 4 once each with NULL in the order columns: 5 rows."
+    },
+    {
+      "id": "quiz-sql-joins-02",
+      "topic": "joins",
+      "difficulty": "medium",
+      "prompt": "Which query lists the customers who have never placed an order?",
+      "options": [
+        "SELECT c.* FROM customers c LEFT JOIN orders o ON o.customer_id = c.id WHERE o.id IS NULL",
+        "SELECT c.* FROM customers c JOIN orders o ON o.customer_id = c.id WHERE o.id IS NULL",
+        "SELECT c.* FROM customers c LEFT JOIN orders o ON o.customer_id = c.id WHERE o.id = NULL",
+        "SELECT c.* FROM customers c RIGHT JOIN orders o ON o.customer_id = c.id"
+      ],
+      "answer": "SELECT c.* FROM customers c LEFT JOIN orders o ON o.customer_id = c.id WHERE o.id IS NULL",
+      "explanation": "The LEFT JOIN keeps customers with no match and fills the order columns with NULL, and IS NULL keeps just those. An inner JOIN drops them before WHERE runs, = NULL is never true, and the RIGHT JOIN keeps orders, not customers. NOT EXISTS is an equally good way to write it."
+    },
+    {
+      "id": "quiz-sql-joins-03",
+      "topic": "joins",
+      "difficulty": "easy",
+      "prompt": "How many rows does this return?",
+      "code": "-- sizes: 3 rows\n-- colours: 4 rows\nSELECT * FROM sizes CROSS JOIN colours;",
+      "options": [
+        "12",
+        "7",
+        "4",
+        "3"
+      ],
+      "answer": "12",
+      "explanation": "A cross join pairs every row of one table with every row of the other: 3 × 4 = 12."
+    },
+    {
+      "id": "quiz-sql-joins-04",
+      "topic": "joins",
+      "difficulty": "hard",
+      "prompt": "This was meant to list every customer with their paid orders. Why are customers with no paid orders missing?",
+      "code": "SELECT c.name, o.total\nFROM customers c\nLEFT JOIN orders o ON o.customer_id = c.id\nWHERE o.status = 'paid';",
+      "options": [
+        "WHERE o.status = 'paid' removes the rows where o.status is NULL, which turns it into an inner join",
+        "A LEFT JOIN only keeps customers that have orders",
+        "o.status has to be in the SELECT list to filter on it",
+        "WHERE is applied before the join"
+      ],
+      "answer": "WHERE o.status = 'paid' removes the rows where o.status is NULL, which turns it into an inner join",
+      "explanation": "A customer with no matching order gets NULL for o.status, and NULL = 'paid' is not true, so WHERE throws the row away. Put the condition in the join instead: LEFT JOIN orders o ON o.customer_id = c.id AND o.status = 'paid'."
+    },
+    {
+      "id": "quiz-sql-joins-05",
+      "topic": "joins",
+      "difficulty": "medium",
+      "prompt": "What does this self join return?",
+      "code": "SELECT e.name, m.name AS manager\nFROM employees e\nJOIN employees m ON m.id = e.manager_id;",
+      "options": [
+        "Each employee with their manager's name, leaving out employees who have no manager",
+        "Each employee with their manager's name, including employees who have no manager",
+        "Every pair of employees",
+        "Only the employees who are managers"
+      ],
+      "answer": "Each employee with their manager's name, leaving out employees who have no manager",
+      "explanation": "The table is joined to itself under two aliases, e for the employee and m for their manager. It is an inner join, so an employee whose manager_id is NULL, such as the CEO, has no match and drops out; LEFT JOIN keeps them."
+    },
+    {
+      "id": "quiz-sql-joins-06",
+      "topic": "joins",
+      "difficulty": "medium",
+      "prompt": "How many rows does this return?",
+      "code": "-- a.x: 1, 2, 2\n-- b.x: 2, 2, 3\nSELECT * FROM a JOIN b ON a.x = b.x;",
+      "options": [
+        "4",
+        "2",
+        "1",
+        "3"
+      ],
+      "answer": "4",
+      "explanation": "A join returns every matching pair: each of the two 2s in a matches each of the two 2s in b, 2 × 2 = 4 rows. Duplicate keys multiply rows, a common cause of inflated totals."
+    },
+    {
+      "id": "quiz-sql-aggregation-01",
+      "topic": "aggregation",
+      "difficulty": "easy",
+      "prompt": "What does this return?",
+      "code": "-- employees.bonus: 100, NULL, 200, NULL\nSELECT COUNT(*), COUNT(bonus), AVG(bonus) FROM employees;",
+      "options": [
+        "4, 2, 150",
+        "4, 4, 75",
+        "4, 2, 75",
+        "2, 2, 150"
+      ],
+      "answer": "4, 2, 150",
+      "explanation": "COUNT(*) counts rows. COUNT(column) and the other aggregates skip NULLs, so AVG is (100 + 200) / 2 = 150, not divided by 4."
+    },
+    {
+      "id": "quiz-sql-aggregation-02",
+      "topic": "aggregation",
+      "difficulty": "easy",
+      "prompt": "Which query lists the departments with more than 5 employees?",
+      "options": [
+        "SELECT dept, COUNT(*) FROM employees GROUP BY dept HAVING COUNT(*) > 5",
+        "SELECT dept, COUNT(*) FROM employees WHERE COUNT(*) > 5 GROUP BY dept",
+        "SELECT dept, COUNT(*) FROM employees GROUP BY dept WHERE COUNT(*) > 5",
+        "SELECT dept, COUNT(*) FROM employees GROUP BY dept ORDER BY COUNT(*) > 5"
+      ],
+      "answer": "SELECT dept, COUNT(*) FROM employees GROUP BY dept HAVING COUNT(*) > 5",
+      "explanation": "WHERE filters rows before they are grouped, so it cannot use an aggregate, and it must come before GROUP BY. HAVING filters the groups after aggregation. ORDER BY only sorts."
+    },
+    {
+      "id": "quiz-sql-aggregation-03",
+      "topic": "aggregation",
+      "difficulty": "medium",
+      "prompt": "Why does PostgreSQL reject this query?",
+      "code": "SELECT dept, name, MAX(salary)\nFROM employees\nGROUP BY dept;",
+      "options": [
+        "name is neither in GROUP BY nor inside an aggregate",
+        "MAX cannot be used with GROUP BY",
+        "dept must come last in the SELECT list",
+        "GROUP BY needs an ORDER BY"
+      ],
+      "answer": "name is neither in GROUP BY nor inside an aggregate",
+      "explanation": "Each output row is one department, and a department has many names, so the database cannot pick one. Group by name too, aggregate it, or use a window function to find the top earner per department. MySQL without ONLY_FULL_GROUP_BY returns an arbitrary name instead of failing."
+    },
+    {
+      "id": "quiz-sql-aggregation-04",
+      "topic": "aggregation",
+      "difficulty": "medium",
+      "prompt": "What does this return?",
+      "code": "-- t.x: 1, 1, 2, NULL\nSELECT COUNT(DISTINCT x) FROM t;",
+      "options": [
+        "2",
+        "3",
+        "4",
+        "1"
+      ],
+      "answer": "2",
+      "explanation": "DISTINCT leaves 1, 2 and NULL, and COUNT ignores the NULL, so the answer is 2."
+    },
+    {
+      "id": "quiz-sql-aggregation-05",
+      "topic": "aggregation",
+      "difficulty": "medium",
+      "prompt": "The orders table is empty. What does this return?",
+      "code": "SELECT COUNT(*), SUM(total) FROM orders;",
+      "options": [
+        "One row: 0 and NULL",
+        "One row: 0 and 0",
+        "One row: NULL and NULL",
+        "No rows"
+      ],
+      "answer": "One row: 0 and NULL",
+      "explanation": "An aggregate query without GROUP BY always returns exactly one row. COUNT of nothing is 0, but SUM of nothing is NULL, so write COALESCE(SUM(total), 0) when you want 0."
+    },
+    {
+      "id": "quiz-sql-aggregation-06",
+      "topic": "aggregation",
+      "difficulty": "easy",
+      "prompt": "What does this return?",
+      "code": "-- sales(region, amount): ('north', 10), ('north', 20), ('south', 5)\nSELECT region, SUM(amount)\nFROM sales\nGROUP BY region\nHAVING SUM(amount) > 10;",
+      "options": [
+        "One row: north, 30",
+        "Two rows: north, 30 and south, 5",
+        "One row: north, 20",
+        "No rows"
+      ],
+      "answer": "One row: north, 30",
+      "explanation": "GROUP BY sums each region, north 30 and south 5, and then HAVING keeps only the groups whose sum is over 10."
+    },
+    {
+      "id": "quiz-sql-subqueries-01",
+      "topic": "subqueries",
+      "difficulty": "hard",
+      "prompt": "How many rows does this return?",
+      "code": "-- users.id: 1, 2, 3\n-- banned.user_id: 2, NULL\nSELECT id FROM users\nWHERE id NOT IN (SELECT user_id FROM banned);",
+      "options": [
+        "0",
+        "2",
+        "1",
+        "3"
+      ],
+      "answer": "0",
+      "explanation": "x NOT IN (2, NULL) means x <> 2 AND x <> NULL, and x <> NULL is unknown, so no row can pass. Use NOT EXISTS, which NULLs do not break, or filter the NULLs out of the subquery."
+    },
+    {
+      "id": "quiz-sql-subqueries-02",
+      "topic": "subqueries",
+      "difficulty": "medium",
+      "prompt": "Which query finds the employees who earn more than their own department's average?",
+      "options": [
+        "SELECT e.name FROM employees e WHERE e.salary > (SELECT AVG(x.salary) FROM employees x WHERE x.dept = e.dept)",
+        "SELECT name FROM employees WHERE salary > AVG(salary)",
+        "SELECT name FROM employees GROUP BY dept HAVING salary > AVG(salary)",
+        "SELECT e.name FROM employees e WHERE e.salary > (SELECT AVG(salary) FROM employees)"
+      ],
+      "answer": "SELECT e.name FROM employees e WHERE e.salary > (SELECT AVG(x.salary) FROM employees x WHERE x.dept = e.dept)",
+      "explanation": "A correlated subquery runs for each outer row and can refer to it (e.dept), so each employee is compared with their own department's average. An aggregate cannot appear directly in WHERE, and the last query compares everyone with the company-wide average."
+    },
+    {
+      "id": "quiz-sql-subqueries-03",
+      "topic": "subqueries",
+      "difficulty": "medium",
+      "prompt": "What does this count?",
+      "code": "WITH totals AS (\n  SELECT customer_id, SUM(amount) AS spent\n  FROM orders\n  GROUP BY customer_id\n)\nSELECT COUNT(*) FROM totals WHERE spent > 100;",
+      "options": [
+        "Customers who have spent more than 100 in total",
+        "Orders worth more than 100",
+        "Customers with at least one order worth more than 100",
+        "Customers with more than 100 orders"
+      ],
+      "answer": "Customers who have spent more than 100 in total",
+      "explanation": "The CTE first sums each customer's orders into one row per customer. The outer query then counts the customers whose total is over 100, however many orders it took."
+    },
+    {
+      "id": "quiz-sql-subqueries-04",
+      "topic": "subqueries",
+      "difficulty": "medium",
+      "prompt": "Which is true of these two filters on customers c?",
+      "code": "WHERE EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.id)\n\nWHERE c.id IN (SELECT customer_id FROM orders)",
+      "options": [
+        "Both keep each customer with at least one order, once",
+        "EXISTS also returns the matching orders",
+        "IN keeps a customer once per order",
+        "EXISTS needs its subquery to select customer_id"
+      ],
+      "answer": "Both keep each customer with at least one order, once",
+      "explanation": "Both are semi-joins: a customer is kept once if any order matches, however many there are. SELECT 1 is only a convention, since EXISTS asks whether a row exists, not what it holds. They differ when negated: NOT IN breaks on NULLs, NOT EXISTS does not."
+    },
+    {
+      "id": "quiz-sql-subqueries-05",
+      "topic": "subqueries",
+      "difficulty": "hard",
+      "prompt": "What does this return?",
+      "code": "WITH RECURSIVE n(i) AS (\n  SELECT 1\n  UNION ALL\n  SELECT i + 1 FROM n WHERE i < 5\n)\nSELECT SUM(i) FROM n;",
+      "options": [
+        "15",
+        "10",
+        "5",
+        "It never finishes"
+      ],
+      "answer": "15",
+      "explanation": "The anchor row is 1, and each recursive step adds i + 1 while i < 5, giving 1 to 5; it stops when a step returns no rows. 1 + 2 + 3 + 4 + 5 = 15."
+    },
+    {
+      "id": "quiz-sql-subqueries-06",
+      "topic": "subqueries",
+      "difficulty": "medium",
+      "prompt": "When does this query fail with an error in PostgreSQL?",
+      "code": "SELECT name\nFROM products\nWHERE price = (SELECT price FROM products WHERE category = 'books');",
+      "options": [
+        "When there is more than one book, because = needs a single value",
+        "Always, because a subquery cannot read the table the outer query reads",
+        "When there are no books, because = needs a row",
+        "Never: = compares with every book in turn"
+      ],
+      "answer": "When there is more than one book, because = needs a single value",
+      "explanation": "A subquery used as a value must return at most one row; with several books PostgreSQL raises \"more than one row returned by a subquery used as an expression\". With no books it is NULL and the query just returns nothing. Use IN to compare with many."
+    },
+    {
+      "id": "quiz-sql-windows-01",
+      "topic": "windows",
+      "difficulty": "medium",
+      "prompt": "What are rn, rnk and dense on the row with 80 points?",
+      "code": "-- scores.points: 90, 90, 80\nSELECT points,\n       ROW_NUMBER() OVER (ORDER BY points DESC) AS rn,\n       RANK() OVER (ORDER BY points DESC) AS rnk,\n       DENSE_RANK() OVER (ORDER BY points DESC) AS dense\nFROM scores;",
+      "options": [
+        "3, 3, 2",
+        "3, 2, 2",
+        "2, 3, 2",
+        "3, 3, 3"
+      ],
+      "answer": "3, 3, 2",
+      "explanation": "ROW_NUMBER numbers the rows 1, 2, 3 whatever the ties. RANK gives both 90s rank 1 and then skips to 3. DENSE_RANK does not skip, so 80 is 2."
+    },
+    {
+      "id": "quiz-sql-windows-02",
+      "topic": "windows",
+      "difficulty": "easy",
+      "prompt": "employees has 10 rows across 3 departments. How many rows does this return?",
+      "code": "SELECT dept, name, salary,\n       AVG(salary) OVER (PARTITION BY dept) AS dept_avg\nFROM employees;",
+      "options": [
+        "10",
+        "3",
+        "1",
+        "30"
+      ],
+      "answer": "10",
+      "explanation": "A window function calculates over a set of rows but keeps every row, here putting each department's average beside each employee. GROUP BY dept would collapse the result to 3 rows."
+    },
+    {
+      "id": "quiz-sql-windows-03",
+      "topic": "windows",
+      "difficulty": "medium",
+      "prompt": "What is running_total on the second row?",
+      "code": "-- payments(day, amount): (1, 10), (2, 20), (3, 30)\nSELECT day,\n       SUM(amount) OVER (ORDER BY day) AS running_total\nFROM payments;",
+      "options": [
+        "30",
+        "20",
+        "60",
+        "10"
+      ],
+      "answer": "30",
+      "explanation": "With an ORDER BY, the default window frame runs from the first row to the current one, so the sum builds up: 10, 30, 60."
+    },
+    {
+      "id": "quiz-sql-windows-04",
+      "topic": "windows",
+      "difficulty": "hard",
+      "prompt": "Which query returns the highest-paid employee in each department?",
+      "options": [
+        "SELECT * FROM (SELECT e.*, ROW_NUMBER() OVER (PARTITION BY dept ORDER BY salary DESC) AS rn FROM employees e) ranked WHERE rn = 1",
+        "SELECT *, ROW_NUMBER() OVER (PARTITION BY dept ORDER BY salary DESC) AS rn FROM employees WHERE rn = 1",
+        "SELECT dept, name, MAX(salary) FROM employees GROUP BY dept",
+        "SELECT * FROM employees ORDER BY salary DESC LIMIT 1"
+      ],
+      "answer": "SELECT * FROM (SELECT e.*, ROW_NUMBER() OVER (PARTITION BY dept ORDER BY salary DESC) AS rn FROM employees e) ranked WHERE rn = 1",
+      "explanation": "Window functions are computed after WHERE, so you rank in a subquery or CTE and filter in the outer query; the second query cannot see rn in its own WHERE. The GROUP BY query is rejected because name is not grouped, and LIMIT 1 gives one row for the whole company. Use RANK to keep ties."
+    },
+    {
+      "id": "quiz-sql-windows-05",
+      "topic": "windows",
+      "difficulty": "medium",
+      "prompt": "What is change on each day, in order?",
+      "code": "-- prices(day, price): (1, 100), (2, 110), (3, 105)\nSELECT day, price - LAG(price) OVER (ORDER BY day) AS change\nFROM prices;",
+      "options": [
+        "NULL, 10, -5",
+        "0, 10, -5",
+        "10, -5, NULL",
+        "100, 10, -5"
+      ],
+      "answer": "NULL, 10, -5",
+      "explanation": "LAG reads the previous row's value in the window's order. The first day has no previous row, so LAG gives NULL and the subtraction is NULL too. LAG(price, 1, price) would supply a default instead."
+    },
+    {
+      "id": "quiz-sql-windows-06",
+      "topic": "windows",
+      "difficulty": "easy",
+      "prompt": "In an OVER clause, what is the difference between PARTITION BY and ORDER BY?",
+      "options": [
+        "PARTITION BY splits the rows into separate groups; ORDER BY sets the order within each group",
+        "None: they can be swapped",
+        "PARTITION BY sorts the final result; ORDER BY groups the rows",
+        "PARTITION BY removes duplicate rows; ORDER BY ranks them"
+      ],
+      "answer": "PARTITION BY splits the rows into separate groups; ORDER BY sets the order within each group",
+      "explanation": "PARTITION BY restarts the window for each group, like GROUP BY without collapsing rows. ORDER BY orders the rows inside a partition, which ranking functions and running totals depend on. Neither sorts the query output; that needs its own ORDER BY."
+    },
+    {
+      "id": "quiz-sql-indexes-01",
+      "topic": "indexes",
+      "difficulty": "medium",
+      "prompt": "There is a B-tree index on (last_name, first_name). Which filter can it serve by jumping straight to the matching entries?",
+      "options": [
+        "WHERE last_name = 'Lee'",
+        "WHERE first_name = 'Ann'",
+        "WHERE LOWER(last_name) = 'lee'",
+        "WHERE last_name LIKE '%ee'"
+      ],
+      "answer": "WHERE last_name = 'Lee'",
+      "explanation": "A composite index is sorted by its first column and then by the second, like a phone book sorted by surname, so it can jump straight to a last_name. Matching first_name alone is scattered through it (at best a skip scan, fast only when there are few surnames); a function of the column needs an index on that expression; and a pattern that starts with a wildcard cannot use the sort order."
+    },
+    {
+      "id": "quiz-sql-indexes-02",
+      "topic": "indexes",
+      "difficulty": "easy",
+      "prompt": "What is the main cost of adding an index to a table?",
+      "options": [
+        "Slower writes and extra storage",
+        "Slower reads on the indexed column",
+        "Slower queries that do not use the index",
+        "The column can no longer hold NULLs"
+      ],
+      "answer": "Slower writes and extra storage",
+      "explanation": "An index is a separate structure the database keeps in step with the table, so every insert, update and delete does more work, and it takes disk and memory. Index the columns your queries filter, join and sort on, not everything."
+    },
+    {
+      "id": "quiz-sql-indexes-03",
+      "topic": "indexes",
+      "difficulty": "easy",
+      "prompt": "What is the effect of this?",
+      "code": "BEGIN;\nUPDATE accounts SET balance = balance - 100 WHERE id = 1;\nUPDATE accounts SET balance = balance + 100 WHERE id = 2;\nROLLBACK;",
+      "options": [
+        "Neither balance changes",
+        "Account 1 loses 100 and account 2 is unchanged",
+        "Both updates are kept",
+        "Only the second update is undone"
+      ],
+      "answer": "Neither balance changes",
+      "explanation": "A transaction is all or nothing: ROLLBACK undoes everything since BEGIN, so both accounts keep their balances. COMMIT would make both changes visible together."
+    },
+    {
+      "id": "quiz-sql-indexes-04",
+      "topic": "indexes",
+      "difficulty": "hard",
+      "prompt": "Two transactions run this at the same time under READ COMMITTED, starting from stock = 1. What can go wrong, and what prevents it?",
+      "code": "-- each transaction:\nSELECT stock FROM items WHERE id = 7;   -- reads 1\nUPDATE items SET stock = 0 WHERE id = 7;\n-- then creates an order",
+      "options": [
+        "Both read 1 and both sell the last item; SELECT ... FOR UPDATE prevents it",
+        "Nothing: READ COMMITTED makes the second read wait",
+        "They deadlock every time; an index on id prevents it",
+        "The second UPDATE fails; retrying prevents it"
+      ],
+      "answer": "Both read 1 and both sell the last item; SELECT ... FOR UPDATE prevents it",
+      "explanation": "Both reads can happen before either write, so each believes one item is left: a lost update. SELECT ... FOR UPDATE locks the row, so the second transaction waits and then reads 0. A single conditional UPDATE ... SET stock = stock - 1 WHERE id = 7 AND stock > 0, checking the row count, works too."
+    },
+    {
+      "id": "quiz-sql-indexes-05",
+      "topic": "indexes",
+      "difficulty": "medium",
+      "prompt": "There is an index on orders(created_at). Which of these cannot use it to narrow down the rows?",
+      "options": [
+        "WHERE EXTRACT(YEAR FROM created_at) = 2025",
+        "WHERE created_at >= '2025-01-01' AND created_at < '2026-01-01'",
+        "WHERE created_at = '2025-03-01 10:00'",
+        "ORDER BY created_at DESC LIMIT 10"
+      ],
+      "answer": "WHERE EXTRACT(YEAR FROM created_at) = 2025",
+      "explanation": "Wrapping the column in a function hides it from a plain index: the database has to work out the year for every row. Write the same filter as a range on the bare column, the second option, so the index can jump to the start and read forward. The index also serves ORDER BY ... LIMIT."
+    },
+    {
+      "id": "quiz-sql-indexes-06",
+      "topic": "indexes",
+      "difficulty": "medium",
+      "prompt": "In PostgreSQL, with a UNIQUE constraint on users(email), what happens when two rows have email NULL?",
+      "options": [
+        "Both are allowed, because NULL is not equal to NULL",
+        "The second row is rejected",
+        "The second NULL is stored as an empty string",
+        "Neither is allowed: UNIQUE implies NOT NULL"
+      ],
+      "answer": "Both are allowed, because NULL is not equal to NULL",
+      "explanation": "Uniqueness compares values, and NULL is not equal to NULL, so any number of NULLs are allowed by default. PostgreSQL 15 added UNIQUE NULLS NOT DISTINCT to allow only one; SQL Server allows only one NULL. Add NOT NULL if every user needs an email."
+    }
+  ]
+}
