@@ -15,6 +15,8 @@ class DraftKinds
     /** @var array<string, class-string<DraftKind>> PracticeKind value => its drafts */
     private const KINDS = [
         'quiz' => QuizDrafts::class,
+        'code_review' => CodeReviewDrafts::class,
+        'system_design' => SystemDesignDrafts::class,
     ];
 
     public function for(PracticeKind $kind): ?DraftKind

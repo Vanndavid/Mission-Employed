@@ -11,6 +11,8 @@ use App\Models\PracticeQuestion;
 use App\Models\PracticeQuestionReport;
 use App\Models\User;
 use App\Services\FakeGeminiService;
+use App\Services\Practice\DraftKind;
+use App\Services\Practice\DraftKinds;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -87,7 +89,7 @@ class AdminQuestionBankTest extends TestCase
         $response->assertJsonCount(1, 'questions.0.reports');
         $response->assertJsonPath('meta.total', 1);
         // Which kinds the generate form can offer.
-        $response->assertJsonPath('generators', ['quiz']);
+        $response->assertJsonPath('generators', ['quiz', 'code_review', 'system_design']);
     }
 
     public function test_it_filters_by_kind_status_language_topic_source_and_open_reports(): void
@@ -326,6 +328,14 @@ class AdminQuestionBankTest extends TestCase
     public function test_a_kind_with_no_validator_yet_cannot_be_edited(): void
     {
         $this->actingAsAdmin();
+        // Every kind has one now; a kind added later starts without.
+        $this->app->instance(DraftKinds::class, new class extends DraftKinds
+        {
+            public function for(PracticeKind $kind): ?DraftKind
+            {
+                return $kind === PracticeKind::SystemDesign ? null : parent::for($kind);
+            }
+        });
         $review = PracticeQuestion::factory()->draft()->create([
             'kind' => PracticeKind::SystemDesign,
             'language' => null,

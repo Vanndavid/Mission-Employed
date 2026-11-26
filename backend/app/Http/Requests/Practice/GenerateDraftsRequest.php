@@ -12,8 +12,9 @@ use Illuminate\Validation\Rule;
 
 /**
  * {kind, count, ...}: every kind takes a count of 1 to 5, and the rest of
- * the fields are the kind's own ({@see DraftKind::rules()}); for the quiz,
- * language, topic and difficulty. A kind with no drafts registered in
+ * the fields are the kind's own ({@see DraftKind::rules()}): language, topic
+ * and difficulty for the quiz, language and difficulty for code review, and
+ * difficulty for system design. A kind with no drafts registered in
  * {@see DraftKinds} is a 422 on `kind` that says so.
  */
 class GenerateDraftsRequest extends FormRequest

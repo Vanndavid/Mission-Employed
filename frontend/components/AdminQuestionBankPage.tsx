@@ -5,7 +5,7 @@ import { fetchQuizCatalog } from '../services/practiceClient';
 import { fetchQuestionBank, generateDrafts } from '../services/questionBankClient';
 import { aiFailureMessage, errorMessage, isAbortError } from '../services/http';
 import { PracticeDifficulty, PracticeKind, PracticeLanguage, QuizCatalog } from '../types/practice';
-import { GenerateDraftsResult, QuestionBankPage, QuestionFilters } from '../types/questionBank';
+import { GenerateDraftsInput, GenerateDraftsResult, QuestionBankPage, QuestionFilters } from '../types/questionBank';
 import { DIFFICULTIES, KIND_LABELS, QuestionBankCard } from './QuestionBankCard';
 import { useToast } from './ToastProvider';
 
@@ -15,6 +15,15 @@ const labelText = 'text-[10px] font-bold uppercase tracking-widest text-slate-40
 const card = 'rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5';
 
 const MAX_DRAFTS = 5;
+
+/** What each kind's drafts are checked for before they are saved: the server's checks, in words. */
+const DRAFT_CHECKS: Record<PracticeKind, string> = {
+  quiz: 'four different options, the answer one of them, an explanation, a snippet of at most 40 lines, and the language and topic asked for',
+  code_review:
+    "20 to 80 lines of code, 2 to 6 planted issues each with a category, a severity of 1 to 3 and a fix, every issue's lines inside the snippet (at most 15, starting and ending on code) and on the lines the AI quoted for it, and the language asked for",
+  system_design:
+    'a title, a scenario with scale numbers in it, an explanation, and 2 to 6 distinct key points for every rubric trait',
+};
 
 /**
  * Admin · Question bank: every practice question of every kind, and the
@@ -239,9 +248,9 @@ export function AdminQuestionBankPage() {
 
 /**
  * Ask the AI for up to five drafts. They are saved as drafts for review, and
- * what the checks refused is listed with its reasons. The quiz's fields are
- * language, topic and difficulty; a kind that drafts differently adds its
- * own fields here when its generator lands.
+ * what the checks refused is listed with its reasons. Each kind asks for its
+ * own fields: language, topic and difficulty for the quiz, language and
+ * difficulty for code review, difficulty for system design.
  */
 function GeneratePanel({
   catalog,
@@ -265,14 +274,23 @@ function GeneratePanel({
   const languageKey = language || catalog?.languages[0]?.key || '';
   const topics = catalog?.languages.find(l => l.key === languageKey)?.topics ?? [];
   const topicKey = topics.some(t => t.key === topic) ? topic : (topics[0]?.key ?? '');
+  const needsLanguage = kind === 'quiz' || kind === 'code_review';
+  const needsTopic = kind === 'quiz';
+  const ready = (!needsLanguage || languageKey !== '') && (!needsTopic || topicKey !== '');
+
+  const input = (): GenerateDraftsInput => {
+    if (kind === 'quiz') return { kind, language: languageKey as PracticeLanguage, topic: topicKey, difficulty, count };
+    if (kind === 'code_review') return { kind, language: languageKey as PracticeLanguage, difficulty, count };
+    return { kind, difficulty, count };
+  };
 
   const generate = async () => {
-    if (!languageKey || !topicKey) return;
+    if (!ready) return;
     setBusy(true);
     setError(null);
     setResult(null);
     try {
-      setResult(await generateDrafts({ kind, language: languageKey, topic: topicKey, difficulty, count }));
+      setResult(await generateDrafts(input()));
       onGenerated();
     } catch (e) {
       setError(aiFailureMessage(e, 'Could not draft questions.'));
@@ -287,8 +305,8 @@ function GeneratePanel({
     <section aria-label="Generate with AI" className={card}>
       <h3 className="font-semibold text-slate-900 dark:text-slate-100">Draft questions with AI</h3>
       <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-        Each draft is checked before it is saved: four different options, the answer one of them, an explanation, a snippet
-        of at most 40 lines, and the language and topic asked for. Drafts stay hidden from users until you publish them.
+        Each draft is checked before it is saved: {DRAFT_CHECKS[kind]}. Drafts stay hidden from users until you publish
+        them.
       </p>
       <div className="mt-4 grid grid-cols-2 sm:grid-cols-5 gap-3 items-end">
         <label className="block min-w-0">
@@ -301,34 +319,38 @@ function GeneratePanel({
             ))}
           </select>
         </label>
-        <label className="block min-w-0">
-          <span className={labelText}>Language</span>
-          <select
-            aria-label="Language"
-            className={select}
-            value={languageKey}
-            onChange={e => {
-              setLanguage(e.target.value as PracticeLanguage);
-              setTopic('');
-            }}
-          >
-            {(catalog?.languages ?? []).map(l => (
-              <option key={l.key} value={l.key}>
-                {l.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block min-w-0">
-          <span className={labelText}>Topic</span>
-          <select aria-label="Topic" className={select} value={topicKey} onChange={e => setTopic(e.target.value)}>
-            {topics.map(t => (
-              <option key={t.key} value={t.key}>
-                {t.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        {needsLanguage && (
+          <label className="block min-w-0">
+            <span className={labelText}>Language</span>
+            <select
+              aria-label="Language"
+              className={select}
+              value={languageKey}
+              onChange={e => {
+                setLanguage(e.target.value as PracticeLanguage);
+                setTopic('');
+              }}
+            >
+              {(catalog?.languages ?? []).map(l => (
+                <option key={l.key} value={l.key}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {needsTopic && (
+          <label className="block min-w-0">
+            <span className={labelText}>Topic</span>
+            <select aria-label="Topic" className={select} value={topicKey} onChange={e => setTopic(e.target.value)}>
+              {topics.map(t => (
+                <option key={t.key} value={t.key}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="block min-w-0">
           <span className={labelText}>Difficulty</span>
           <select
@@ -359,7 +381,7 @@ function GeneratePanel({
       </div>
       <button
         type="button"
-        disabled={busy || !languageKey || !topicKey}
+        disabled={busy || !ready}
         onClick={() => void generate()}
         className="mt-4 px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold disabled:opacity-40"
       >

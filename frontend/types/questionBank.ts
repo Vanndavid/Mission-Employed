@@ -7,7 +7,9 @@
  * review notes: these routes are admin-only.
  */
 
+import { CodeReviewCategory } from './codeReview';
 import { PracticeDifficulty, PracticeKind, PracticeLanguage } from './practice';
+import { SystemDesignTraitKey } from './systemDesign';
 
 /** Mirrors App\Enums\PracticeQuestionStatus. Users are only served `published`. */
 export type QuestionStatus = 'draft' | 'published';
@@ -77,7 +79,11 @@ export interface QuestionBankPage {
   generators: PracticeKind[];
 }
 
-/** POST /api/admin/practice/questions/generate. The quiz's fields; other kinds add their own. */
+/**
+ * POST /api/admin/practice/questions/generate. Each kind takes its own
+ * fields: language, topic and difficulty for the quiz, language and
+ * difficulty for code review, difficulty for system design.
+ */
 export interface GenerateDraftsInput {
   kind: PracticeKind;
   count: number;
@@ -117,4 +123,25 @@ export interface QuestionPatch {
 export interface DeleteQuestionResult {
   deleted: boolean;
   question: AdminQuestion | null;
+}
+
+/** One issue planted in a code review snippet: its `answer.issues`. Lines are 1-based and inclusive. */
+export interface PlantedIssue {
+  id: string;
+  lines: [number, number];
+  category: CodeReviewCategory;
+  /** 1 (minor) to 3 (serious). */
+  severity: number;
+  summary: string;
+  fix: string;
+}
+
+/** A code review snippet's key. */
+export interface CodeReviewAnswerKey {
+  issues: PlantedIssue[];
+}
+
+/** A system design scenario's key: what a strong answer covers, trait by trait. */
+export interface SystemDesignAnswerKey {
+  keyPoints: Record<SystemDesignTraitKey, string[]>;
 }

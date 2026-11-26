@@ -11,6 +11,8 @@ use App\Models\PracticeQuestion;
 use App\Models\User;
 use App\Services\FakeGeminiService;
 use App\Services\GeminiException;
+use App\Services\Practice\DraftKind;
+use App\Services\Practice\DraftKinds;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
@@ -292,6 +294,14 @@ class AdminQuestionDraftsTest extends TestCase
     {
         $gemini = FakeGeminiService::swap();
         Sanctum::actingAs(User::factory()->admin()->create());
+        // Every kind has one now; a kind added later starts without.
+        $this->app->instance(DraftKinds::class, new class extends DraftKinds
+        {
+            public function for(PracticeKind $kind): ?DraftKind
+            {
+                return $kind === PracticeKind::SystemDesign ? null : parent::for($kind);
+            }
+        });
 
         $response = $this->postJson('/api/admin/practice/questions/generate', [...self::REQUEST, 'kind' => 'system_design'])
             ->assertUnprocessable()

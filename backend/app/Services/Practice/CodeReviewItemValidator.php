@@ -7,9 +7,10 @@ use App\Models\PracticeQuestion;
 
 /**
  * Whether a code review snippet can be published, whoever wrote it. The seed
- * files go through it ({@see CodeReviewSeed}), and so should an AI draft
- * from the admin bank's generator: one set of rules, so a hand-written
- * snippet and a generated one are held to the same standard.
+ * files go through it ({@see CodeReviewSeed}), and so do the admin bank's AI
+ * drafts and every edit to them ({@see CodeReviewDraftValidator}): one set of
+ * rules, so a hand-written snippet and a generated one are held to the same
+ * standard.
  *
  * An item is one snippet:
  *

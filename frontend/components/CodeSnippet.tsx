@@ -10,6 +10,10 @@ import React from 'react';
  * editor. `wrap` wraps long lines instead of scrolling sideways, so that
  * content keeps the width of the box. Without them it renders as it always
  * has, which the quiz relies on.
+ *
+ * Unwrapped, it fills the width it is given and never asks for more, so in a
+ * shrink-to-fit container (inline-block, an absolutely positioned box) give
+ * it a width.
  */
 export function CodeSnippet({
   code,
@@ -38,7 +42,10 @@ export function CodeSnippet({
   return (
     <figure
       aria-label={label}
-      className="rounded-xl bg-slate-950 text-slate-100 border border-slate-800 overflow-x-auto"
+      // Unwrapped lines scroll inside the box. Size containment keeps their
+      // width out of the page's minimum width, or on a phone one long line
+      // would widen the whole screen instead of scrolling here.
+      className={`rounded-xl bg-slate-950 text-slate-100 border border-slate-800 overflow-x-auto ${wrap ? '' : '[contain:inline-size]'}`}
     >
       <pre className="py-3 text-[13px] leading-6 font-mono">
         <code className={wrap ? 'block' : 'block min-w-max'}>

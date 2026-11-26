@@ -144,6 +144,12 @@ class QuizDrafts implements DraftKind
         ];
     }
 
+    /** Everything a quiz question needs is in its columns. */
+    public function draftErrors(array $item, array $question): array
+    {
+        return [];
+    }
+
     public function validator(): DraftValidator
     {
         return $this->validator;

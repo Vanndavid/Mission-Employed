@@ -7,15 +7,19 @@ namespace App\Enums;
  * the attempts table (practice_attempts). Mirrors PracticeKind in
  * frontend/types/practice.ts.
  *
- * Only the quiz is served so far. Code review and system design are named
- * here so the bank's `kind` column already has their values; each gets its
- * seed format in SeedBank, its routes and its scoring when it lands. Problems
+ * Every kind is served: each has its seed format in SeedBank, its routes and
+ * its scoring, and its AI drafts in Services\Practice\DraftKinds. Problems
  * (the AI tutor) is not a kind: it keeps coding_attempts.
  */
 enum PracticeKind: string
 {
     /** Multiple choice, scored in code. Free and never metered. */
     case Quiz = 'quiz';
+    /**
+     * A snippet reviewed like a pull request; the model matches comments to
+     * planted issues and code scores them (Services\Practice\CodeReviewScorer).
+     * The `code_review` plan feature.
+     */
     case CodeReview = 'code_review';
     /**
      * A scenario answered in sections; the model rates rubric traits and

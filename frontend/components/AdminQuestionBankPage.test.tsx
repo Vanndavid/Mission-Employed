@@ -82,6 +82,52 @@ const question = (overrides: Partial<AdminQuestion> = {}): AdminQuestion => ({
   ...overrides,
 });
 
+const snippet = (overrides: Partial<AdminQuestion> = {}): AdminQuestion =>
+  question({
+    id: 20,
+    kind: 'code_review',
+    topic: 'One page of orders',
+    prompt: "Returns one page of the user's orders.",
+    code: Array.from({ length: 22 }, (_, i) => `line ${i + 1};`).join('\n'),
+    options: null,
+    answer: {
+      issues: [
+        { id: 'sql-injection', lines: [11, 13], category: 'security', severity: 3, summary: 'The status is pasted into the SQL.', fix: 'Bind it as a parameter.' },
+        { id: 'offset', lines: [14, 14], category: 'bug', severity: 2, summary: 'Page 1 skips the newest rows.', fix: 'Offset by (page - 1) * size.' },
+      ],
+    },
+    explanation: 'Read every value that reaches a query.',
+    reviewNotes: null,
+    ...overrides,
+  });
+
+const traitPoints = (trait: string) => [`First point on ${trait}`, `Second point on ${trait}`];
+
+const scenario = (overrides: Partial<AdminQuestion> = {}): AdminQuestion =>
+  question({
+    id: 30,
+    kind: 'system_design',
+    language: null,
+    topic: 'URL shortener',
+    prompt: 'Design a URL shortener for 100 million new links a month, with ten redirects for every link created.',
+    code: null,
+    options: null,
+    answer: {
+      keyPoints: {
+        requirements: traitPoints('requirements'),
+        estimation: traitPoints('estimation'),
+        api_data_model: traitPoints('api_data_model'),
+        architecture: traitPoints('architecture'),
+        scalability: ['Shard by short code', 'Cache hot redirects'],
+        reliability: traitPoints('reliability'),
+        communication: traitPoints('communication'),
+      },
+    },
+    explanation: 'A read-heavy key-value problem.',
+    reviewNotes: null,
+    ...overrides,
+  });
+
 const page = (questions: AdminQuestion[]): QuestionBankPage => ({
   questions,
   meta: { page: 1, perPage: 25, total: questions.length, lastPage: 1 },
@@ -277,6 +323,142 @@ describe('AdminQuestionBankPage', () => {
 
     await waitFor(() => expect(resolveReports).toHaveBeenCalledWith(3));
     await waitFor(() => expect(within(row).queryByText('The key should be B.')).toBeNull());
+  });
+
+  it('drafts code review snippets for a language and level, and scenarios for a level', async () => {
+    fetchQuestionBank.mockResolvedValue({ ...page([question()]), generators: ['quiz', 'code_review', 'system_design'] });
+    generateDrafts.mockResolvedValue({ drafts: [], rejected: [] });
+    renderPage();
+    await card();
+
+    fireEvent.change(screen.getByLabelText('Kind'), { target: { value: 'code_review' } });
+    expect(screen.queryByLabelText('Topic')).toBeNull();
+    expect(screen.getByText(/2 to 6 planted issues/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Language'), { target: { value: 'sql' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Draft questions' }));
+    await waitFor(() =>
+      expect(generateDrafts).toHaveBeenLastCalledWith({ kind: 'code_review', language: 'sql', difficulty: 'medium', count: 3 }),
+    );
+
+    fireEvent.change(screen.getByLabelText('Kind'), { target: { value: 'system_design' } });
+    expect(screen.queryByLabelText('Language')).toBeNull();
+    expect(screen.getByText(/every rubric trait/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Difficulty'), { target: { value: 'hard' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Draft questions' }));
+    await waitFor(() => expect(generateDrafts).toHaveBeenLastCalledWith({ kind: 'system_design', difficulty: 'hard', count: 3 }));
+  });
+
+  it('shows a code review draft with each planted issue on its lines, so a range that is off shows', async () => {
+    fetchQuestionBank.mockResolvedValue(page([snippet()]));
+    renderPage();
+    const draft = await card(20);
+
+    expect(within(draft).getByText('One page of orders')).toBeTruthy();
+    expect(within(draft).getByText('Returns one page of the user\'s orders.')).toBeTruthy();
+    const figure = within(draft).getByRole('figure', { name: 'Snippet' });
+    expect(within(figure).getByText('line 12;').closest('[data-line]')?.className).toContain('amber');
+    expect(within(figure).getByText('line 10;').closest('[data-line]')?.className).not.toContain('amber');
+    expect(within(figure).getByText('The status is pasted into the SQL.')).toBeTruthy();
+    expect(within(figure).getByText(/Bind it as a parameter\./)).toBeTruthy();
+    expect(within(draft).getByText('Read every value that reaches a query.')).toBeTruthy();
+    expect(within(draft).queryByText(/"issues"/)).toBeNull();
+  });
+
+  it('edits a code review snippet, its planted issues included, and sends the whole snippet back', async () => {
+    fetchQuestionBank.mockResolvedValue(page([snippet()]));
+    updateQuestion.mockImplementation(async (id: number, patch: Partial<AdminQuestion>) => snippet({ id, ...patch }));
+    renderPage();
+    const draft = await card(20);
+
+    fireEvent.click(within(draft).getByRole('button', { name: 'Edit' }));
+    fireEvent.change(within(draft).getByLabelText('Title'), { target: { value: 'Orders, page by page' } });
+    fireEvent.change(within(draft).getByLabelText('Issue 2 last line'), { target: { value: '15' } });
+    fireEvent.click(within(draft).getByRole('button', { name: 'Add an issue' }));
+    fireEvent.change(within(draft).getByLabelText('Issue 3 id'), { target: { value: 'n-plus-one' } });
+    fireEvent.change(within(draft).getByLabelText('Issue 3 first line'), { target: { value: '16' } });
+    fireEvent.change(within(draft).getByLabelText('Issue 3 last line'), { target: { value: '18' } });
+    fireEvent.change(within(draft).getByLabelText('Issue 3 category'), { target: { value: 'performance' } });
+    fireEvent.change(within(draft).getByLabelText('Issue 3 severity'), { target: { value: '3' } });
+    fireEvent.change(within(draft).getByLabelText('Issue 3 summary'), { target: { value: 'One query per order.' } });
+    fireEvent.change(within(draft).getByLabelText('Issue 3 fix'), { target: { value: 'Fetch them in one query.' } });
+    fireEvent.click(within(draft).getByRole('button', { name: 'Remove issue 1' }));
+    fireEvent.click(within(draft).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(updateQuestion).toHaveBeenCalledWith(20, {
+        language: 'javascript',
+        topic: 'Orders, page by page',
+        difficulty: 'medium',
+        prompt: "Returns one page of the user's orders.",
+        code: snippet().code,
+        answer: {
+          issues: [
+            { id: 'offset', lines: [14, 15], category: 'bug', severity: 2, summary: 'Page 1 skips the newest rows.', fix: 'Offset by (page - 1) * size.' },
+            { id: 'n-plus-one', lines: [16, 18], category: 'performance', severity: 3, summary: 'One query per order.', fix: 'Fetch them in one query.' },
+          ],
+        },
+        explanation: 'Read every value that reaches a query.',
+      }),
+    );
+    expect(await within(await card(20)).findByText('Orders, page by page')).toBeTruthy();
+  });
+
+  it('shows every check that refused a code review edit', async () => {
+    fetchQuestionBank.mockResolvedValue(page([snippet()]));
+    updateQuestion.mockRejectedValue(
+      new ApiError(422, 'Issue #0 (sql-injection): severity must be a whole number from 1 to 3.', undefined, {
+        answer: ['Issue #0 (sql-injection): severity must be a whole number from 1 to 3.'],
+        'answer.1': ["Issue #1 (offset): lines [14, 30] must fall inside the snippet's 22 lines, start first."],
+      }),
+    );
+    renderPage();
+    const draft = await card(20);
+
+    fireEvent.click(within(draft).getByRole('button', { name: 'Edit' }));
+    fireEvent.click(within(draft).getByRole('button', { name: 'Save' }));
+
+    expect(await within(draft).findByText(/severity must be a whole number/)).toBeTruthy();
+    expect(within(draft).getByText(/must fall inside the snippet's 22 lines/)).toBeTruthy();
+    expect(within(draft).getByLabelText('Title')).toBeTruthy();
+  });
+
+  it('shows a system design draft with its key points per trait', async () => {
+    fetchQuestionBank.mockResolvedValue(page([scenario()]));
+    renderPage();
+    const draft = await card(30);
+
+    expect(within(draft).getByText('URL shortener')).toBeTruthy();
+    expect(within(draft).getByText(/100 million new links a month/)).toBeTruthy();
+    expect(within(draft).getByText('Requirements and scope')).toBeTruthy();
+    expect(within(draft).getByText('Shard by short code')).toBeTruthy();
+    expect(within(draft).getByText('A read-heavy key-value problem.')).toBeTruthy();
+    expect(within(draft).queryByText(/"keyPoints"/)).toBeNull();
+  });
+
+  it('edits a system design scenario, key points one a line for every trait', async () => {
+    fetchQuestionBank.mockResolvedValue(page([scenario()]));
+    updateQuestion.mockImplementation(async (id: number, patch: Partial<AdminQuestion>) => scenario({ id, ...patch }));
+    renderPage();
+    const draft = await card(30);
+
+    fireEvent.click(within(draft).getByRole('button', { name: 'Edit' }));
+    fireEvent.change(within(draft).getByLabelText('Title'), { target: { value: 'Link shortener' } });
+    fireEvent.change(within(draft).getByLabelText('Scalability key points'), {
+      target: { value: 'Shard by short code\nCache hot redirects\n\nPre-generate codes' },
+    });
+    fireEvent.click(within(draft).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(updateQuestion).toHaveBeenCalledTimes(1));
+    const [id, patch] = updateQuestion.mock.calls[0];
+    expect(id).toBe(30);
+    expect(patch).toEqual({
+      topic: 'Link shortener',
+      difficulty: 'medium',
+      prompt: scenario().prompt,
+      answer: { keyPoints: { ...scenario().answer.keyPoints as object, scalability: ['Shard by short code', 'Cache hot redirects', 'Pre-generate codes'] } },
+      explanation: 'A read-heavy key-value problem.',
+    });
+    expect(await within(await card(30)).findByText('Link shortener')).toBeTruthy();
   });
 
   it('sends a non-admin back to their account', () => {

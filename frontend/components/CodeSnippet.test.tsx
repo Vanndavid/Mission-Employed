@@ -22,6 +22,26 @@ describe('CodeSnippet', () => {
     expect(within(figure).queryByRole('button')).toBeNull();
   });
 
+  it('keeps a long line from widening the page: it scrolls inside the box, which takes no width from its content', () => {
+    const long = `const x = ${'"a", '.repeat(80)};`;
+    render(<CodeSnippet code={long} />);
+
+    const figure = screen.getByRole('figure', { name: 'Code' });
+    // Without size containment the line's width becomes the page's minimum on a phone.
+    expect(figure).toHaveClass('overflow-x-auto', '[contain:inline-size]');
+    // The quiz's rendering is otherwise as it was: lines stay whole and scroll.
+    expect(figure.querySelector('code')).toHaveClass('min-w-max');
+    expect(within(figure).getByText(long)).toHaveClass('whitespace-pre');
+  });
+
+  it('wraps instead when asked, as code review does', () => {
+    render(<CodeSnippet code={code} wrap />);
+
+    const figure = screen.getByRole('figure', { name: 'Code' });
+    expect(figure.querySelector('code')).not.toHaveClass('min-w-max');
+    expect(within(figure).getByText('const a = 1;')).toHaveClass('whitespace-pre-wrap');
+  });
+
   it('turns line numbers into buttons when lines can be clicked', () => {
     const onLineClick = vi.fn();
     render(<CodeSnippet code={code} onLineClick={onLineClick} lineActionLabel={line => `Comment on line ${line}`} />);

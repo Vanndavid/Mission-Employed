@@ -1,10 +1,10 @@
 /**
- * Practice modes on Mission Control that share the question bank: the quiz
- * now, code review and system design later. Shapes of /api/practice/*, which
- * answer flat JSON (no `data` envelope).
+ * Practice modes on Mission Control that share the question bank: the quiz,
+ * code review (types/codeReview.ts) and system design (types/systemDesign.ts).
+ * Shapes of /api/practice/*, which answer flat JSON (no `data` envelope).
  */
 
-/** Mirrors App\Enums\PracticeKind. Only the quiz is served so far. */
+/** Mirrors App\Enums\PracticeKind. Every kind is served. */
 export type PracticeKind = 'quiz' | 'code_review' | 'system_design';
 
 /** Mirrors App\Enums\PracticeLanguage. Labels and topics come from the catalog. */

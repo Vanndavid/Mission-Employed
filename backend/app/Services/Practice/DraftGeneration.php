@@ -15,8 +15,8 @@ use Illuminate\Support\Facades\DB;
  *
  *  1. one generateJson call, shown what the bank already has;
  *  2. every item mapped by its {@see DraftKind}, normalized and checked by
- *     the kind's {@see DraftValidator}, and checked against the bank and the
- *     rest of the batch for repeats;
+ *     the kind's {@see DraftValidator} and its draft-only checks, and checked
+ *     against the bank and the rest of the batch for repeats;
  *  3. the valid ones saved as drafts (source ai), which no user is served
  *     until an admin publishes them; the rest returned with their reasons.
  *
@@ -80,6 +80,10 @@ class DraftGeneration
             $reasons = $index > $count
                 ? ["Only {$count} ".($count === 1 ? 'was' : 'were').' asked for.']
                 : array_values($validator->errors($question, $pinned));
+
+            if ($reasons === []) {
+                $reasons = $drafts->draftErrors(is_array($item) ? $item : [], $question);
+            }
 
             if ($reasons === [] && isset($seen[$fingerprint])) {
                 $reasons[] = "It repeats {$seen[$fingerprint]}.";

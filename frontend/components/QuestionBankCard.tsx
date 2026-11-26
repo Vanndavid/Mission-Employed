@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
 import { deleteQuestion, resolveReports, updateQuestion } from '../services/questionBankClient';
-import { ApiError, errorMessage } from '../services/http';
-import { PracticeDifficulty, PracticeKind, PracticeLanguage, QuizCatalog } from '../types/practice';
-import { AdminQuestion, QuestionPatch } from '../types/questionBank';
+import { errorMessage } from '../services/http';
+import { PracticeKind, PracticeLanguage, QuizCatalog } from '../types/practice';
+import { AdminQuestion } from '../types/questionBank';
 import { OPTION_COUNT, quizAnswer, quizNotes, QuizForm, toQuizForm, toQuizPatch } from '../utils/questionDraft';
 import { optionLetter } from '../utils/quizRound';
 import { CodeSnippet } from './CodeSnippet';
+import { CodeReviewEditor, CodeReviewReview } from './QuestionBankCodeReview';
+import { button, DifficultySelect, field, labelText, SaveBar, useQuestionSave } from './QuestionBankForm';
+import { SystemDesignEditor, SystemDesignReview } from './QuestionBankSystemDesign';
 import { useToast } from './ToastProvider';
+
+export { DIFFICULTIES } from './QuestionBankForm';
 
 export const KIND_LABELS: Record<PracticeKind, string> = {
   quiz: 'Quiz',
@@ -14,14 +19,7 @@ export const KIND_LABELS: Record<PracticeKind, string> = {
   system_design: 'System design',
 };
 
-export const DIFFICULTIES: PracticeDifficulty[] = ['easy', 'medium', 'hard'];
-
 const SOURCE_LABELS: Record<AdminQuestion['source'], string> = { seed: 'Seed', ai: 'AI draft', admin: 'Admin' };
-
-const field =
-  'w-full min-w-0 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100';
-const labelText = 'text-[10px] font-bold uppercase tracking-widest text-slate-400';
-const button = 'px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40';
 
 /** "JavaScript", "Scope & closures": the catalog's words for a stored key. */
 export function catalogLabels(catalog: QuizCatalog | null) {
@@ -33,9 +31,11 @@ export function catalogLabels(catalog: QuizCatalog | null) {
 
 /**
  * One question on the admin's question bank: as a user would see it, then
- * the key, the explanation and the AI's review notes, then its open reports.
- * Edit, Publish, Unpublish and Delete for everything but seed rows, which
- * are fixed in their file (the server refuses them too).
+ * its key (the answer and the AI's review notes for the quiz, the planted
+ * issues on their lines for code review, the key points per trait for
+ * system design), then its open reports. Edit (each kind's own form),
+ * Publish, Unpublish and Delete for everything but seed rows, which are
+ * fixed in their file (the server refuses them too).
  */
 export function QuestionBankCard({
   question,
@@ -53,7 +53,6 @@ export function QuestionBankCard({
   const [editing, setEditing] = useState(false);
   const labels = catalogLabels(catalog);
   const isSeed = question.source === 'seed';
-  const isQuiz = question.kind === 'quiz';
 
   const act = async (work: () => Promise<void>, failure: string) => {
     setBusy(true);
@@ -92,9 +91,14 @@ export function QuestionBankCard({
       toast('Reports resolved.', 'success');
     }, 'Could not resolve the reports.');
 
-  const meta = [KIND_LABELS[question.kind], labels.language(question.language), labels.topic(question.language, question.topic), question.difficulty]
-    .filter(Boolean)
-    .join(' · ');
+  // Code review and system design keep a title in `topic`, shown as the question's heading instead.
+  const topic = question.kind === 'quiz' ? labels.topic(question.language, question.topic) : '';
+  const meta = [KIND_LABELS[question.kind], labels.language(question.language), topic, question.difficulty].filter(Boolean).join(' · ');
+  const saved = (updated: AdminQuestion) => {
+    onChange(updated);
+    setEditing(false);
+    toast('Saved.', 'success');
+  };
 
   return (
     <article
@@ -120,17 +124,8 @@ export function QuestionBankCard({
         </span>
       </header>
 
-      {editing && isQuiz ? (
-        <QuizEditor
-          question={question}
-          catalog={catalog}
-          onCancel={() => setEditing(false)}
-          onSaved={saved => {
-            onChange(saved);
-            setEditing(false);
-            toast('Saved.', 'success');
-          }}
-        />
+      {editing ? (
+        <Editor question={question} catalog={catalog} onCancel={() => setEditing(false)} onSaved={saved} />
       ) : (
         <Review question={question} />
       )}
@@ -166,16 +161,14 @@ export function QuestionBankCard({
       ) : (
         !editing && (
           <div className="flex flex-wrap gap-2">
-            {isQuiz && (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => setEditing(true)}
-                className={`${button} border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200`}
-              >
-                Edit
-              </button>
-            )}
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setEditing(true)}
+              className={`${button} border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200`}
+            >
+              Edit
+            </button>
             {question.status === 'draft' ? (
               <button
                 type="button"
@@ -210,8 +203,38 @@ export function QuestionBankCard({
   );
 }
 
-/** The question as a user would see it, then what only an admin sees. */
+/** The question as a user would see it, then what only an admin sees, as its kind shapes it. */
 function Review({ question }: { question: AdminQuestion }) {
+  switch (question.kind) {
+    case 'code_review':
+      return <CodeReviewReview question={question} />;
+    case 'system_design':
+      return <SystemDesignReview question={question} />;
+    default:
+      return <QuizReview question={question} />;
+  }
+}
+
+type EditorProps = {
+  question: AdminQuestion;
+  catalog: QuizCatalog | null;
+  onCancel: () => void;
+  onSaved: (question: AdminQuestion) => void;
+};
+
+/** Each kind's own form. */
+function Editor(props: EditorProps) {
+  switch (props.question.kind) {
+    case 'code_review':
+      return <CodeReviewEditor {...props} />;
+    case 'system_design':
+      return <SystemDesignEditor question={props.question} onCancel={props.onCancel} onSaved={props.onSaved} />;
+    default:
+      return <QuizEditor {...props} />;
+  }
+}
+
+function QuizReview({ question }: { question: AdminQuestion }) {
   const answer = quizAnswer(question);
   const notes = quizNotes(question);
   const options = question.options ?? [];
@@ -220,12 +243,7 @@ function Review({ question }: { question: AdminQuestion }) {
     <div className="space-y-4">
       <div className="space-y-3">
         <p className="font-bold text-slate-900 dark:text-slate-50 whitespace-pre-wrap">{question.prompt}</p>
-        {/* Contained, so a long line scrolls inside the snippet instead of widening the page on a phone. */}
-        {question.code && (
-          <div className="[contain:inline-size]">
-            <CodeSnippet code={question.code} />
-          </div>
-        )}
+        {question.code && <CodeSnippet code={question.code} />}
         {options.length > 0 && (
           <ol className="grid gap-2">
             {options.map((option, i) => (
@@ -244,15 +262,9 @@ function Review({ question }: { question: AdminQuestion }) {
       </div>
 
       <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 p-4 space-y-2 text-sm">
-        {question.kind === 'quiz' ? (
-          <p className={`font-bold ${answer !== null && options.includes(answer) ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-600'}`}>
-            {answer !== null && options.includes(answer) ? `Answer: ${answer}` : 'Answer: none of the options'}
-          </p>
-        ) : (
-          <pre className="text-xs font-mono whitespace-pre-wrap text-slate-700 dark:text-slate-300">
-            {JSON.stringify(question.answer, null, 2)}
-          </pre>
-        )}
+        <p className={`font-bold ${answer !== null && options.includes(answer) ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-600'}`}>
+          {answer !== null && options.includes(answer) ? `Answer: ${answer}` : 'Answer: none of the options'}
+        </p>
         <p className="text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">{question.explanation}</p>
         {notes.length > 0 && (
           <div>
@@ -275,36 +287,11 @@ function Review({ question }: { question: AdminQuestion }) {
 }
 
 /** The quiz editor. The server checks the whole question on Save. */
-function QuizEditor({
-  question,
-  catalog,
-  onCancel,
-  onSaved,
-}: {
-  question: AdminQuestion;
-  catalog: QuizCatalog | null;
-  onCancel: () => void;
-  onSaved: (question: AdminQuestion) => void;
-}) {
+function QuizEditor({ question, catalog, onCancel, onSaved }: EditorProps) {
   const [form, setForm] = useState<QuizForm>(() => toQuizForm(question));
-  const [saving, setSaving] = useState(false);
-  const [errors, setErrors] = useState<string[]>([]);
+  const { saving, errors, save } = useQuestionSave(question.id, onSaved);
   const topics = catalog?.languages.find(l => l.key === form.language)?.topics ?? [];
   const set = (patch: Partial<QuizForm>) => setForm(prev => ({ ...prev, ...patch }));
-
-  const save = async () => {
-    setSaving(true);
-    setErrors([]);
-    try {
-      const patch: QuestionPatch = toQuizPatch(form);
-      onSaved(await updateQuestion(question.id, patch));
-    } catch (e) {
-      const fieldErrors = e instanceof ApiError && e.errors ? Object.values(e.errors).flat() : [];
-      setErrors(fieldErrors.length ? fieldErrors : [errorMessage(e, 'Could not save the question.')]);
-    } finally {
-      setSaving(false);
-    }
-  };
 
   return (
     <div className="space-y-3">
@@ -338,21 +325,7 @@ function QuizEditor({
             {!topics.some(t => t.key === form.topic) && <option value={form.topic}>{form.topic}</option>}
           </select>
         </label>
-        <label className="block min-w-0">
-          <span className={labelText}>Difficulty</span>
-          <select
-            aria-label="Difficulty"
-            className={field}
-            value={form.difficulty}
-            onChange={e => set({ difficulty: e.target.value as PracticeDifficulty })}
-          >
-            {DIFFICULTIES.map(d => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
-        </label>
+        <DifficultySelect value={form.difficulty} onChange={difficulty => set({ difficulty })} />
       </div>
       <label className="block min-w-0">
         <span className={labelText}>Prompt</span>
@@ -399,26 +372,7 @@ function QuizEditor({
           onChange={e => set({ explanation: e.target.value })}
         />
       </label>
-      {errors.length > 0 && (
-        <ul role="alert" className="text-sm font-semibold text-rose-600 dark:text-rose-400 list-disc pl-5">
-          {errors.map(error => (
-            <li key={error}>{error}</li>
-          ))}
-        </ul>
-      )}
-      <div className="flex gap-2">
-        <button
-          type="button"
-          disabled={saving}
-          onClick={() => void save()}
-          className={`${button} bg-brand-600 hover:bg-brand-500 text-white`}
-        >
-          {saving ? 'Saving…' : 'Save'}
-        </button>
-        <button type="button" onClick={onCancel} className={`${button} text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800`}>
-          Cancel
-        </button>
-      </div>
+      <SaveBar saving={saving} errors={errors} onSave={() => void save(toQuizPatch(form))} onCancel={onCancel} />
     </div>
   );
 }

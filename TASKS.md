@@ -1039,7 +1039,7 @@ mode tabs; the admin question bank (#23), code review (#24), system design
   - **The admin bank.** `GET /api/admin/practice/questions?kind=&status=&language=&topic=&source=&reported=1&page=`
     (25 a page, open reports first, then newest, every kind) carries the key,
     notes, attempt count and open reports, plus `generators`, the kinds the AI
-    can draft. `PATCH /{id}` edits any content field or publishes and
+    can draft (all three). `PATCH /{id}` edits any content field or publishes and
     unpublishes, and re-runs the kind's validator on the whole question every
     time. `DELETE /{id}` deletes a question nobody answered and otherwise
     unpublishes it. Seed rows are read-only (422 naming the file's id): the fix
@@ -1056,13 +1056,17 @@ mode tabs; the admin question bank (#23), code review (#24), system design
     sidebar's Account group beside the other admin pages: a generate form,
     filters, and a card per question showing it as a user would see it, then
     the answer, explanation, review notes and open reports with their reasons;
-    Edit (the quiz form), Publish, Unpublish, Delete, Resolve reports.
-  - **For #24 and #25.** A kind plugs into the same endpoint with a
+    Edit (each kind's own form), Publish, Unpublish, Delete, Resolve reports.
+  - **Every kind drafts.** A kind plugs into the same endpoint with a
     `DraftKind` (request rules, pinned columns, prompt, schema, item mapping,
-    `DraftValidator`) and one line in `DraftKinds::KINDS`; until then the
-    generate endpoint and every edit refuse that kind with a 422 naming it.
-    The admin page's generate form and edit form are the quiz's, and a new
-    kind adds its own fields there.
+    draft-only checks, `DraftValidator`) and one line in `DraftKinds::KINDS`;
+    a kind with none would be refused with a 422 naming it. Code review
+    (`CodeReviewDrafts`, `{language, difficulty}`) and system design
+    (`SystemDesignDrafts`, `{difficulty}`) followed the quiz, each with its
+    own generate fields and edit form on the admin page (see 7.3 and 7.4).
+    Their validators wrap the seed files' item rules rather than restating
+    them, and `DraftFields::keyed()` files each item message under the field
+    to fix (`answer`, `answer.1`, ...).
 
 ### 7.3 Code review, the AI matches and code scores ✅
 
@@ -1118,16 +1122,34 @@ mode tabs; the admin question bank (#23), code review (#24), system design
     `PremiumGate feature="code_review"`). Language and level filters; the
     snippet in `CodeSnippet`, which gained optional line buttons, line
     highlights, content under a line and wrapping (the quiz's rendering is
-    unchanged); click a line number to comment, edit or delete; an optional
+    unchanged, except that an unwrapped snippet now has size containment, so
+    a long line scrolls inside the box rather than widening a 390px phone
+    screen); click a line number to comment, edit or delete; an optional
     summary; Submit. The result highlights each planted issue's lines, green
     if found and amber if missed, with its summary, fix and the fix verdict
     under its last line, marks every comment (found, valid point, or matched
     nothing), lists the bonus findings and the takeaway, and shows the three
     score bars with "How this was scored". The draft is the pure reducer in
     `utils/codeReview.ts`.
-  - For the admin bank's generator (#23): validate an AI draft with
-    `CodeReviewItemValidator::errors()` (code as one string) and store
-    `answer()` as the key. For #26: the found rate per category is in
+  - **AI drafts.** `kind: code_review` on the admin bank's generate endpoint
+    takes `{language, difficulty}`. The model writes the code as a list of
+    lines (line n is the nth string, as in the seed files) and, beside each
+    issue's numbers, copies the text of its first and last lines.
+    `CodeReviewDraftValidator` maps the bank's columns onto
+    `CodeReviewItemValidator::errors()` (title in `topic`, issues in
+    `answer.issues`), adds the language, and stores `answer()` as the key, so
+    a draft and every admin edit meet the seed files' rules. Its tidying never
+    moves a line (Windows line ends, trailing spaces, trailing blank lines and
+    a wrapping Markdown fence go; blank lines at the top stay), so ranges are
+    checked against the code exactly as the viewer numbers it;
+    `CodeReviewDrafts::draftErrors()` then refuses an issue whose numbers do
+    not land on the lines it quoted, which is how a model that miscounted (or
+    counted its fence) is caught. Types are normalised ("12" and 12.0 are
+    line 12, "Security" is security). The admin card shows the snippet with
+    each planted issue highlighted on its lines and spelled out under the last
+    one; the edit form has the title, prompt, code (with a live preview of the
+    ranges), each issue's id, lines, category, severity, summary and fix, and
+    the takeaway. For #26: the found rate per category is in
     `feedback.issues[].category` and `.found`. For #27: the three routes
     above; `next` never carries the issues. Not in the MCP server yet.
 
@@ -1172,10 +1194,20 @@ mode tabs; the admin question bank (#23), code review (#24), system design
     hand), and an explanation of what the scenario tests, shown after
     scoring. `SystemDesignItemValidator` holds the well-formedness rules (every
     trait and only rubric traits, 2 to 6 distinct key points under 200
-    characters, a title that fits `topic`, scale numbers in the prompt) and
-    is what the admin bank's generator should reuse for AI drafts (#23 had not
-    landed; a follow-up adds the generator). `PracticeSystemDesignContentTest`
+    characters, a title that fits `topic`, scale numbers in the prompt), for
+    the seed files and AI drafts alike. `PracticeSystemDesignContentTest`
     reads the files directly.
+  - **AI drafts.** `kind: system_design` on the admin bank's generate endpoint
+    takes `{difficulty}`. The prompt gives every trait with its full-marks
+    descriptor, asks for worked numbers in the estimation key points, and
+    lists every scenario already in the bank whatever its difficulty, so a
+    new one is not the same system again. `SystemDesignDraftValidator` runs
+    `SystemDesignItemValidator::errors()` on every draft and admin edit and
+    stores `columns()` (key points in rubric order; language, code and
+    options always null); key points are trimmed and blank ones dropped. The
+    admin card lists the key points per trait; the edit form has the title,
+    difficulty, scenario, a box per trait with one key point a line, and the
+    explanation.
   - **Plan.** New `Feature::SystemDesign` (`system_design`, group Coding
     practice): off on Free, 20 a day on Premium. `GET next` is
     `feature:system_design,access`; `POST answers` counts one use and is

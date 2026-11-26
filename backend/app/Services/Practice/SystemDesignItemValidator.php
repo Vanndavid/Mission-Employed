@@ -7,9 +7,9 @@ use App\Models\PracticeQuestion;
 
 /**
  * What makes a system design scenario fit to publish, wherever it came
- * from: a hand-written seed file ({@see SystemDesignSeed}) or, later, an
- * AI draft an admin reviews. One set of rules, so a draft cannot reach the
- * bank in a shape the seed files could not.
+ * from: a hand-written seed file ({@see SystemDesignSeed}), or an AI draft
+ * an admin reviews and edits ({@see SystemDesignDraftValidator}). One set of
+ * rules, so a draft cannot reach the bank in a shape the seed files could not.
  *
  * An item is:
  *

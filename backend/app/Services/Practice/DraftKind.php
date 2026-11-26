@@ -11,7 +11,8 @@ use App\Enums\PracticeKind;
  * {@see DraftValidator} every item and every later edit must pass.
  *
  * {@see DraftGeneration} does the rest the same way for every kind: one
- * model call, each item normalized and checked, repeats dropped, the valid
+ * model call, each item normalized and checked (and checked against what the
+ * model said about it, {@see self::draftErrors()}), repeats dropped, the valid
  * ones saved as ai drafts and the rest returned with their reasons. A kind
  * plugs in by implementing this and adding a line to {@see DraftKinds}.
  */
@@ -64,6 +65,18 @@ interface DraftKind
      * @return array<string, mixed>
      */
     public function fromModel(array $item, array $request): array;
+
+    /**
+     * What else is wrong with a draft that only the model's own item can
+     * show, such as a line it quoted that is not the line it numbered: checks
+     * an admin's edit has nothing to run against. Runs once the validator has
+     * passed the question. Never throws.
+     *
+     * @param  array<mixed>  $item  The model's item, untrusted.
+     * @param  array<string, mixed>  $question  It, mapped and normalized.
+     * @return list<string>
+     */
+    public function draftErrors(array $item, array $question): array;
 
     public function validator(): DraftValidator;
 }

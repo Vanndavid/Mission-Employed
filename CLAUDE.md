@@ -259,7 +259,10 @@ the emergency modal.
   every item goes through the kind's checks in code before anything is saved
   (`QuizDraftValidator` for the quiz: four distinct options, the answer one of
   them, an explanation, a snippet of at most 40 lines, the language and topic
-  asked for). What passes is saved as a `draft` with `source` ai, which no
+  asked for; `CodeReviewDraftValidator` and `SystemDesignDraftValidator`
+  wrap the seed files' item validators, so a draft meets the hand-written
+  rules, and a code review draft's ranges must land on the lines the model
+  quoted). What passes is saved as a `draft` with `source` ai, which no
   user route serves; what fails comes back with its reasons. The model's
   one-line note per wrong option goes in `review_notes`, hidden from
   serialization like `answer`. Every admin save (`PATCH`, publishing
@@ -288,7 +291,7 @@ the emergency modal.
   answer; the scenario's title is the bank's `topic`, and `language` is null.
   Seeds are one scenario a file in `backend/resources/practice/system_design/`
   (`SystemDesignSeed`), and `SystemDesignItemValidator` holds the rules a
-  scenario must meet, the same ones an AI draft will have to pass. The routes
+  scenario must meet, the same ones an AI draft has to pass. The routes
   (`/api/practice/system-design/*`) are behind `feature:system_design` and
   `throttle:features`; an answer under 15 words in all is a 422 before any of
   it. The MCP server wraps these routes too (7.6).
