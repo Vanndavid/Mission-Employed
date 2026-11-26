@@ -10,7 +10,7 @@ use App\Models\PracticeQuestion;
  * The hand-written practice bank: backend/resources/practice/<kind>/*.json,
  * one directory per {@see PracticeKind}. `practice:sync` publishes it.
  *
- * Only the quiz has a format so far. A quiz file is one language:
+ * Code review's format is in {@see CodeReviewSeed}. A quiz file is one language:
  *
  *     {
  *       "language": "javascript",
@@ -96,6 +96,10 @@ class SeedBank
      */
     private function rows(PracticeKind $kind, string $file, array $data, array &$problems): array
     {
+        if ($kind === PracticeKind::CodeReview) {
+            return (new CodeReviewSeed)->rows($file, $data, $problems);
+        }
+
         if ($kind === PracticeKind::SystemDesign) {
             return SystemDesignSeed::rows($file, $data, $problems);
         }

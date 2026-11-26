@@ -66,6 +66,27 @@ class PracticeQuestionFactory extends Factory
         ]);
     }
 
+    /**
+     * A 24-line JavaScript snippet to review, titled in `topic`, with two
+     * planted issues: `sql-injection` (lines 3-4, severity 3) and
+     * `off-by-one` (line 10, severity 1).
+     */
+    public function codeReview(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'kind' => PracticeKind::CodeReview,
+            'topic' => 'Snippet '.fake()->unique()->bothify('??##'),
+            'prompt' => 'Returns one page of the signed-in user\'s orders.',
+            'code' => implode("\n", array_map(fn (int $n) => "const line{$n} = {$n};", range(1, 24))),
+            'options' => null,
+            'answer' => ['issues' => [
+                ['id' => 'sql-injection', 'lines' => [3, 4], 'category' => 'security', 'severity' => 3, 'summary' => 'The status is pasted into the SQL.', 'fix' => 'Bind it as a parameter.'],
+                ['id' => 'off-by-one', 'lines' => [10, 10], 'category' => 'bug', 'severity' => 1, 'summary' => 'Page 1 skips the first rows.', 'fix' => 'Offset by (page - 1) * size.'],
+            ]],
+            'explanation' => 'Check every value that reaches a query.',
+        ]);
+    }
+
     /** A system design scenario: no language, the title as topic, key points as the answer. */
     public function systemDesign(): static
     {

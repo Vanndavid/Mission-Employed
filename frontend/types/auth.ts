@@ -39,6 +39,7 @@ export type NavTabKey =
   | 'profile'
   | 'training_room'
   | 'mock_test'
+  | 'practice_code_review'
   | 'practice_system_design';
 
 /** Mirrors App\Enums\Feature. Each is enforced server-side by the `feature` middleware. */
@@ -54,6 +55,7 @@ export type FeatureKey =
   | 'interview_practice'
   | 'spoken_playback'
   | 'mock_interview'
+  | 'code_review'
   | 'system_design';
 
 /** Mirrors App\Enums\QuotaPeriod: calendar periods in UTC. */

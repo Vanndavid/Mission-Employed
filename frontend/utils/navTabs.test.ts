@@ -12,6 +12,9 @@ import { homePath, modeTabs, NAV_TABS, screenLabel, sidebarTabs } from './navTab
 
 const sidebarKeys = NAV_TABS.filter(t => !t.modeOf).map(t => t.key);
 
+/** Mission Control's own screen and every one of its modes. */
+const allOfMissionControl = NAV_TABS.filter(t => t.key === 'mission_control' || t.modeOf === 'mission_control').map(t => t.key);
+
 describe('sidebarTabs', () => {
   it('leaves out the hidden tabs for a user', () => {
     const keys = sidebarTabs(['training_room', 'mock_test'], false).map(t => t.key);
@@ -36,14 +39,14 @@ describe('sidebarTabs', () => {
     expect(user.path).toBe('/dashboard/quiz');
     expect(user.hidden).toBe(false);
 
-    expect(sidebarTabs(['mission_control', 'practice_quiz'], false)[0].path).toBe('/dashboard/system-design');
-    expect(sidebarTabs(['mission_control', 'practice_quiz', 'practice_system_design'], false)[0].key).toBe('applications');
+    expect(sidebarTabs(['mission_control', 'practice_quiz'], false)[0].path).toBe('/dashboard/code-review');
+    expect(sidebarTabs(allOfMissionControl, false)[0].key).toBe('applications');
   });
 
   it('marks Mission Control hidden for an admin only when every mode is', () => {
     expect(sidebarTabs(['mission_control'], true)[0]).toMatchObject({ path: '/dashboard', hidden: false });
     expect(sidebarTabs(['mission_control', 'practice_quiz'], true)[0]).toMatchObject({ path: '/dashboard', hidden: false });
-    expect(sidebarTabs(['mission_control', 'practice_quiz', 'practice_system_design'], true)[0]).toMatchObject({ path: '/dashboard', hidden: true });
+    expect(sidebarTabs(allOfMissionControl, true)[0]).toMatchObject({ path: '/dashboard', hidden: true });
   });
 });
 
@@ -52,17 +55,19 @@ describe('modeTabs', () => {
     expect(modeTabs('mission_control', [], false).map(m => [m.label, m.path])).toEqual([
       ['Problems', '/dashboard'],
       ['Quiz', '/dashboard/quiz'],
+      ['Code review', '/dashboard/code-review'],
       ['System design', '/dashboard/system-design'],
     ]);
   });
 
   it('leaves out a hidden mode for a user and marks it for an admin', () => {
-    expect(modeTabs('mission_control', ['practice_quiz'], false).map(m => m.key)).toEqual(['mission_control', 'practice_system_design']);
+    expect(modeTabs('mission_control', ['practice_quiz'], false).map(m => m.key)).toEqual(['mission_control', 'practice_code_review', 'practice_system_design']);
 
     const admin = modeTabs('mission_control', ['practice_quiz'], true);
     expect(admin.map(m => [m.key, m.hidden])).toEqual([
       ['mission_control', false],
       ['practice_quiz', true],
+      ['practice_code_review', false],
       ['practice_system_design', false],
     ]);
   });
@@ -78,6 +83,7 @@ describe('screenLabel', () => {
 
     expect(label('mission_control')).toBe('Mission Control · Problems');
     expect(label('practice_quiz')).toBe('Mission Control · Quiz');
+    expect(label('practice_code_review')).toBe('Mission Control · Code review');
     expect(label('practice_system_design')).toBe('Mission Control · System design');
     expect(label('applications')).toBe('Job Applications');
   });
@@ -87,9 +93,9 @@ describe('homePath', () => {
   it('is the first tab the account can see', () => {
     expect(homePath([], false)).toBe('/dashboard');
     expect(homePath(['mission_control'], false)).toBe('/dashboard/quiz');
-    expect(homePath(['mission_control', 'practice_quiz'], false)).toBe('/dashboard/system-design');
-    expect(homePath(['mission_control', 'practice_quiz', 'practice_system_design'], false)).toBe('/applications');
-    expect(homePath(['mission_control', 'practice_quiz'], true)).toBe('/dashboard');
+    expect(homePath(['mission_control', 'practice_quiz'], false)).toBe('/dashboard/code-review');
+    expect(homePath(allOfMissionControl, false)).toBe('/applications');
+    expect(homePath(allOfMissionControl, true)).toBe('/dashboard');
   });
 
   it('falls back to Plan & Usage when every feature tab is hidden', () => {

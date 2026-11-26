@@ -1,6 +1,6 @@
 # Mission-Employed — task list
 
-**Branch:** `main` · **Status:** rebuild complete; project parked 2026-10-03, unparked 2026-10-17 for configurable plans (6.1, done) and 2026-11-26 for a calmer sidebar (6.2, done), then practice modes (Wave 7, epic #21: 7.1, 7.2 and 7.4 done, #24, #26 and #27 to follow). Live at mission-employed.vanndavidteng.com.
+**Branch:** `main` · **Status:** rebuild complete; project parked 2026-10-03, unparked 2026-10-17 for configurable plans (6.1, done) and 2026-11-26 for a calmer sidebar (6.2, done), then practice modes (Wave 7, epic #21: 7.1 to 7.4 done, #26 and #27 to follow). Live at mission-employed.vanndavidteng.com.
 
 ## How to use this file
 
@@ -1063,6 +1063,73 @@ mode tabs; the admin question bank (#23), code review (#24), system design
     generate endpoint and every edit refuse that kind with a 422 naming it.
     The admin page's generate form and edit form are the quiz's, and a new
     kind adds its own fields there.
+
+### 7.3 Code review, the AI matches and code scores ✅
+
+- [x] Done, 2026-11-26. Issue #24. Same split as the ATS check, after Eleph's
+  versioned rubric (`src/features/pte/lib/writingRubric.ts`).
+  - **Content.** `practice_questions` with kind `code_review`: the title in
+    `topic`, what the code is meant to do in `prompt`, 20 to 80 lines in
+    `code`, the takeaway in `explanation`, and in `answer` (never sent before
+    a review is scored) 2 to 6 planted issues, each
+    `{id, lines: [start, end], category, severity 1-3, summary, fix}`;
+    categories are `CodeReviewCategory` (bug, security, performance,
+    concurrency, readability, testing). Ten hand-written snippets in
+    `backend/resources/practice/code_review/<language>.json` (JavaScript 3,
+    Python 3, Java 2, SQL 2; 44 planted issues), code stored one string per
+    line so a range can be read off the file. Every JavaScript and Python
+    issue was run against the snippet (node, python3); the SQL join, count
+    and sum behaviour was run in SQLite; Java was traced by hand.
+    `CodeReviewItemValidator` holds the rules (ranges inside the snippet,
+    starting and ending on a line with code, at most 15 lines; unique slug
+    ids; a fix for each; severity 1-3); `CodeReviewSeed` parses the files
+    for `SeedBank`, and `PracticeCodeReviewSeedTest` checks them straight
+    from disk too.
+  - **Scoring.** One `generateJson` call (`CodeReviewGrader`,
+    `CodeReviewPrompts`) gets the planted issues and the numbered comments,
+    each flagged with the issues whose lines it sits on; the model says which
+    comment indexes identify each issue, whether the fix is yes, partial or
+    no, and which other comments make a valid point (bonus). Ids outside the
+    planted list, indexes that do not exist and duplicates are dropped, and
+    a bonus that also matched an issue is not a bonus. `CodeReviewScorer` is
+    a pure function out of 100: detection 70 x severity found / severity
+    total, fixes 20 (severity-weighted, partial is half), precision 10 x
+    useful comments / comments, each part rounded so the breakdown adds up.
+    Stored as a `practice_attempt` with `rubric_version` `cr-1`, `correct`
+    null, `response` `{comments: [{line, body}], summary}` and `feedback`
+    `{breakdown, issues (each planted issue copied whole, plus found,
+    comments, fixVerdict), bonus, takeaway}`.
+  - **API**, the `code_review` plan feature (off on Free, 30 a day on
+    Premium; group Coding practice):
+    `GET /api/practice/code-review/next?language=&difficulty=&exclude=`
+    (`,access`: `{snippet | null, reviewedBefore, total, unreviewed}`,
+    never-reviewed first, then the least recently reviewed);
+    `POST /api/practice/code-review/{question}/reviews
+    {comments: [{line, body}] (1 to 40), summary?}` (one use; 201 with the
+    score, breakdown, every issue revealed, bonus and the comments marked);
+    `GET /api/practice/code-review/reviews/{attempt}` (`,access`: the same
+    shape read back; someone else's is a 404). Ids are looked up after the
+    gate, so a free account gets 403 whatever the id; a draft, unknown or
+    quiz question is a bare 404; a line past the snippet is a 422 before any
+    model call. A Gemini failure is 502 `ai_unavailable`, with no use
+    counted and nothing stored.
+  - **Screen.** `CodeReviewMode.tsx` at `/dashboard/code-review`, NavTab
+    `practice_code_review` (a mode of Mission Control, behind `TabGate` and
+    `PremiumGate feature="code_review"`). Language and level filters; the
+    snippet in `CodeSnippet`, which gained optional line buttons, line
+    highlights, content under a line and wrapping (the quiz's rendering is
+    unchanged); click a line number to comment, edit or delete; an optional
+    summary; Submit. The result highlights each planted issue's lines, green
+    if found and amber if missed, with its summary, fix and the fix verdict
+    under its last line, marks every comment (found, valid point, or matched
+    nothing), lists the bonus findings and the takeaway, and shows the three
+    score bars with "How this was scored". The draft is the pure reducer in
+    `utils/codeReview.ts`.
+  - For the admin bank's generator (#23): validate an AI draft with
+    `CodeReviewItemValidator::errors()` (code as one string) and store
+    `answer()` as the key. For #26: the found rate per category is in
+    `feedback.issues[].category` and `.found`. For #27: the three routes
+    above; `next` never carries the issues. Not in the MCP server yet.
 
 ### 7.4 System design, scored against a fixed rubric ✅
 

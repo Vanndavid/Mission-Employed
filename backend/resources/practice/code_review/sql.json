@@ -1,0 +1,176 @@
+{
+  "language": "sql",
+  "snippets": [
+    {
+      "id": "review-sql-revenue-report",
+      "title": "Yearly revenue per customer",
+      "difficulty": "medium",
+      "prompt": "A PostgreSQL report for 2025: every active customer with their order count, their revenue and how it compares with the average customer, biggest first. Customers with no orders in 2025 must still be listed, with zero. orders.created_at and orders.customer_id are indexed.",
+      "code": [
+        "-- Revenue per active customer for 2025, biggest first.",
+        "-- Customers with no 2025 orders are listed with zero.",
+        "WITH yearly AS (",
+        "    SELECT",
+        "        c.id AS customer_id,",
+        "        c.name,",
+        "        COUNT(*) AS order_count,",
+        "        SUM(o.total) AS revenue",
+        "    FROM customers c",
+        "    LEFT JOIN orders o",
+        "        ON o.customer_id = c.id",
+        "    WHERE c.active = true",
+        "      AND EXTRACT(YEAR FROM o.created_at) = 2025",
+        "      AND o.status <> 'cancelled'",
+        "    GROUP BY c.id, c.name",
+        "),",
+        "average AS (",
+        "    SELECT AVG(revenue) AS avg_revenue",
+        "    FROM yearly",
+        ")",
+        "SELECT",
+        "    y.customer_id,",
+        "    y.name,",
+        "    y.order_count,",
+        "    y.revenue,",
+        "    ROUND(y.revenue / a.avg_revenue * 100) AS pct_of_average",
+        "FROM yearly y",
+        "CROSS JOIN average a",
+        "ORDER BY y.revenue DESC;"
+      ],
+      "issues": [
+        {
+          "id": "where-undoes-left-join",
+          "lines": [13, 14],
+          "category": "bug",
+          "severity": 3,
+          "summary": "Conditions on o in the WHERE clause throw away the rows the LEFT JOIN kept for customers with no matching orders (their o columns are NULL), so it behaves as an inner join and those customers vanish from the report.",
+          "fix": "Move the order conditions into the join: LEFT JOIN orders o ON o.customer_id = c.id AND <date range> AND o.status <> 'cancelled'."
+        },
+        {
+          "id": "count-star",
+          "lines": [7, 7],
+          "category": "bug",
+          "severity": 2,
+          "summary": "COUNT(*) counts rows, and a customer with no orders still has one joined row, so they would show 1 order instead of 0.",
+          "fix": "Count the order's column: COUNT(o.id), which skips the NULL."
+        },
+        {
+          "id": "null-revenue",
+          "lines": [8, 8],
+          "category": "bug",
+          "severity": 2,
+          "summary": "SUM over no rows is NULL, not 0, so a customer with no orders gets a NULL revenue and percentage, and PostgreSQL sorts NULLs first under DESC: they top the report.",
+          "fix": "COALESCE(SUM(o.total), 0) AS revenue (or ORDER BY revenue DESC NULLS LAST as well)."
+        },
+        {
+          "id": "extract-defeats-index",
+          "lines": [13, 13],
+          "category": "performance",
+          "severity": 2,
+          "summary": "EXTRACT(YEAR FROM o.created_at) = 2025 wraps the indexed column in a function, so the index on created_at cannot be used and every order ever placed is read.",
+          "fix": "Compare the column with a range: o.created_at >= '2025-01-01' AND o.created_at < '2026-01-01'."
+        },
+        {
+          "id": "divide-by-zero-average",
+          "lines": [26, 26],
+          "category": "bug",
+          "severity": 1,
+          "summary": "Once missing customers count as zero, a year with no revenue at all makes the average 0, and the division fails with 'division by zero'.",
+          "fix": "Divide by NULLIF(a.avg_revenue, 0), so the percentage is NULL instead of an error."
+        }
+      ],
+      "explanation": "With a LEFT JOIN, every condition on the right-hand table belongs in ON, and every aggregate over it has to expect NULL: COUNT(column), COALESCE(SUM(...), 0)."
+    },
+    {
+      "id": "review-sql-job-board-schema",
+      "title": "A job board's tables and queries",
+      "difficulty": "hard",
+      "prompt": "PostgreSQL schema for a job board, with the two queries it runs most: the search on every page view (a company's open jobs, newest first) and an applicant's list of their applications, looked up by email in any case. Each person may apply to a job once.",
+      "code": [
+        "CREATE TABLE companies (",
+        "    id SERIAL PRIMARY KEY,",
+        "    name TEXT NOT NULL",
+        ");",
+        "",
+        "CREATE TABLE jobs (",
+        "    id SERIAL PRIMARY KEY,",
+        "    company_id INTEGER,",
+        "    title TEXT NOT NULL,",
+        "    status TEXT NOT NULL DEFAULT 'open',",
+        "    salary_min INTEGER,",
+        "    salary_max INTEGER,",
+        "    posted_at TIMESTAMPTZ NOT NULL DEFAULT now()",
+        ");",
+        "",
+        "CREATE INDEX jobs_status_idx ON jobs (status);",
+        "CREATE INDEX jobs_posted_at_idx ON jobs (posted_at);",
+        "",
+        "CREATE TABLE applications (",
+        "    id SERIAL PRIMARY KEY,",
+        "    job_id INTEGER NOT NULL REFERENCES jobs (id),",
+        "    email TEXT NOT NULL,",
+        "    applied_at TIMESTAMPTZ NOT NULL DEFAULT now()",
+        ");",
+        "",
+        "CREATE INDEX applications_email_idx ON applications (email);",
+        "",
+        "-- On every page view:",
+        "SELECT id, title, salary_min, salary_max",
+        "FROM jobs",
+        "WHERE company_id = $1",
+        "  AND status = 'open'",
+        "ORDER BY posted_at DESC",
+        "LIMIT 20;",
+        "",
+        "-- An applicant's applications:",
+        "SELECT a.id, j.title, a.applied_at",
+        "FROM applications a",
+        "JOIN jobs j ON j.id = a.job_id",
+        "WHERE lower(a.email) = lower($1);"
+      ],
+      "issues": [
+        {
+          "id": "search-index-mismatch",
+          "lines": [16, 17],
+          "category": "performance",
+          "severity": 3,
+          "summary": "Nothing indexes company_id, and neither single-column index fits 'company_id = $1 AND status = 'open' ORDER BY posted_at DESC', so the hottest query reads far more rows than it returns: every open job through the status index (status has few values) and then a sort, or the posted_at index walked past other companies' jobs.",
+          "fix": "One composite index matching the query: CREATE INDEX ON jobs (company_id, status, posted_at DESC)."
+        },
+        {
+          "id": "company-not-a-foreign-key",
+          "lines": [8, 8],
+          "category": "bug",
+          "severity": 2,
+          "summary": "company_id is nullable and references nothing, so a job can point at a company that does not exist, or at none, and deleting a company leaves its jobs orphaned.",
+          "fix": "company_id INTEGER NOT NULL REFERENCES companies (id), with the ON DELETE behaviour you want."
+        },
+        {
+          "id": "lower-email-skips-index",
+          "lines": [40, 40],
+          "category": "performance",
+          "severity": 2,
+          "summary": "The index is on email, but the query filters on lower(email), so the index is never used and every applicant lookup scans the whole applications table.",
+          "fix": "Index the expression: CREATE INDEX ON applications (lower(email)), or store emails lower-cased (or as citext)."
+        },
+        {
+          "id": "duplicate-applications",
+          "lines": [19, 24],
+          "category": "bug",
+          "severity": 2,
+          "summary": "Nothing stops the same person applying to the same job twice; a double-click or a retried request makes a duplicate application.",
+          "fix": "Add a unique index, CREATE UNIQUE INDEX ON applications (job_id, lower(email)), and handle the conflict on insert (ON CONFLICT DO NOTHING)."
+        },
+        {
+          "id": "salary-range-unchecked",
+          "lines": [11, 12],
+          "category": "bug",
+          "severity": 1,
+          "summary": "Nothing stops salary_max being below salary_min, or either being negative.",
+          "fix": "CHECK (salary_min >= 0 AND salary_min <= salary_max) (NULLs still pass when a bound is unknown)."
+        }
+      ],
+      "explanation": "Review a schema from its queries: each hot WHERE and ORDER BY needs an index that matches it column for column, expression included. Then ask which rules the data has that only the application enforces."
+    }
+  ]
+}

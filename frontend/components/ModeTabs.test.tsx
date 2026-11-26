@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { NavTabKey } from '../types/auth';
+import { NAV_TABS } from '../utils/navTabs';
 
 /**
  * The mode tabs on Mission Control: Problems and Quiz, each a tab an admin
@@ -42,7 +43,7 @@ describe('ModeTabs', () => {
   });
 
   it('draws nothing when a user can see only one mode', () => {
-    hiddenTabs = ['practice_quiz', 'practice_system_design'];
+    hiddenTabs = NAV_TABS.filter(t => t.modeOf === 'mission_control').map(t => t.key);
     renderAt('/dashboard');
 
     expect(screen.queryByRole('navigation')).toBeNull();

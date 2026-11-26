@@ -31,6 +31,7 @@ enum Feature: string
     case InterviewPractice = 'interview_practice';
     case SpokenPlayback = 'spoken_playback';
     case MockInterview = 'mock_interview';
+    case CodeReview = 'code_review';
     case SystemDesign = 'system_design';
 
     /** @return list<string> */
@@ -69,6 +70,7 @@ enum Feature: string
             self::InterviewPractice => 'Interview practice',
             self::SpokenPlayback => 'Spoken playback',
             self::MockInterview => 'Mock interview',
+            self::CodeReview => 'Code review practice',
             self::SystemDesign => 'System design practice',
         };
     }
@@ -88,6 +90,7 @@ enum Feature: string
             self::InterviewPractice => 'A practice question, then feedback on your spoken answer. Each question or answer is one use.',
             self::SpokenPlayback => 'Practice questions read aloud. Each playback is one use.',
             self::MockInterview => 'A full interview ending in a written report. Each typed answer, voice connection or report is one use.',
+            self::CodeReview => 'Review a snippet like a pull request and the AI checks your comments against the issues planted in it. Each scored review is one use.',
             self::SystemDesign => 'A system design scenario answered in sections and scored against a fixed rubric. Each scored answer is one use.',
         };
     }
@@ -100,6 +103,7 @@ enum Feature: string
             self::AtsCheck, self::SeekJobs => 'Job applications',
             self::InterviewPractice, self::SpokenPlayback => 'Interview practice',
             self::MockInterview => 'Mock interview',
+            self::CodeReview => 'Coding practice',
             self::SystemDesign => 'Coding practice',
         };
     }
@@ -130,6 +134,7 @@ enum Feature: string
             self::InterviewPractice => 60,
             self::SpokenPlayback => 100,
             self::MockInterview => 100,
+            self::CodeReview => 30,
             self::SystemDesign => 20,
         };
 

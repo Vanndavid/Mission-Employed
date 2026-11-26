@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Practice\CodeReviewController;
 use App\Http\Controllers\Practice\QuizController;
 use App\Http\Controllers\Practice\SystemDesignController;
 use Illuminate\Support\Facades\Route;
@@ -20,6 +21,24 @@ Route::prefix('practice/quiz')->middleware('auth:sanctum')->group(function (): v
     Route::post('/answers', [QuizController::class, 'answer']);
     // ?language=: accuracy per topic and open mistakes.
     Route::get('/progress', [QuizController::class, 'progress']);
+});
+
+// Code review (task 7.3): review a snippet like a pull request. The model
+// matches the comments to the snippet's planted issues and
+// App\Services\Practice\CodeReviewScorer computes the score, so these name
+// the code_review plan feature like the /ai routes do. Opening a snippet or
+// reading a review back is free; each scored review is one use.
+Route::prefix('practice/code-review')->middleware(['auth:sanctum', 'throttle:features'])->group(function (): void {
+    // ?language=&difficulty=&exclude=: a snippet to review, without its issues.
+    Route::get('/next', [CodeReviewController::class, 'next'])->middleware('feature:code_review,access');
+    // {comments: [{line, body}], summary?}: the score, every planted issue revealed, and an attempt stored.
+    Route::post('/{question}/reviews', [CodeReviewController::class, 'review'])
+        ->whereNumber('question')
+        ->middleware('feature:code_review');
+    // A stored review, read back as it was scored.
+    Route::get('/reviews/{attempt}', [CodeReviewController::class, 'show'])
+        ->whereNumber('attempt')
+        ->middleware('feature:code_review,access');
 });
 
 // System design (task 7.4): a scenario answered in fixed sections, scored

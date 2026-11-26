@@ -27,6 +27,7 @@ enum NavTab: string
     case Profile = 'profile';
     case TrainingRoom = 'training_room';
     case MockTest = 'mock_test';
+    case PracticeCodeReview = 'practice_code_review';
     case PracticeSystemDesign = 'practice_system_design';
 
     /** @return list<string> */

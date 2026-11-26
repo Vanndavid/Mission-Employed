@@ -38,4 +38,31 @@ class PracticeAttemptFactory extends Factory
     {
         return $this->state(fn (array $attributes) => ['correct' => false, 'score' => 0]);
     }
+
+    /**
+     * A scored review of a code review snippet that found nothing: one
+     * comment, every issue missed. Pair it with a question made with
+     * PracticeQuestionFactory::codeReview().
+     */
+    public function codeReview(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'kind' => PracticeKind::CodeReview,
+            'response' => ['comments' => [['line' => 1, 'body' => 'Looks fine to me.']], 'summary' => null],
+            'score' => 0,
+            'max_score' => 100,
+            'correct' => null,
+            'feedback' => [
+                'breakdown' => [
+                    'detection' => ['points' => 0, 'max' => 70, 'found' => 0, 'total' => 0, 'severityFound' => 0, 'severityTotal' => 0],
+                    'fixes' => ['points' => 0, 'max' => 20],
+                    'precision' => ['points' => 0, 'max' => 10, 'useful' => 0, 'comments' => 1],
+                ],
+                'issues' => [],
+                'bonus' => [],
+                'takeaway' => 'Read it twice.',
+            ],
+            'rubric_version' => 'cr-1',
+        ]);
+    }
 }

@@ -1,0 +1,241 @@
+{
+  "language": "javascript",
+  "snippets": [
+    {
+      "id": "review-js-orders-page",
+      "title": "One page of a user's orders",
+      "difficulty": "medium",
+      "prompt": "An Express route that returns one page of the signed-in user's orders, newest first, each with its line items. Pages are numbered from 1, and the client can filter by status. db.query(sql, params) runs a MySQL query with ? placeholders and resolves to the rows.",
+      "code": [
+        "const express = require('express');",
+        "const db = require('./db');",
+        "",
+        "const router = express.Router();",
+        "const PAGE_SIZE = 20;",
+        "",
+        "// GET /orders?page=1&status=shipped",
+        "router.get('/orders', async (req, res, next) => {",
+        "  try {",
+        "    const page = parseInt(req.query.page, 10) || 1;",
+        "    const status = req.query.status;",
+        "",
+        "    let sql = 'SELECT id, total, status, created_at FROM orders WHERE user_id = ?';",
+        "    if (status) {",
+        "      sql += ` AND status = '${status}'`;",
+        "    }",
+        "    sql += ` ORDER BY created_at DESC LIMIT ${PAGE_SIZE} OFFSET ${page * PAGE_SIZE}`;",
+        "",
+        "    const orders = await db.query(sql, [req.user.id]);",
+        "",
+        "    for (const order of orders) {",
+        "      order.items = await db.query(",
+        "        'SELECT sku, quantity, price FROM order_items WHERE order_id = ?',",
+        "        [order.id]",
+        "      );",
+        "    }",
+        "",
+        "    res.json({ page, orders });",
+        "  } catch (err) {",
+        "    next(err);",
+        "  }",
+        "});",
+        "",
+        "module.exports = router;"
+      ],
+      "issues": [
+        {
+          "id": "sql-injection",
+          "lines": [14, 16],
+          "category": "security",
+          "severity": 3,
+          "summary": "The status filter is pasted into the SQL string, so ?status=' OR '1'='1 (or worse) runs as SQL. The user id is bound properly; the status is not.",
+          "fix": "Use a placeholder for it too: sql += ' AND status = ?' and push status onto the params array."
+        },
+        {
+          "id": "offset-skips-first-page",
+          "lines": [17, 17],
+          "category": "bug",
+          "severity": 2,
+          "summary": "Pages start at 1 but the offset is page * PAGE_SIZE, so page 1 skips the 20 newest orders and no page ever shows them.",
+          "fix": "Use OFFSET (page - 1) * PAGE_SIZE."
+        },
+        {
+          "id": "negative-page",
+          "lines": [10, 10],
+          "category": "bug",
+          "severity": 1,
+          "summary": "Only 0 and garbage fall back to 1. ?page=-3 parses to -3, giving a negative OFFSET that MySQL rejects with a syntax error, so a bad query string becomes a 500.",
+          "fix": "Clamp it: const page = Math.max(1, parseInt(req.query.page, 10) || 1)."
+        },
+        {
+          "id": "n-plus-one",
+          "lines": [21, 26],
+          "category": "performance",
+          "severity": 2,
+          "summary": "One extra query per order (N+1): a page of 20 orders makes 21 round trips, one after another.",
+          "fix": "Fetch every page's items in one query, WHERE order_id IN (?), and group them by order_id in memory (or use a JOIN)."
+        }
+      ],
+      "explanation": "Read every value that reaches a query string first: one placeholder was used and the next value was concatenated. Then check the arithmetic at the edges (page 1, page -3) and count the queries a loop makes."
+    },
+    {
+      "id": "review-js-live-search",
+      "title": "Search as you type",
+      "difficulty": "medium",
+      "prompt": "Browser code for a product search box: as the user types, it waits for a pause, asks the API for matching products and lists them under the box. Results are cached per search term.",
+      "code": [
+        "const input = document.querySelector('#search');",
+        "const list = document.querySelector('#results');",
+        "const cache = new Map();",
+        "",
+        "let timer;",
+        "input.addEventListener('input', () => {",
+        "  clearTimeout(timer);",
+        "  timer = setTimeout(() => search(input.value.trim()), 250);",
+        "});",
+        "",
+        "async function search(term) {",
+        "  if (term.length < 2) {",
+        "    list.innerHTML = '';",
+        "    return;",
+        "  }",
+        "",
+        "  if (cache.has(term)) {",
+        "    render(cache.get(term));",
+        "    return;",
+        "  }",
+        "",
+        "  const response = await fetch('/api/products?q=' + term);",
+        "  const products = await response.json();",
+        "  cache.set(term, products);",
+        "  render(products);",
+        "}",
+        "",
+        "function render(products) {",
+        "  if (products.length === 0) {",
+        "    list.innerHTML = '<li class=\"empty\">No matches</li>';",
+        "    return;",
+        "  }",
+        "  list.innerHTML = products",
+        "    .map(p => `<li>${p.name} <span>$${p.price}</span></li>`)",
+        "    .join('');",
+        "}"
+      ],
+      "issues": [
+        {
+          "id": "stale-response",
+          "lines": [22, 25],
+          "category": "concurrency",
+          "severity": 3,
+          "summary": "Responses can arrive out of order. Type 'lap', pause, then 'laptop': if the 'lap' request is slower it renders last, and the list shows results for a term the box no longer holds.",
+          "fix": "Only render the latest search: remember the current term (or a request counter) and ignore a response that is not for it, or abort the previous fetch with an AbortController."
+        },
+        {
+          "id": "xss-in-results",
+          "lines": [33, 35],
+          "category": "security",
+          "severity": 3,
+          "summary": "Product names go into innerHTML unescaped, so a name containing <img src=x onerror=...> runs script in every visitor's browser.",
+          "fix": "Build the items with document.createElement and textContent, or escape name and price before inserting them."
+        },
+        {
+          "id": "query-not-encoded",
+          "lines": [22, 22],
+          "category": "bug",
+          "severity": 2,
+          "summary": "The term is concatenated into the URL unencoded: 'c++' arrives as 'c  ' and 'salt & pepper' is cut off at the &.",
+          "fix": "Encode it: '/api/products?q=' + encodeURIComponent(term), or build the URL with URLSearchParams."
+        },
+        {
+          "id": "http-errors-ignored",
+          "lines": [22, 24],
+          "category": "bug",
+          "severity": 2,
+          "summary": "response.ok is never checked. A 500 with a JSON error body is cached and passed to render, where products.length is undefined and products.map throws, so the box stays broken for that term until the page reloads.",
+          "fix": "Check response.ok (and catch network errors) before caching; show an error state and do not cache failures."
+        }
+      ],
+      "explanation": "Async UI code needs two questions asked of every await: what if this answer arrives late, and what if it is an error? And anything that ends up in innerHTML is markup, not text."
+    },
+    {
+      "id": "review-js-charge-retry",
+      "title": "Retrying a card payment",
+      "difficulty": "hard",
+      "prompt": "A Node service charges a customer's card through a payments API, retrying with exponential backoff when a call fails. client.post resolves to the API's response, or rejects with an error carrying the HTTP status (err.status) when there is one, and no status when the request never got an answer (a timeout or a dropped connection).",
+      "code": [
+        "const MAX_ATTEMPTS = 5;",
+        "const BASE_DELAY_MS = 200;",
+        "",
+        "async function chargeCard(client, payment, logger) {",
+        "  let attempt = 0;",
+        "",
+        "  while (attempt < MAX_ATTEMPTS) {",
+        "    try {",
+        "      const charge = await client.post('/charges', {",
+        "        amount: payment.amountCents,",
+        "        currency: payment.currency,",
+        "        source: payment.cardToken,",
+        "        description: `Order ${payment.orderId}`,",
+        "      });",
+        "      return charge.id;",
+        "    } catch (err) {",
+        "      attempt++;",
+        "      logger.warn(",
+        "        `Charge attempt ${attempt} failed for card ${payment.cardNumber}: ${err.message}`",
+        "      );",
+        "      const delay = BASE_DELAY_MS * 2 ** attempt;",
+        "      setTimeout(() => {}, delay);",
+        "    }",
+        "  }",
+        "",
+        "  throw new Error('Payment failed');",
+        "}",
+        "",
+        "module.exports = { chargeCard };"
+      ],
+      "issues": [
+        {
+          "id": "no-idempotency-key",
+          "lines": [9, 14],
+          "category": "bug",
+          "severity": 3,
+          "summary": "A timeout does not mean the charge failed: the API may have charged the card and the answer got lost. Retrying the same POST then charges the customer again.",
+          "fix": "Send an idempotency key that stays the same across every attempt for this payment (for example derived from the order id), so the API returns the first charge instead of making a second."
+        },
+        {
+          "id": "backoff-does-not-wait",
+          "lines": [21, 22],
+          "category": "bug",
+          "severity": 3,
+          "summary": "setTimeout(() => {}, delay) schedules an empty callback and returns at once, so all five attempts fire back to back with no backoff at all.",
+          "fix": "Await the delay: await new Promise(resolve => setTimeout(resolve, delay))."
+        },
+        {
+          "id": "retries-declines",
+          "lines": [16, 17],
+          "category": "bug",
+          "severity": 2,
+          "summary": "Every failure is retried, including a 402 card declined or a 400 bad request, which will fail the same way five times (and repeated declines can get a card flagged).",
+          "fix": "Retry only when there is no status (a network failure), a 429 or a 5xx; rethrow anything else at once."
+        },
+        {
+          "id": "card-number-logged",
+          "lines": [18, 20],
+          "category": "security",
+          "severity": 2,
+          "summary": "The full card number is written to the logs. That puts card data in log storage, which PCI DSS forbids, and the charge only needs the token anyway.",
+          "fix": "Log the order id and at most the last four digits; never the card number."
+        },
+        {
+          "id": "cause-discarded",
+          "lines": [26, 26],
+          "category": "readability",
+          "severity": 1,
+          "summary": "The final error drops the last failure, so whoever catches it cannot tell a decline from an outage.",
+          "fix": "Keep the last error and pass it on: throw new Error('Payment failed', { cause: lastError })."
+        }
+      ],
+      "explanation": "Retrying anything that moves money starts with one question: is it safe to send twice? Then check that the backoff really waits, and that only failures worth retrying are retried."
+    }
+  ]
+}

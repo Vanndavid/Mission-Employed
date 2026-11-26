@@ -1,0 +1,240 @@
+{
+  "language": "python",
+  "snippets": [
+    {
+      "id": "review-py-review-summary",
+      "title": "Summarising product reviews",
+      "difficulty": "easy",
+      "prompt": "Helpers for a product page: load settings, tag reviews, and summarise a product's reviews as a count, an overall average rating and the average over the last 30 days. Each review is a dict with 'rating' (1-5) and 'posted' ('YYYY-MM-DD').",
+      "code": [
+        "import json",
+        "from datetime import datetime",
+        "",
+        "",
+        "def load_settings(path):",
+        "    f = open(path)",
+        "    settings = json.load(f)",
+        "    return settings",
+        "",
+        "",
+        "def add_tag(review, tag, tags=[]):",
+        "    tags.append(tag)",
+        "    review[\"tags\"] = tags",
+        "    return review",
+        "",
+        "",
+        "def average_rating(reviews):",
+        "    total = 0",
+        "    for review in reviews:",
+        "        total = total + review[\"rating\"]",
+        "    return total / len(reviews)",
+        "",
+        "",
+        "def is_recent(review, days=30):",
+        "    posted = datetime.strptime(review[\"posted\"], \"%Y-%m-%d\")",
+        "    return (datetime.now() - posted).days < days",
+        "",
+        "",
+        "def summarise(reviews):",
+        "    recent = [r for r in reviews if is_recent(r)]",
+        "    return {",
+        "        \"count\": len(reviews),",
+        "        \"average\": average_rating(reviews),",
+        "        \"recent_average\": average_rating(recent),",
+        "    }",
+        "",
+        "",
+        "def test_average_rating():",
+        "    reviews = [{\"rating\": 4, \"posted\": \"2025-03-01\"}, {\"rating\": 5, \"posted\": \"2025-03-02\"}]",
+        "    assert average_rating(reviews)"
+      ],
+      "issues": [
+        {
+          "id": "mutable-default",
+          "lines": [11, 13],
+          "category": "bug",
+          "severity": 3,
+          "summary": "tags=[] is created once, when the function is defined, and shared by every call that omits it: each review tagged this way ends up holding every tag ever added, and they all share one list.",
+          "fix": "Default to None and make a new list inside: tags = [] if tags is None else tags (or copy the one passed in)."
+        },
+        {
+          "id": "divide-by-zero",
+          "lines": [21, 21],
+          "category": "bug",
+          "severity": 3,
+          "summary": "average_rating([]) raises ZeroDivisionError, and summarise calls it with the recent reviews, so any product with no review in the last 30 days (or none at all) crashes the page.",
+          "fix": "Return None (or 0) for an empty list, and let the page show 'no recent reviews'."
+        },
+        {
+          "id": "file-not-closed",
+          "lines": [6, 8],
+          "category": "bug",
+          "severity": 1,
+          "summary": "The file is never closed. Closing it is left to the garbage collector, which Python warns about (ResourceWarning) and other interpreters may not do for a long time.",
+          "fix": "with open(path) as f: return json.load(f)"
+        },
+        {
+          "id": "hand-rolled-sum",
+          "lines": [18, 20],
+          "category": "readability",
+          "severity": 1,
+          "summary": "The loop re-implements sum().",
+          "fix": "total = sum(review[\"rating\"] for review in reviews)"
+        },
+        {
+          "id": "truthy-assert",
+          "lines": [40, 40],
+          "category": "testing",
+          "severity": 2,
+          "summary": "The test only checks the result is truthy, so it passes for any wrong average but 0, and nothing tests the empty list that actually crashes.",
+          "fix": "Assert the value, assert average_rating(reviews) == 4.5, and add a test for no reviews (and no recent ones)."
+        }
+      ],
+      "explanation": "Python's two classic traps are both here: a mutable default argument, and an average of a list that can be empty. Ask what each function does when it gets nothing."
+    },
+    {
+      "id": "review-py-profile-cache",
+      "title": "Warming a profile cache with threads",
+      "difficulty": "hard",
+      "prompt": "Before a batch job runs, warm_cache fetches every user's profile from an internal HTTP API in parallel and keeps them in a module-level cache; later calls to fetch_profile are served from it. report() prints how well the cache did. The batch can be tens of thousands of users.",
+      "code": [
+        "import threading",
+        "",
+        "import requests",
+        "",
+        "API_URL = \"https://profiles.internal/api/users/{}\"",
+        "",
+        "_cache = {}",
+        "_hits = 0",
+        "",
+        "",
+        "def fetch_profile(user_id):",
+        "    global _hits",
+        "    if user_id in _cache:",
+        "        _hits += 1",
+        "        return _cache[user_id]",
+        "",
+        "    response = requests.get(API_URL.format(user_id))",
+        "    profile = response.json()",
+        "    _cache[user_id] = profile",
+        "    return profile",
+        "",
+        "",
+        "def warm_cache(user_ids):",
+        "    threads = []",
+        "    for user_id in user_ids:",
+        "        thread = threading.Thread(target=fetch_profile, args=(user_id,))",
+        "        thread.start()",
+        "        threads.append(thread)",
+        "    for thread in threads:",
+        "        thread.join()",
+        "",
+        "",
+        "def report():",
+        "    print(f\"{len(_cache)} profiles cached, {_hits} cache hits\")"
+      ],
+      "issues": [
+        {
+          "id": "unsynchronised-counter",
+          "lines": [14, 14],
+          "category": "concurrency",
+          "severity": 2,
+          "summary": "_hits += 1 is a read, an add and a write. Two threads can read the same value and both write value + 1, so hits are lost and report() undercounts.",
+          "fix": "Guard the counter with a threading.Lock (with _lock: _hits += 1), or count per thread and sum afterwards."
+        },
+        {
+          "id": "errors-cached",
+          "lines": [17, 19],
+          "category": "bug",
+          "severity": 3,
+          "summary": "The status is never checked, so a 404 or 500 error body is parsed and cached as if it were the profile, and served from the cache for the rest of the run (or response.json() raises on an HTML error page).",
+          "fix": "Call response.raise_for_status() before parsing, and cache only successful profiles."
+        },
+        {
+          "id": "no-timeout",
+          "lines": [17, 17],
+          "category": "bug",
+          "severity": 2,
+          "summary": "requests.get has no timeout, so one hung connection blocks its thread forever and warm_cache never returns.",
+          "fix": "Pass a timeout, e.g. requests.get(url, timeout=5), and decide what a timed-out profile should do."
+        },
+        {
+          "id": "thread-per-user",
+          "lines": [24, 28],
+          "category": "performance",
+          "severity": 2,
+          "summary": "One thread per user: tens of thousands of threads at once exhaust memory and file descriptors and flood the profile API.",
+          "fix": "Use a bounded pool: with ThreadPoolExecutor(max_workers=16) as pool: list(pool.map(fetch_profile, user_ids)). A shared requests.Session would also reuse connections."
+        }
+      ],
+      "explanation": "Concurrency bugs hide in the lines that look simplest: += on shared state is not atomic. And anything that fans out needs a bound, and a timeout on every call it waits for."
+    },
+    {
+      "id": "review-py-cancel-order",
+      "title": "Cancelling an order",
+      "difficulty": "medium",
+      "prompt": "A Flask endpoint that lets a signed-in customer cancel one of their orders and records a refund for it. Orders that have shipped cannot be cancelled. The app keeps the signed-in user's id in session['user_id'].",
+      "code": [
+        "import sqlite3",
+        "",
+        "from flask import Flask, jsonify, session",
+        "",
+        "app = Flask(__name__)",
+        "DB_PATH = \"shop.db\"",
+        "",
+        "",
+        "def get_db():",
+        "    return sqlite3.connect(DB_PATH)",
+        "",
+        "",
+        "@app.route(\"/api/users/<int:user_id>/orders/<int:order_id>\", methods=[\"DELETE\"])",
+        "def cancel_order(user_id, order_id):",
+        "    if \"user_id\" not in session:",
+        "        return jsonify(error=\"sign in first\"), 401",
+        "",
+        "    db = get_db()",
+        "    order = db.execute(",
+        "        \"SELECT id, status, total FROM orders WHERE id = ?\", (order_id,)",
+        "    ).fetchone()",
+        "    if order is None:",
+        "        return jsonify(error=\"not found\"), 404",
+        "",
+        "    if order[1] == \"shipped\":",
+        "        return jsonify(error=\"already shipped\"), 409",
+        "",
+        "    db.execute(\"UPDATE orders SET status = 'cancelled' WHERE id = ?\", (order_id,))",
+        "    db.execute(",
+        "        \"INSERT INTO refunds (order_id, amount) VALUES (?, ?)\", (order_id, order[2])",
+        "    )",
+        "    return jsonify(status=\"cancelled\")"
+      ],
+      "issues": [
+        {
+          "id": "cancels-anyones-order",
+          "lines": [19, 21],
+          "category": "security",
+          "severity": 3,
+          "summary": "The order is looked up by id alone. Any signed-in customer can cancel, and get a refund recorded for, any order in the shop by changing the id in the URL; the user_id in the path is never compared with anything.",
+          "fix": "Filter by the session's user: WHERE id = ? AND user_id = ? with session['user_id'], answer 404 when it is not theirs, and drop user_id from the URL."
+        },
+        {
+          "id": "never-committed",
+          "lines": [28, 32],
+          "category": "bug",
+          "severity": 3,
+          "summary": "sqlite3 opens a transaction for the UPDATE and nothing commits it, so the cancellation and the refund are thrown away when the connection goes: the endpoint says 'cancelled' and nothing changed.",
+          "fix": "Wrap the writes in with db: (which commits on success and rolls back on error), or call db.commit()."
+        },
+        {
+          "id": "refunds-twice",
+          "lines": [25, 26],
+          "category": "bug",
+          "severity": 2,
+          "summary": "Only 'shipped' is refused, so cancelling an order that is already cancelled passes the check and records a second refund. Two requests at once can do the same.",
+          "fix": "Refuse anything but an open order, and make the update conditional: UPDATE ... WHERE id = ? AND status NOT IN ('shipped', 'cancelled'), refunding only if it changed a row."
+        }
+      ],
+      "explanation": "For any endpoint that changes data, ask: whose record is this, is the change actually saved, and what happens if it is called twice?"
+    }
+  ]
+}

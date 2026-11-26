@@ -67,6 +67,10 @@ class AiPremiumGateTest extends TestCase
             'cv refine session' => ['POST', '/api/ai/cv/sessions', $refine, null],
             'ats check' => ['POST', '/api/ai/applications/{application}/ats', [], null],
             'tts' => ['POST', '/api/ai/tts', ['text' => 'hello'], null],
+            // Ids are looked up after the gate, so none needs to exist.
+            'code review next' => ['GET', '/api/practice/code-review/next', [], null],
+            'code review submit' => ['POST', '/api/practice/code-review/1/reviews', ['comments' => [['line' => 1, 'body' => 'An injection.']]], null],
+            'code review show' => ['GET', '/api/practice/code-review/reviews/1', [], null],
             'system design next' => ['GET', '/api/practice/system-design/next', [], null],
             'system design answer' => ['POST', '/api/practice/system-design/{question}/answers', [
                 'sections' => ['requirements' => 'Create short links and redirect them in under 50 ms at the 99th percentile, five nines for redirects.'],

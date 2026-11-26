@@ -80,6 +80,15 @@ export const NAV_TABS: NavTab[] = [
     end: true,
   },
   {
+    key: 'practice_code_review',
+    modeOf: 'mission_control',
+    path: '/dashboard/code-review',
+    label: 'Code review',
+    sub: 'Review a snippet like a PR',
+    icon: '🔍',
+    end: true,
+  },
+  {
     key: 'practice_system_design',
     modeOf: 'mission_control',
     path: '/dashboard/system-design',

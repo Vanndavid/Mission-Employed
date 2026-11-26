@@ -129,7 +129,10 @@ reintroduce it or build features that depend on it:
    **Quiz**: multiple-choice questions on a language (JavaScript, Python, Java,
    SQL) from a hand-written bank, in rounds of ten, each answer explained and
    scored on the server in code, missed questions brought back later. The quiz
-   is free on every plan and never metered. **System design**: a scenario with
+   is free on every plan and never metered. **Code review**: review a 20 to
+   80 line snippet like a pull request, commenting on lines; the AI matches
+   the comments to the issues planted in it and the score is computed from
+   that (the `code_review` plan feature). **System design**: a scenario with
    scale numbers ("a URL shortener for 100M new links a month") answered in
    seven fixed sections, scored out of 100 against a fixed rubric (code applies
    the word gates and adds up, the AI rates the traits against written
@@ -301,6 +304,18 @@ the emergency modal.
   deterministically. Keywords are cached on the application under a hash of
   role + JD, so re-checking an edited CV makes no model call. `ats_keywords` and
   `ats_report` are server-owned: never fillable, never in `COLUMN_MAP`.
+- **Code review: the AI matches, code scores.** A snippet's planted issues
+  (`answer.issues`: id, lines, category, severity 1-3, summary, fix) never
+  leave the server before a review is scored. One model call
+  (`CodeReviewGrader`, prompt in `App\Services\Ai\CodeReviewPrompts`) says
+  which comment indexes identify which issue and how good the suggested fix
+  is; comments on an issue's lines are flagged as candidates, but the model
+  decides. Its answer is sanitised (unknown ids, missing indexes and
+  duplicates dropped), and `CodeReviewScorer` computes the score as a pure
+  function: detection 70 by severity, fixes 20, precision 10. The attempt
+  stores `rubric_version` `cr-1`; change it with the weights. What makes a
+  snippet publishable is `CodeReviewItemValidator`, for seed files and AI
+  drafts alike. A snippet's title is stored in `topic`.
 - **`Ghosted` is set by the server.** An application at Applied with no status
   change and no interview stage for `Application::GHOSTED_AFTER_DAYS` (30) is
   moved to Ghosted when the tracker is read (`ghostUnanswered()` on `index` and

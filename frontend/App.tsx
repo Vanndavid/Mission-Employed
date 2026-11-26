@@ -4,6 +4,7 @@ import { Sidebar, MobileHeader } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { MissionControl } from './components/MissionControl';
 import { QuizMode } from './components/QuizMode';
+import { CodeReviewMode } from './components/CodeReviewMode';
 import { SystemDesignMode } from './components/SystemDesignMode';
 import { JobApplications } from './components/JobApplications';
 import { PrepRoom } from './components/PrepRoom';
@@ -87,6 +88,16 @@ function AppRoutes() {
           element={
             <TabGate tab="practice_quiz">
               <QuizMode />
+            </TabGate>
+          }
+        />
+        <Route
+          path="code-review"
+          element={
+            <TabGate tab="practice_code_review">
+              <PremiumGate feature="code_review" title="Code review (Premium)">
+                <CodeReviewMode />
+              </PremiumGate>
             </TabGate>
           }
         />

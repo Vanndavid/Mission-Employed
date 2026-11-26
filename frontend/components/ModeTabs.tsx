@@ -19,7 +19,7 @@ export function ModeTabs({ tab }: { tab: NavTabKey }) {
   const label = NAV_TABS.find(t => t.key === tab)?.label ?? tab;
 
   return (
-    <nav aria-label={`${label} modes`} className="flex gap-1 border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
+    <nav aria-label={`${label} modes`} className="flex gap-1 border-b border-slate-200 dark:border-slate-700 overflow-x-auto overflow-y-hidden">
       {modes.map(mode => (
         <NavLink
           key={mode.key}
