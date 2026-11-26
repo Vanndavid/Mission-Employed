@@ -21,6 +21,10 @@ import { guarded, ok, present } from "./shared.js";
  * snippet or scenario needs the feature but uses none of it, and each scored
  * answer is one use. A refusal is the API's own sentence, passed on as is.
  *
+ * Progress and history (`/api/practice/progress`, `/api/practice/attempts`,
+ * task 7.5) are reads of the user's own attempts: no plan feature, so an
+ * account keeps them whatever its plan is now.
+ *
  * The admin question bank (`/api/admin/practice/*`) is not exposed.
  */
 
@@ -29,6 +33,19 @@ export const PRACTICE_LANGUAGES = ["javascript", "python", "java", "sql"] as con
 
 /** PracticeQuestion::DIFFICULTIES. */
 export const PRACTICE_DIFFICULTIES = ["easy", "medium", "hard"] as const;
+
+/** The stored values of App\Enums\PracticeKind. */
+export const PRACTICE_KINDS = ["quiz", "code_review", "system_design"] as const;
+
+/** The stored values of App\Enums\CodeReviewCategory. */
+export const CODE_REVIEW_CATEGORIES = [
+  "bug",
+  "security",
+  "performance",
+  "concurrency",
+  "readability",
+  "testing",
+] as const;
 
 /** SystemDesignRubric::SECTIONS, in the order an answer is written. */
 export const SYSTEM_DESIGN_SECTIONS = [
@@ -71,6 +88,20 @@ type NextScenario = { question: Scenario | null; rubric: unknown };
 
 type SystemDesignResult = { attemptId: number; score: number; maxScore: number };
 
+type ModeProgress = { attempts: number; averageScore: number | null };
+
+type PracticeProgress = {
+  windowDays: number;
+  quiz: ModeProgress;
+  codeReview: ModeProgress;
+  systemDesign: ModeProgress;
+};
+
+type AttemptPage = {
+  attempts: unknown[];
+  meta: { page: number; perPage: number; total: number; lastPage: number };
+};
+
 /** A question as a round serves it: never its answer or explanation. */
 function servedQuizQuestion({ id, topic, difficulty, prompt, code, options }: QuizQuestion): QuizQuestion {
   return { id, topic, difficulty, prompt, code, options };
@@ -107,6 +138,50 @@ export function numberedLines(code: string): string {
   const width = String(lines.length).length;
 
   return lines.map((line, index) => `${String(index + 1).padStart(width)} | ${line}`).join("\n");
+}
+
+/**
+ * The report without each area's `recent` list: the latest ten results per
+ * quiz topic, review category and design trait, which the web app's coach
+ * ranks by. The averages beside them say the same to a reader, in a fraction
+ * of the text.
+ */
+function withoutRecent(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(withoutRecent);
+  }
+
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([key]) => key !== "recent")
+        .map(([key, item]) => [key, withoutRecent(item)]),
+    );
+  }
+
+  return value;
+}
+
+function plural(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+
+/** One line per mode: how much was practised in the window, and how well. */
+function progressLine(report: PracticeProgress): string {
+  const mode = (label: string, noun: string, { attempts, averageScore }: ModeProgress, suffix = "") =>
+    attempts === 0 || averageScore === null
+      ? `${label} none`
+      : `${label} ${plural(attempts, noun)} at ${averageScore}%${suffix}`;
+
+  return (
+    `Last ${report.windowDays} days: ` +
+    [
+      mode("quiz", "answer", report.quiz, " on average"),
+      mode("code review", "review", report.codeReview),
+      mode("system design", "design", report.systemDesign),
+    ].join(", ") +
+    "."
+  );
 }
 
 function scoredReview(result: CodeReviewResult): string {
@@ -240,6 +315,13 @@ export function registerPracticeTools(server: McpServer, api: ApiClient): void {
       inputSchema: {
         language: z.enum(PRACTICE_LANGUAGES).optional().describe("Any language when left out."),
         difficulty: z.enum(PRACTICE_DIFFICULTIES).optional().describe("Any difficulty when left out."),
+        category: z
+          .enum(CODE_REVIEW_CATEGORIES)
+          .optional()
+          .describe(
+            "Only snippets with an issue of this kind planted, to practise a weak category from " +
+              "`practice_progress`. Do not tell the user which lines it is on.",
+          ),
         exclude: z
           .number()
           .int()
@@ -247,9 +329,9 @@ export function registerPracticeTools(server: McpServer, api: ApiClient): void {
           .describe("The snippet just shown, so another one comes back."),
       },
     },
-    guarded(async ({ language, difficulty, exclude }) => {
+    guarded(async ({ language, difficulty, category, exclude }) => {
       const next = await api.request<NextSnippet>(
-        withQuery("/practice/code-review/next", { language, difficulty, exclude }),
+        withQuery("/practice/code-review/next", { language, difficulty, category, exclude }),
       );
 
       if (next.snippet === null) {
@@ -416,5 +498,73 @@ export function registerPracticeTools(server: McpServer, api: ApiClient): void {
 
       return ok(`Reported question #${questionId}. An admin will look at it.`);
     }),
+  );
+
+  server.registerTool(
+    "practice_progress",
+    {
+      title: "Read practice progress across the modes",
+      description:
+        "How practice is going over the last 30 days, per mode: attempts, the average score and " +
+        "when it was last practised; the quiz's accuracy per language and topic and its open " +
+        "mistakes; code review's found rate per issue category; system design's average per " +
+        "rubric trait. Every topic, category and trait is listed, practised or not. Use it to " +
+        "say what to practise next: a quiz round on a weak topic (or a `mistakes` round), a code " +
+        "review in a weak category, a system design scenario. Free on every plan.",
+      inputSchema: {
+        recent: z
+          .boolean()
+          .optional()
+          .describe(
+            "Also return each topic's, category's and trait's latest ten results (points of " +
+              "maxPoints, newest first), however old. Defaults to false.",
+          ),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    guarded(async ({ recent = false }) => {
+      const report = await api.request<PracticeProgress>("/practice/progress");
+
+      return ok(recent ? report : withoutRecent(report), progressLine(report));
+    }),
+  );
+
+  server.registerTool(
+    "list_practice_attempts",
+    {
+      title: "List practice attempts",
+      description:
+        "The user's quiz answers, code reviews and system design answers, newest first, twenty a " +
+        "page: the mode, what it was on, the score and when. Never the answers themselves; read " +
+        "one in full with `get_practice_attempt`. Problems (the coding tutor) keeps its own " +
+        "history in `list_coding_attempts`. Free on every plan.",
+      inputSchema: {
+        kind: z.enum(PRACTICE_KINDS).optional().describe("One mode only. Every mode when left out."),
+        page: z.number().int().optional().describe("Defaults to 1."),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    guarded(async ({ kind, page }) => {
+      const list = await api.request<AttemptPage>(withQuery("/practice/attempts", { kind, page }));
+      const { meta } = list;
+
+      return ok(list, `Page ${meta.page} of ${meta.lastPage}, ${plural(meta.total, "attempt")}.`);
+    }),
+  );
+
+  server.registerTool(
+    "get_practice_attempt",
+    {
+      title: "Read a practice attempt",
+      description:
+        "One of the user's attempts as it was scored: for a quiz answer the question, their " +
+        "choice, the right answer and the explanation; for a code review what " +
+        "`submit_code_review` returned; for a system design the scenario, their sections and the " +
+        "report. It shows the answer, so do not read back a question the user is about to " +
+        "answer again (a `mistakes` round replays questions they missed). Free on every plan.",
+      inputSchema: { attemptId: z.number().int().describe("An attempt's id from `list_practice_attempts`.") },
+      annotations: { readOnlyHint: true },
+    },
+    guarded(async ({ attemptId }) => ok(await api.request(`/practice/attempts/${attemptId}`))),
   );
 }

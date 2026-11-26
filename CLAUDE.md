@@ -99,7 +99,8 @@ they only make sense in the browser. The typed mock `/turns` route stays for the
 MCP tools. See `mcp/README.md`.
 
 The practice modes are tools too (`mcp/src/tools/practice.ts`): the quiz, code
-review and system design routes and reporting a question, never the admin bank.
+review and system design routes, progress and history, and reporting a question,
+never the admin bank.
 The user is the one practising, so the tool descriptions and the server
 instructions tell the client to ask each question and send the user's own
 answer, never to answer for them or reveal an answer first. The tools that serve

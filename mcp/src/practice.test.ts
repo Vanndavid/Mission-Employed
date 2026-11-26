@@ -91,6 +91,64 @@ const RUBRIC = {
   traits: [{ key: "requirements", label: "Requirements and scope", weight: 12, sections: ["requirements"], descriptors: ["0", "1", "2", "3", "4"] }],
 };
 
+const RECENT = [{ at: "2026-11-25T10:00:00.000Z", points: 1, maxPoints: 1 }];
+
+const PROGRESS = {
+  windowDays: 30,
+  since: "2026-10-27T10:00:00.000Z",
+  quiz: {
+    kind: "quiz",
+    attempts: 12,
+    averageScore: 75,
+    lastAttemptAt: "2026-11-25T10:00:00.000Z",
+    openMistakes: 3,
+    languages: [
+      {
+        key: "python",
+        label: "Python",
+        answered: 12,
+        correct: 9,
+        accuracy: 75,
+        openMistakes: 3,
+        topics: [{ key: "types", label: "Built-in types & mutability", answered: 4, correct: 3, accuracy: 75, openMistakes: 1, recent: RECENT }],
+      },
+    ],
+  },
+  codeReview: {
+    kind: "code_review",
+    attempts: 2,
+    averageScore: 61,
+    lastAttemptAt: "2026-11-24T10:00:00.000Z",
+    categories: [{ key: "security", label: "Security", planted: 4, found: 1, foundRate: 25, recent: RECENT }],
+  },
+  systemDesign: {
+    kind: "system_design",
+    attempts: 1,
+    averageScore: 58,
+    lastAttemptAt: "2026-11-23T10:00:00.000Z",
+    traits: [{ key: "estimation", label: "Estimation", maxPoints: 12, attempts: 1, averagePoints: 3, average: 25, recent: RECENT }],
+  },
+};
+
+const ATTEMPTS = {
+  attempts: [
+    {
+      id: 41,
+      kind: "code_review",
+      title: "Average",
+      language: "python",
+      topic: null,
+      topicLabel: null,
+      difficulty: "easy",
+      score: 62,
+      maxScore: 100,
+      correct: null,
+      createdAt: "2026-11-26T10:00:00.000Z",
+    },
+  ],
+  meta: { page: 2, perPage: 20, total: 21, lastPage: 2 },
+};
+
 describe("the practice tools", () => {
   const api = new FakeApi();
   let client: Client;
@@ -208,6 +266,20 @@ describe("the practice tools", () => {
           errors: { sections: ["Write at least 15 words before asking for a score."] },
         },
       }))
+      .route("GET", "/practice/progress", () => ({ json: PROGRESS }))
+      .route("GET", "/practice/attempts", () => ({ json: ATTEMPTS }))
+      .route("GET", "/practice/attempts/41", () => ({
+        json: {
+          id: 41,
+          kind: "code_review",
+          score: 62,
+          maxScore: 100,
+          correct: null,
+          rubricVersion: "cr-1",
+          createdAt: "2026-11-26T10:00:00.000Z",
+          result: CODE_REVIEW_RESULT,
+        },
+      }))
       .route("POST", "/practice/questions/101/report", () => ({ status: 201, json: { reported: true } }))
       .route("POST", "/practice/questions/102/report", () => ({
         status: 409,
@@ -243,6 +315,9 @@ describe("the practice tools", () => {
       "next_system_design",
       "submit_system_design",
       "report_practice_question",
+      "practice_progress",
+      "list_practice_attempts",
+      "get_practice_attempt",
     ]) {
       tool(name);
     }
@@ -276,10 +351,18 @@ describe("the practice tools", () => {
     assert.match(instructions, /quiz \(free, never metered\), code review and system design/);
     assert.match(instructions, /never answer for them/);
     assert.match(instructions, /code review and\s+system design scoring/);
+    assert.match(instructions, /practice_progress/);
   });
 
   it("marks the reads as read-only", () => {
-    for (const name of ["quiz_catalog", "quiz_progress", "get_code_review"]) {
+    for (const name of [
+      "quiz_catalog",
+      "quiz_progress",
+      "get_code_review",
+      "practice_progress",
+      "list_practice_attempts",
+      "get_practice_attempt",
+    ]) {
       assert.equal(tool(name).annotations?.readOnlyHint, true, name);
     }
   });
@@ -370,6 +453,12 @@ describe("the practice tools", () => {
     await call(client, "next_code_review", { language: "python", difficulty: "medium", exclude: 12 });
 
     assert.equal(api.requests.at(-1)?.path, "/practice/code-review/next?language=python&difficulty=medium&exclude=12");
+  });
+
+  it("asks for a snippet with an issue of one category planted", async () => {
+    await call(client, "next_code_review", { category: "security" });
+
+    assert.equal(api.requests.at(-1)?.path, "/practice/code-review/next?category=security");
   });
 
   it("says so when no snippet matches", async () => {
@@ -473,6 +562,66 @@ describe("the practice tools", () => {
 
     assert.equal(result.isError, true);
     assert.equal(text(result), "You have already reported this question. An admin will look at it.");
+  });
+
+  it("reads progress across every mode, without each area's latest results by default", async () => {
+    const result = await call(client, "practice_progress");
+
+    assert.notEqual(result.isError, true);
+    assert.equal(api.requests.at(-1)?.method, "GET");
+    assert.equal(api.requests.at(-1)?.path, "/practice/progress");
+
+    const report = JSON.parse(text(result).split("\n\n").slice(1).join("\n\n"));
+
+    assert.equal(report.quiz.languages[0].topics[0].accuracy, 75);
+    assert.equal(report.codeReview.categories[0].foundRate, 25);
+    assert.equal(report.systemDesign.traits[0].average, 25);
+    assert.doesNotMatch(text(result), /"recent"/);
+    assert.match(text(result), /^Last 30 days: quiz 12 answers at 75% on average, code review 2 reviews at 61%, system design 1 design at 58%\./);
+  });
+
+  it("keeps each area's latest results when asked", async () => {
+    const result = await call(client, "practice_progress", { recent: true });
+
+    assert.deepEqual(
+      JSON.parse(text(result).split("\n\n").slice(1).join("\n\n")),
+      PROGRESS,
+    );
+  });
+
+  it("lists attempts newest first, filtered and paged by the API", async () => {
+    const result = await call(client, "list_practice_attempts", { kind: "code_review", page: 2 });
+
+    assert.notEqual(result.isError, true);
+    assert.equal(api.requests.at(-1)?.path, "/practice/attempts?kind=code_review&page=2");
+    assert.match(text(result), /^Page 2 of 2, 21 attempts\./);
+    assert.match(text(result), /"title": "Average"/);
+  });
+
+  it("lists every mode's attempts when no kind is given", async () => {
+    await call(client, "list_practice_attempts");
+
+    assert.equal(api.requests.at(-1)?.path, "/practice/attempts");
+  });
+
+  it("reads one attempt back with what it was scored and told", async () => {
+    const result = await call(client, "get_practice_attempt", { attemptId: 41 });
+
+    assert.notEqual(result.isError, true);
+    assert.equal(api.requests.at(-1)?.path, "/practice/attempts/41");
+    assert.match(text(result), /"kind": "code_review"/);
+    assert.match(text(result), /Reimplements sum\(\)/);
+  });
+
+  it("says plainly when an attempt is not the user's", async () => {
+    const result = await call(client, "get_practice_attempt", { attemptId: 999 });
+
+    assert.equal(result.isError, true);
+    assert.match(text(result), /No such record/);
+  });
+
+  it("warns against reading back a question the user is about to answer again", () => {
+    assert.match(tool("get_practice_attempt").description ?? "", /about to answer/i);
   });
 
   it("is on the hosted connector too", async () => {

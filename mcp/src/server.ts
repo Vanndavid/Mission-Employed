@@ -44,6 +44,7 @@ export function createServer(
         "user is the one practising. Ask the user each question, wait for their answer and send " +
         "it in their own words; never answer for them, and never reveal or hint at an answer " +
         "before they have answered — the API reveals the key with the verdict. " +
+        "practice_progress says how practice is going in every mode and points at what to practise next. " +
         "Ask before deleting anything.",
     },
   );

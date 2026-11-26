@@ -129,7 +129,7 @@ running the sync again is a no-op. In Cowork this can run on a schedule.
 | **Practice — quiz** | `quiz_catalog`, `start_quiz_round`, `answer_quiz_question`, `quiz_progress` |
 | **Practice — code review** | `next_code_review`, `submit_code_review`, `get_code_review` |
 | **Practice — system design** | `next_system_design`, `submit_system_design` |
-| **Practice — any mode** | `report_practice_question` |
+| **Practice — any mode** | `practice_progress`, `list_practice_attempts`, `get_practice_attempt`, `report_practice_question` |
 
 Prompt: `sync_job_emails`, described above. `login` and `logout` exist only in
 the local modes: over OAuth the connector owns the token.
@@ -178,13 +178,22 @@ they have answered.
   whether it was right, the answer and the explanation. `quiz_progress` is
   accuracy per topic and open mistakes. Free on every plan and never metered.
 - **Code review.** `next_code_review` serves a snippet with its lines numbered
-  as comments refer to them; `submit_code_review` sends the user's
+  as comments refer to them (`category` asks for one with an issue of that kind
+  planted); `submit_code_review` sends the user's
   `{line, body}` comments and optional summary and returns the score, the
   breakdown and every planted issue, found or missed. `get_code_review` reads a
   scored review back.
 - **System design.** `next_system_design` serves a scenario and the rubric it
   is scored against; `submit_system_design` sends the user's sections and
   returns the score, each trait's rating and the key points covered and missed.
+- **Progress and history.** `practice_progress` is the last 30 days in every
+  mode: quiz accuracy per language and topic with open mistakes, code review's
+  found rate per issue category, system design's average per trait, enough to
+  say what to practise next. Each area's latest ten results, which the web
+  app's coach ranks by, are left out unless asked for with `recent: true`.
+  `list_practice_attempts` pages through attempts newest first, never with
+  answers; `get_practice_attempt` reads one back as it was scored, answer
+  included. All three are free on every plan.
 - `report_practice_question` flags a question, snippet or scenario the user
   says is wrong, for an admin to review.
 
