@@ -35,7 +35,7 @@ class CodeReviewController extends AiController
     /** The next snippet to review, without its planted issues. */
     public function next(CodeReviewNextRequest $request, CodeReviewPicker $picker): JsonResponse
     {
-        $next = $picker->next($request->user(), $request->language(), $request->difficulty(), $request->exclude());
+        $next = $picker->next($request->user(), $request->language(), $request->difficulty(), $request->exclude(), $request->category());
 
         return response()->json([
             ...$next,

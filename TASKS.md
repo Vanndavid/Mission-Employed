@@ -1,6 +1,6 @@
 # Mission-Employed — task list
 
-**Branch:** `main` · **Status:** rebuild complete; project parked 2026-10-03, unparked 2026-10-17 for configurable plans (6.1, done) and 2026-11-26 for a calmer sidebar (6.2, done), then practice modes (Wave 7, epic #21: 7.1 to 7.4 done, #26 and #27 to follow). Live at mission-employed.vanndavidteng.com.
+**Branch:** `main` · **Status:** rebuild complete; project parked 2026-10-03, unparked 2026-10-17 for configurable plans (6.1, done) and 2026-11-26 for a calmer sidebar (6.2, done), then practice modes (Wave 7, epic #21: 7.1 to 7.6 done, generators for code review and system design to follow). Live at mission-employed.vanndavidteng.com.
 
 ## How to use this file
 
@@ -1203,6 +1203,76 @@ mode tabs; the admin question bank (#23), code review (#24), system design
   - Later, not this task: a "defend your design" follow-up chat on
     `ai_sessions` that probes the weakest trait. Not in the MCP server yet
     (#27).
+
+### 7.5 Progress, history and a coach across the modes ✅
+
+- [x] Done, 2026-11-26. Issue #26, after Eleph's skill coach
+  (`src/features/pte/lib/skillCoach.ts`) and its history with a page per
+  item. No AI: everything is worked out from `practice_attempts` each time
+  it is read, nothing is stored, and no route names a `feature:` or calls a
+  model, so an account that has lost Premium keeps its reviews and designs.
+  Problems keeps `coding_attempts`. No streaks and no daily goals.
+  - **Progress.** `GET /api/practice/progress`
+    (`App\Services\Practice\PracticeProgressReport`): per mode, attempts and
+    the average score over the last 30 days and when it was last practised;
+    the quiz's accuracy per language and topic plus open mistakes (published
+    questions only, like the quiz's own progress), code review's found rate
+    per issue category (from `feedback.issues`), system design's average
+    points per trait (from `feedback.traits`). Every topic, category and
+    trait is listed, practised or not. Each also carries `recent`: its
+    latest 10 results however old, newest first, as `{at, points,
+    maxPoints}` (a quiz answer 1 or 0 of 1; a category the detection points
+    its planted issues carried in that review, 70 shared by severity; a
+    trait its points of its weight). No option, planted issue or key point
+    is in it.
+  - **History.** `GET /api/practice/attempts?kind=&page=` (newest first, 20
+    a page, `{attempts, meta}`; a quiz attempt is titled by its question with
+    the topic's name, the others by the bank's `topic`; never an answer) and
+    `GET /api/practice/attempts/{id}` (`PracticeAttemptDetailResource`):
+    `result` is what that mode's result screen draws. The quiz's is the
+    question with its options in bank order, the choice, and the key and
+    explanation it was told; code review's is `CodeReviewResultResource`,
+    byte for byte what `GET /api/practice/code-review/reviews/{id}` answers;
+    system design's is the report as scored (traits from the stored
+    feedback), the scenario, the answer's sections and the rubric. Someone
+    else's attempt is a bare 404. A quiz answer whose question has since
+    been unpublished still reads back, marked so.
+  - **Coach.** `frontend/utils/practiceCoach.ts`, a pure function: every
+    quiz topic, review category and design trait is an area, ranked by the
+    points it costs on a 100-point attempt at a recent average where each
+    older result weighs 0.7 of the next newer one (latest 10). A trait's
+    points are already out of 100, a category's are its detection points,
+    and a quiz topic counts 100 over the language's topics, its share of a
+    mixed round. Ties go to the area practised longest ago, then the key.
+    Areas with nothing lost are left out; a mode never tried is suggested
+    only once the weak areas run out; a mode an admin hid or the plan lacks
+    is never suggested. The card (`PracticeCoach.tsx`) shows three, each with
+    a one-click start: a quiz round on the topic (and "Retry N mistakes" when
+    the language has open mistakes), a code review in the category, a system
+    design scenario. Starts travel in the mode's query string
+    (`utils/practiceLinks.ts`): `QuizModeRoute` and `CodeReviewModeRoute`
+    (`PracticeModeRoutes.tsx`) hand them to the modes as props, the quiz
+    starts the round once its catalog is in and tidies the address, and code
+    review shows "Focus: Security issues" until cleared.
+    `GET /api/practice/code-review/next` gained `category=`, a snippet with
+    an issue of that category planted (filtered in PHP, so no JSON SQL).
+  - **Screens.** The coach heads the side column on Problems; Recent
+    attempts merges Problems' attempts with the other modes' scored ones
+    (`utils/recentAttempts.ts`), each linking to its page; Weak topics
+    (`computeWeakTopics(history, min, progress)`) adds quiz topics by answers
+    right, review categories by issues found and design traits by points.
+    Practice history at `/dashboard/history` (`PracticeHistory.tsx`): each
+    mode's last 30 days, the coach, a mode filter and the paged list. An
+    attempt's page at `/dashboard/history/:id` (`PracticeAttemptPage.tsx`)
+    draws the mode's own result view, now exported without its
+    after-scoring buttons: the quiz's `AnswerVerdict` under the options
+    marked, code review's `ReviewResult`, system design's `ScenarioCard` and
+    `ScoreReport` plus the answer that was scored. History is not a mode tab
+    and has no `TabGate`: Mission Control links to it ("Progress & history"),
+    as do the coach and Recent attempts. Mission Control's subtitle names
+    every mode.
+  - For #27: the three read routes above are the MCP server's way to show
+    progress and history; none of them is metered.
 
 ### 7.6 MCP tools for the practice modes ✅
 

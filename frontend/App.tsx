@@ -3,9 +3,10 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Sidebar, MobileHeader } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { MissionControl } from './components/MissionControl';
-import { QuizMode } from './components/QuizMode';
-import { CodeReviewMode } from './components/CodeReviewMode';
 import { SystemDesignMode } from './components/SystemDesignMode';
+import { CodeReviewModeRoute, QuizModeRoute } from './components/PracticeModeRoutes';
+import { PracticeHistory } from './components/PracticeHistory';
+import { PracticeAttemptPage } from './components/PracticeAttemptPage';
 import { JobApplications } from './components/JobApplications';
 import { PrepRoom } from './components/PrepRoom';
 import { MockTest } from './components/MockTest';
@@ -87,7 +88,7 @@ function AppRoutes() {
           path="quiz"
           element={
             <TabGate tab="practice_quiz">
-              <QuizMode />
+              <QuizModeRoute />
             </TabGate>
           }
         />
@@ -96,7 +97,7 @@ function AppRoutes() {
           element={
             <TabGate tab="practice_code_review">
               <PremiumGate feature="code_review" title="Code review (Premium)">
-                <CodeReviewMode />
+                <CodeReviewModeRoute />
               </PremiumGate>
             </TabGate>
           }
@@ -111,6 +112,9 @@ function AppRoutes() {
             </TabGate>
           }
         />
+        {/* Progress and history across the modes (7.5): the user's own data, so no TabGate or plan gate. */}
+        <Route path="history" element={<PracticeHistory />} />
+        <Route path="history/:id" element={<PracticeAttemptPage />} />
       </Route>
       <Route
         path="/applications"

@@ -253,7 +253,8 @@ export function SystemDesignMode() {
   );
 }
 
-function ScenarioCard({ scenario, resumed }: { scenario: SystemDesignScenario; resumed: boolean }) {
+/** The scenario being answered; also heads its answer's page in the practice history. */
+export function ScenarioCard({ scenario, resumed = false }: { scenario: SystemDesignScenario; resumed?: boolean }) {
   return (
     <section className={`${card} p-6`} aria-labelledby="sd-scenario-title">
       <div className="flex flex-wrap items-center gap-3">
@@ -379,7 +380,11 @@ function AnswerForm({
   );
 }
 
-function ScoreReport({
+/**
+ * A scored answer: shown when it comes back, and again on its page in the
+ * practice history, which passes no actions.
+ */
+export function ScoreReport({
   report,
   rubric,
   onRevise,
@@ -387,8 +392,8 @@ function ScoreReport({
 }: {
   report: SystemDesignReport;
   rubric: SystemDesignRubric;
-  onRevise: () => void;
-  onNext: () => void;
+  onRevise?: () => void;
+  onNext?: () => void;
 }) {
   const band = scoreBand(report.maxScore > 0 ? (report.score / report.maxScore) * 100 : 0);
   const labelOf = (key: string) => report.traits.find(t => t.key === key)?.label ?? key;
@@ -434,22 +439,28 @@ function ScoreReport({
 
       <HowScored rubric={rubric} />
 
-      <div className="flex flex-wrap gap-3">
-        <button
-          type="button"
-          onClick={onRevise}
-          className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:border-brand-400"
-        >
-          Revise this answer
-        </button>
-        <button
-          type="button"
-          onClick={onNext}
-          className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold uppercase tracking-widest"
-        >
-          Next scenario
-        </button>
-      </div>
+      {(onRevise || onNext) && (
+        <div className="flex flex-wrap gap-3">
+          {onRevise && (
+            <button
+              type="button"
+              onClick={onRevise}
+              className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:border-brand-400"
+            >
+              Revise this answer
+            </button>
+          )}
+          {onNext && (
+            <button
+              type="button"
+              onClick={onNext}
+              className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold uppercase tracking-widest"
+            >
+              Next scenario
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

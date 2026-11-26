@@ -40,6 +40,8 @@ export interface NextSnippetFilter {
   difficulty?: PracticeDifficulty | null;
   /** The snippet on screen, so "another" is another one. */
   exclude?: number | null;
+  /** Only snippets with an issue of this category planted: the coach's start. */
+  category?: CodeReviewCategory | null;
 }
 
 /** A comment on one line, 1-based, as the user writes it. */

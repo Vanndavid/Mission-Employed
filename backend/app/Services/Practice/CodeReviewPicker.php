@@ -2,6 +2,7 @@
 
 namespace App\Services\Practice;
 
+use App\Enums\CodeReviewCategory;
 use App\Enums\PracticeKind;
 use App\Enums\PracticeLanguage;
 use App\Models\PracticeAttempt;
@@ -20,15 +21,21 @@ class CodeReviewPicker
 
     /**
      * @param  int|null  $exclude  the snippet on screen, skipped unless it is the only one
+     * @param  CodeReviewCategory|null  $category  only snippets with an issue of this category planted
      * @return array{snippet: PracticeQuestion|null, reviewedBefore: bool, total: int, unreviewed: int}
      */
-    public function next(User $user, ?PracticeLanguage $language, ?string $difficulty, ?int $exclude = null): array
+    public function next(User $user, ?PracticeLanguage $language, ?string $difficulty, ?int $exclude = null, ?CodeReviewCategory $category = null): array
     {
         $pool = PracticeQuestion::query()
             ->servable(PracticeKind::CodeReview)
             ->when($language !== null, fn ($query) => $query->where('language', $language))
             ->when($difficulty !== null, fn ($query) => $query->where('difficulty', $difficulty))
-            ->get();
+            ->get()
+            // The issues are JSON in the key; read here rather than queried, so
+            // nothing depends on the database's JSON functions.
+            ->when($category !== null, fn ($pool) => $pool->filter(
+                fn (PracticeQuestion $q) => collect($q->answer['issues'] ?? [])->contains('category', $category->value),
+            )->values());
 
         $latest = $this->history->latestAttempts($user, PracticeKind::CodeReview);
 

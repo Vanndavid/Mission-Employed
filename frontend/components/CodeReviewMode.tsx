@@ -2,7 +2,14 @@ import React, { useCallback, useEffect, useReducer, useRef, useState } from 'rea
 import { useSubscription } from '../contexts/SubscriptionContext';
 import { fetchNextSnippet, submitCodeReview } from '../services/codeReviewClient';
 import { aiFailureMessage, ApiError, errorMessage, isAbortError } from '../services/http';
-import { CodeReviewResult, CodeReviewSnippet, MarkedComment, NextSnippetResponse, ReviewedIssue } from '../types/codeReview';
+import {
+  CodeReviewCategory,
+  CodeReviewResult,
+  CodeReviewSnippet,
+  MarkedComment,
+  NextSnippetResponse,
+  ReviewedIssue,
+} from '../types/codeReview';
 import { PracticeDifficulty, PracticeLanguage } from '../types/practice';
 import {
   CATEGORY_LABELS,
@@ -34,11 +41,20 @@ import { CodeSnippet } from './CodeSnippet';
  * Behind PremiumGate feature="code_review" in App.tsx. Each scored review is
  * one use; loading a snippet is free. The draft is the pure reducer in
  * utils/codeReview.ts.
+ *
+ * `category` narrows the snippets to ones with an issue of that category
+ * planted: the practice coach's start for the user's weakest category
+ * (components/PracticeModeRoutes.tsx reads it from the address). It shows
+ * as a focus the user can clear, which also calls `onClearCategory`.
  */
-export function CodeReviewMode() {
+export function CodeReviewMode({
+  category: focus = null,
+  onClearCategory,
+}: { category?: CodeReviewCategory | null; onClearCategory?: () => void } = {}) {
   const { noteRefusal } = useSubscription();
   const [language, setLanguage] = useState<PracticeLanguage | null>(null);
   const [difficulty, setDifficulty] = useState<PracticeDifficulty | null>(null);
+  const [category, setCategory] = useState<CodeReviewCategory | null>(focus);
   const [next, setNext] = useState<NextSnippetResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -67,7 +83,7 @@ export function CodeReviewMode() {
       dispatch({ type: 'reset' });
       try {
         const filter = exclude ? { language, difficulty, exclude } : { language, difficulty };
-        setNext(await fetchNextSnippet(filter, controller.signal));
+        setNext(await fetchNextSnippet(category ? { ...filter, category } : filter, controller.signal));
       } catch (cause) {
         if (isAbortError(cause)) return;
         noteRefusalRef.current(cause);
@@ -77,7 +93,7 @@ export function CodeReviewMode() {
         if (loadController.current === controller) setLoading(false);
       }
     },
-    [language, difficulty],
+    [language, difficulty, category],
   );
 
   // A new filter is a new load.
@@ -119,6 +135,12 @@ export function CodeReviewMode() {
         next={next}
         onLanguage={key => confirmDiscard() && setLanguage(key)}
         onDifficulty={key => confirmDiscard() && setDifficulty(key)}
+        category={category}
+        onClearCategory={() => {
+          if (!confirmDiscard()) return;
+          setCategory(null);
+          onClearCategory?.();
+        }}
       />
 
       {loadError ? (
@@ -174,12 +196,16 @@ function ReviewFilters({
   next,
   onLanguage,
   onDifficulty,
+  category = null,
+  onClearCategory,
 }: {
   language: PracticeLanguage | null;
   difficulty: PracticeDifficulty | null;
   next: NextSnippetResponse | null;
   onLanguage: (key: PracticeLanguage | null) => void;
   onDifficulty: (key: PracticeDifficulty | null) => void;
+  category?: CodeReviewCategory | null;
+  onClearCategory?: () => void;
 }) {
   return (
     <section className={`${card} p-6`}>
@@ -214,6 +240,14 @@ function ReviewFilters({
             </button>
           ))}
         </div>
+        {category && (
+          <span className="inline-flex items-center gap-2 rounded-full border border-brand-400 bg-brand-50 dark:bg-brand-500/10 px-3 py-1.5 text-xs font-bold text-brand-700 dark:text-brand-300">
+            Focus: {CATEGORY_LABELS[category]} issues
+            <button type="button" onClick={onClearCategory} aria-label="Clear the focus" className="text-brand-500 hover:text-brand-800 dark:hover:text-brand-100">
+              ×
+            </button>
+          </span>
+        )}
         {next && next.total > 0 && (
           <span className="text-xs font-bold uppercase tracking-widest text-slate-400">
             {next.unreviewed} of {next.total} not reviewed yet
@@ -428,7 +462,11 @@ function SavedComment({
 
 const TONE_ROW = { found: 'bg-emerald-500/20', missed: 'bg-amber-500/20' } as const;
 
-function ReviewResult({ result, onNext, onRetry }: { result: CodeReviewResult; onNext: () => void; onRetry: () => void }) {
+/**
+ * A scored review: shown when one comes back, and again on its page in the
+ * practice history, which passes no actions.
+ */
+export function ReviewResult({ result, onNext, onRetry }: { result: CodeReviewResult; onNext?: () => void; onRetry?: () => void }) {
   const { breakdown, issues } = result;
   const issueNumber = (id: string) => issues.findIndex(issue => issue.id === id) + 1;
 
@@ -486,18 +524,24 @@ function ReviewResult({ result, onNext, onRetry }: { result: CodeReviewResult; o
           />
         </div>
 
-        <div className="mt-6 flex flex-wrap gap-3">
-          <button type="button" onClick={onNext} className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold">
-            Next snippet
-          </button>
-          <button
-            type="button"
-            onClick={onRetry}
-            className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-brand-400"
-          >
-            Review this one again
-          </button>
-        </div>
+        {(onNext || onRetry) && (
+          <div className="mt-6 flex flex-wrap gap-3">
+            {onNext && (
+              <button type="button" onClick={onNext} className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold">
+                Next snippet
+              </button>
+            )}
+            {onRetry && (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-brand-400"
+              >
+                Review this one again
+              </button>
+            )}
+          </div>
+        )}
       </section>
 
       <section className="space-y-3">

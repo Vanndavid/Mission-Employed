@@ -18,6 +18,7 @@ import {
   roundScore,
   SECONDS_PER_QUESTION,
 } from '../utils/quizRound';
+import type { QuizLaunch } from '../utils/practiceLinks';
 import { CodeSnippet } from './CodeSnippet';
 import { ReportQuestion } from './ReportQuestion';
 
@@ -30,8 +31,12 @@ import { ReportQuestion } from './ReportQuestion';
  * Round state is the pure reducer in utils/quizRound.ts. Mistakes and
  * accuracy come from the server (GET /practice/quiz/progress), not from this
  * browser.
+ *
+ * `launch` starts a round as soon as the quiz has loaded: the practice
+ * coach's one-click start (components/PracticeModeRoutes.tsx reads it from
+ * the address). `onLaunched` is told once it has been used.
  */
-export function QuizMode() {
+export function QuizMode({ launch = null, onLaunched }: { launch?: QuizLaunch | null; onLaunched?: () => void } = {}) {
   const [catalog, setCatalog] = useState<QuizCatalog | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [language, setLanguage] = useState<PracticeLanguage | null>(null);
@@ -70,12 +75,12 @@ export function QuizMode() {
 
   const selected = catalog?.languages.find(l => l.key === language) ?? null;
 
-  const start = async (topic: QuizRoundTopic) => {
-    if (!language || starting) return;
+  const start = async (topic: QuizRoundTopic, inLanguage: PracticeLanguage | null = language) => {
+    if (!inLanguage || starting) return;
     setNotice(null);
     setStarting(true);
     try {
-      const { questions } = await startQuizRound(language, topic);
+      const { questions } = await startQuizRound(inLanguage, topic);
       if (questions.length === 0) {
         setNotice(
           topic === MISTAKES
@@ -84,13 +89,29 @@ export function QuizMode() {
         );
         return;
       }
-      dispatch({ type: 'start', language, topic, questions, timed });
+      dispatch({ type: 'start', language: inLanguage, topic, questions, timed });
     } catch (cause) {
       setNotice(errorMessage(cause, 'Could not start a round.'));
     } finally {
       setStarting(false);
     }
   };
+
+  // A link that names a round starts it once the languages are known.
+  const launched = useRef<string | null>(null);
+  useEffect(() => {
+    if (!catalog || !launch) return;
+    const key = `${launch.language}:${launch.topic}`;
+    if (launched.current === key) return;
+    launched.current = key;
+    if (catalog.languages.some(l => l.key === launch.language)) {
+      setLanguage(launch.language);
+      void start(launch.topic, launch.language);
+    }
+    onLaunched?.();
+    // start() is a new function every render; only a new catalog or launch
+    // is a reason to look again.
+  }, [catalog, launch]);
 
   const retry = (finished: QuizRound) =>
     dispatch({ type: 'start', language: finished.language, topic: MISTAKES, questions: retryQuestions(finished), timed });
@@ -457,25 +478,7 @@ function RoundPlay({
       )}
 
       <div aria-live="polite">
-        {verdict && (
-          <div
-            className={`mt-6 rounded-2xl p-4 sm:p-5 border ${
-              verdict.correct
-                ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/30'
-                : 'bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/30'
-            }`}
-          >
-            <p className={`font-bold mb-1 ${verdict.correct ? 'text-emerald-800 dark:text-emerald-300' : 'text-amber-900 dark:text-amber-300'}`}>
-              {verdict.correct
-                ? 'Correct!'
-                : round.choice === null
-                  ? `Time's up. The answer is “${verdict.answer}”.`
-                  : `Not quite. The answer is “${verdict.answer}”.`}
-            </p>
-            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{verdict.explanation}</p>
-            <ReportQuestion key={question.id} questionId={question.id} />
-          </div>
-        )}
+        {verdict && <AnswerVerdict verdict={verdict} choice={round.choice} questionId={question.id} />}
       </div>
 
       <div className="mt-6 flex items-center justify-between gap-3 min-h-11">
@@ -493,6 +496,44 @@ function RoundPlay({
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Right or wrong, the answer and why: shown after each answer in a round,
+ * and again on the answer's page in the practice history.
+ */
+export function AnswerVerdict({
+  verdict,
+  choice,
+  questionId,
+  reportable = true,
+}: {
+  verdict: { correct: boolean; answer: string | null; explanation: string };
+  /** Null when the timer ran out. */
+  choice: string | null | undefined;
+  questionId: number;
+  /** False for a question no longer in the bank, which cannot be reported. */
+  reportable?: boolean;
+}) {
+  return (
+    <div
+      className={`mt-6 rounded-2xl p-4 sm:p-5 border ${
+        verdict.correct
+          ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/30'
+          : 'bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/30'
+      }`}
+    >
+      <p className={`font-bold mb-1 ${verdict.correct ? 'text-emerald-800 dark:text-emerald-300' : 'text-amber-900 dark:text-amber-300'}`}>
+        {verdict.correct
+          ? 'Correct!'
+          : choice === null
+            ? `Time's up. The answer is “${verdict.answer}”.`
+            : `Not quite. The answer is “${verdict.answer}”.`}
+      </p>
+      <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{verdict.explanation}</p>
+      {reportable && <ReportQuestion key={questionId} questionId={questionId} />}
     </div>
   );
 }

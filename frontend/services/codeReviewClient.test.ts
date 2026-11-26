@@ -29,6 +29,11 @@ describe('codeReviewClient', () => {
     expect(lastCall().url).toBe('/api/practice/code-review/next?language=python&exclude=7');
   });
 
+  it('asks for a snippet in one issue category, as the coach does', async () => {
+    await fetchNextSnippet({ category: 'security' });
+    expect(lastCall().url).toBe('/api/practice/code-review/next?category=security');
+  });
+
   it('posts the comments, and the summary only when there is one', async () => {
     await submitCodeReview(7, [{ line: 3, body: 'Injection.' }], '   ');
     expect(lastCall()).toEqual({

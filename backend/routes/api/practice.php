@@ -54,3 +54,16 @@ Route::prefix('practice/system-design')->middleware(['auth:sanctum', 'throttle:f
         ->whereNumber('question')
         ->middleware('feature:system_design');
 });
+
+// Progress and history across the modes (task 7.5): reads of the user's own
+// attempts, worked out every time. No `feature:` and no model call, so an
+// account keeps its history whatever its plan is now. Problems keeps its own
+// history in coding_attempts.
+Route::prefix('practice')->middleware('auth:sanctum')->group(function (): void {
+    // Per mode over the last 30 days, and each area's latest results for the coach.
+    Route::get('/progress', \App\Http\Controllers\Practice\PracticeProgressController::class);
+    // ?kind=&page=: newest first, twenty a page, no answers.
+    Route::get('/attempts', [\App\Http\Controllers\Practice\PracticeAttemptController::class, 'index']);
+    // One attempt with its stored feedback; someone else's is a 404.
+    Route::get('/attempts/{attempt}', [\App\Http\Controllers\Practice\PracticeAttemptController::class, 'show'])->whereNumber('attempt');
+});

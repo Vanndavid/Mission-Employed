@@ -357,3 +357,14 @@ the emergency modal.
 - Login and registration are rate limited (`AppServiceProvider`), which relies
   on `bootstrap/app.php` trusting the private Docker ranges as proxies so
   `$request->ip()` is the visitor and not nginx.
+- **Practice progress, history and the coach are reads, not features.**
+  `GET /api/practice/progress` (`PracticeProgressReport`) and
+  `/api/practice/attempts[/{id}]` are worked out from `practice_attempts`
+  every time, name no `feature:` and never call a model; someone else's
+  attempt is a bare 404. Progress carries no answer key. An attempt's page
+  reuses its mode's result view (`AnswerVerdict`, `ReviewResult`,
+  `ScoreReport`), so a change to what a mode stores in `feedback` changes
+  `PracticeAttemptDetailResource` and the progress report with it. The coach
+  is the pure `frontend/utils/practiceCoach.ts`; its one-click starts are
+  query strings the mode routes read (`utils/practiceLinks.ts`). A new mode
+  adds its areas to both. No streaks or daily goals.

@@ -14,6 +14,7 @@ export async function fetchNextSnippet(filter: NextSnippetFilter = {}, signal?: 
   if (filter.language) params.set('language', filter.language);
   if (filter.difficulty) params.set('difficulty', filter.difficulty);
   if (filter.exclude) params.set('exclude', String(filter.exclude));
+  if (filter.category) params.set('category', filter.category);
   const query = params.toString();
   return apiRequest<NextSnippetResponse>(`/practice/code-review/next${query ? `?${query}` : ''}`, { signal });
 }

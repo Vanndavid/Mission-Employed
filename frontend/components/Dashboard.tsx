@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { CodingHistoryEntry, JobApplication, JobStatus, NewCodingAttempt } from '../types';
 import { getLocalDateString } from '../utils';
 import { computeWeakTopics, inferTopicsFromTitle } from '../utils/codingTopics';
@@ -15,6 +15,10 @@ import { useSubscription } from '../contexts/SubscriptionContext';
 import { useApplications, useCodingHistory } from '../contexts/DataProvider';
 import { UpcomingInterviews } from './UpcomingInterviews';
 import { PremiumGate } from './PremiumGate';
+import { PracticeCoach } from './PracticeCoach';
+import { usePracticeOverview } from '../hooks/usePracticeOverview';
+import { recentAttempts as mergeRecentAttempts } from '../utils/recentAttempts';
+import { attemptPath, HISTORY_PATH } from '../utils/practiceLinks';
 
 /**
  * Mission Control's Problems mode — software engineering coding practice with
@@ -24,7 +28,8 @@ import { PremiumGate } from './PremiumGate';
  * The side panels are the three the rebuild kept: recent attempts and weak
  * topics, the application pipeline, upcoming interviews. Streaks, hunt personas
  * and the daily task list went with the daily-protocol feature in Wave 1 and do
- * not come back.
+ * not come back. Task 7.5 added the practice coach, and brought the other
+ * modes' scored attempts into recent attempts and weak topics.
  *
  * Coding practice is software engineering only — there is no career track to
  * branch on, here or in utils/codingTopics.
@@ -171,8 +176,15 @@ export const Dashboard = ({
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [session?.messages, isTutorThinking]);
 
-  const weakTopics = useMemo(() => computeWeakTopics(codingHistory).slice(0, 5), [codingHistory]);
-  const recentAttempts = useMemo(() => codingHistory.slice(0, 10), [codingHistory]);
+  const practice = usePracticeOverview();
+  const weakTopics = useMemo(
+    () => computeWeakTopics(codingHistory, 1, practice.progress).slice(0, 5),
+    [codingHistory, practice.progress],
+  );
+  const recentAttempts = useMemo(
+    () => mergeRecentAttempts(codingHistory, practice.attempts, 10),
+    [codingHistory, practice.attempts],
+  );
 
   const statusCounts = useMemo(() => {
     const counts = Object.fromEntries(PIPELINE_STATUSES.map(s => [s, 0])) as Record<JobStatus, number>;
@@ -431,6 +443,8 @@ export const Dashboard = ({
         </div>
 
         <div className="space-y-6">
+          <PracticeCoach progress={practice.progress} loading={practice.loading} error={practice.error} />
+
           <UpcomingInterviews applications={applications} onSelectApp={id => navigate(`/applications?prep=${id}`)} />
 
           <div className="bg-white dark:bg-slate-800/50 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
@@ -478,7 +492,8 @@ export const Dashboard = ({
                   <div key={w.topic} className="flex justify-between items-center text-sm">
                     <span className="font-bold text-slate-700 dark:text-slate-200">{w.topic}</span>
                     <span className="text-amber-600 dark:text-amber-400 font-bold text-xs">
-                      {w.completionRate}% ({w.completed}/{w.attempted})
+                      {w.completionRate}% ({w.completed}/{w.attempted}
+                      {w.unit ? ` ${w.unit}` : ''})
                     </span>
                   </div>
                 ))}
@@ -491,10 +506,17 @@ export const Dashboard = ({
               <h3 className="text-lg font-bold flex items-center">
                 <span className="mr-2">📚</span> Recent Attempts
               </h3>
-              {recordingAttempt && (
+              {recordingAttempt ? (
                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 animate-pulse">
                   Saving…
                 </span>
+              ) : (
+                <Link
+                  to={HISTORY_PATH}
+                  className="text-xs font-bold uppercase tracking-widest text-brand-600 dark:text-brand-400 hover:underline"
+                >
+                  History
+                </Link>
               )}
             </div>
 
@@ -503,25 +525,36 @@ export const Dashboard = ({
             ) : historyLoading ? (
               <p className="text-sm text-slate-400 italic animate-pulse">Loading attempts…</p>
             ) : recentAttempts.length === 0 ? (
-              <p className="text-sm text-slate-400 italic">No attempts yet. Start a problem to log one.</p>
+              <p className="text-sm text-slate-400 italic">No attempts yet. Start a problem or a quiz to log one.</p>
             ) : (
               <div className="space-y-2 max-h-96 overflow-y-auto">
-                {recentAttempts.map((entry, i) => (
-                  <div
-                    key={entry.id ?? `${entry.date}-${i}`}
-                    className="flex justify-between items-start text-sm border-b border-slate-100 dark:border-slate-800 pb-2"
-                  >
-                    <div>
-                      <p className="font-bold text-slate-800 dark:text-slate-200">{entry.title}</p>
-                      <p className="text-[10px] text-slate-400 uppercase">
-                        {entry.date} · {entry.difficulty} · {entry.topics.join(', ') || 'General'}
-                      </p>
+                {recentAttempts.map(entry => {
+                  const body = (
+                    <>
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-800 dark:text-slate-200 truncate">{entry.title}</p>
+                        <p className="text-[10px] text-slate-400 uppercase">
+                          {entry.date} · {entry.detail}
+                        </p>
+                      </div>
+                      <span
+                        className={`shrink-0 text-xs font-bold ${entry.outcome.good ? 'text-brand-600' : 'text-slate-400'}`}
+                      >
+                        {entry.outcome.text}
+                      </span>
+                    </>
+                  );
+                  const row = 'flex justify-between items-start gap-3 text-sm border-b border-slate-100 dark:border-slate-800 pb-2';
+                  return entry.attemptId !== null ? (
+                    <Link key={entry.key} to={attemptPath(entry.attemptId)} className={`${row} hover:opacity-80`}>
+                      {body}
+                    </Link>
+                  ) : (
+                    <div key={entry.key} className={row}>
+                      {body}
                     </div>
-                    <span className={`text-xs font-bold ${entry.completed ? 'text-brand-600' : 'text-slate-400'}`}>
-                      {entry.completed ? '✓' : '—'}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
