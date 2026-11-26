@@ -19,6 +19,7 @@ import {
   SECONDS_PER_QUESTION,
 } from '../utils/quizRound';
 import { CodeSnippet } from './CodeSnippet';
+import { ReportQuestion } from './ReportQuestion';
 
 /**
  * Mission Control's Quiz mode: multiple-choice questions about a language,
@@ -472,6 +473,7 @@ function RoundPlay({
                   : `Not quite. The answer is “${verdict.answer}”.`}
             </p>
             <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{verdict.explanation}</p>
+            <ReportQuestion key={question.id} questionId={question.id} />
           </div>
         )}
       </div>

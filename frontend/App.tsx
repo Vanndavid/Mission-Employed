@@ -14,6 +14,7 @@ import { AuthScreen } from './components/AuthScreen';
 import { AccountPage } from './components/AccountPage';
 import { AdminUsersPage } from './components/AdminUsersPage';
 import { AdminPlansPage } from './components/AdminPlansPage';
+import { AdminQuestionBankPage } from './components/AdminQuestionBankPage';
 import { SettingsPage } from './components/SettingsPage';
 import { PremiumGate } from './components/PremiumGate';
 import { TabGate } from './components/TabGate';
@@ -165,6 +166,7 @@ function AppRoutes() {
       <Route path="/account" element={<AccountPage />} />
       <Route path="/account/admin" element={<AdminUsersPage />} />
       <Route path="/account/admin/plans" element={<AdminPlansPage />} />
+      <Route path="/account/admin/questions" element={<AdminQuestionBankPage />} />
       <Route path="/settings" element={<SettingsPage />} />
     </Routes>
   );

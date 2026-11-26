@@ -67,6 +67,12 @@ vi.mock('../services/practiceClient', () => ({
   answerQuizQuestion: (...args: unknown[]) => answerQuizQuestion(...args),
 }));
 
+const reportQuestion = vi.fn();
+
+vi.mock('../services/questionBankClient', () => ({
+  reportQuestion: (...args: unknown[]) => reportQuestion(...args),
+}));
+
 const { QuizMode } = await import('./QuizMode');
 
 const HOISTING_WHY = 'var is hoisted and starts as undefined.';
@@ -177,5 +183,29 @@ describe('QuizMode', () => {
 
     expect(await screen.findByText(/No open mistakes/)).toBeTruthy();
     expect(startQuizRound).toHaveBeenCalledWith('javascript', 'mistakes');
+  });
+
+  it('offers to report a question once it has been answered, without leaving it', async () => {
+    reportQuestion.mockReset().mockResolvedValue(undefined);
+    await startMixedRound();
+
+    expect(screen.queryByRole('button', { name: 'Report this question' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /ReferenceError/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Report this question' }));
+
+    const reason = screen.getByLabelText(/What is wrong/);
+    fireEvent.change(reason, { target: { value: 'Should be undefined' } });
+    // Typing in the box is not the quiz's keyboard: Enter does not move on.
+    fireEvent.keyDown(reason, { key: 'Enter' });
+    expect(screen.getByText(/1 of 2/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send report' }));
+    expect(await screen.findByText(/Thanks/)).toBeTruthy();
+    expect(reportQuestion).toHaveBeenCalledWith(11, 'Should be undefined');
+
+    // The next question starts with a fresh link.
+    fireEvent.click(screen.getByRole('button', { name: /Next question/ }));
+    fireEvent.click(screen.getByRole('button', { name: /object/ }));
+    expect(await screen.findByRole('button', { name: 'Report this question' })).toBeTruthy();
   });
 });

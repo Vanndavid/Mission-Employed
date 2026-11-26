@@ -83,4 +83,17 @@ describe('Sidebar', () => {
     expect(account().getByRole('link', { name: /Settings/ })).toBeTruthy();
     expect(account().getByRole('button', { name: 'Log out' })).toBeTruthy();
   });
+
+  it('does not show a user the question bank', () => {
+    renderSidebar();
+    expect(account().queryByRole('link', { name: /Question Bank/ })).toBeNull();
+  });
+
+  it('shows an admin the question bank beside the other admin pages', () => {
+    isAdmin = true;
+    renderSidebar();
+
+    expect(account().getByRole('link', { name: /Question Bank/ })).toHaveAttribute('href', '/account/admin/questions');
+    expect(main().queryByRole('link', { name: /Question Bank/ })).toBeNull();
+  });
 });

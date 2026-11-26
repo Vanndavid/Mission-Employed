@@ -1,6 +1,6 @@
 # Mission-Employed — task list
 
-**Branch:** `main` · **Status:** rebuild complete; project parked 2026-10-03, unparked 2026-10-17 for configurable plans (6.1, done) and 2026-11-26 for a calmer sidebar (6.2, done), then practice modes (Wave 7, epic #21: 7.1 and 7.4 done, #23, #24, #26 and #27 to follow). Live at mission-employed.vanndavidteng.com.
+**Branch:** `main` · **Status:** rebuild complete; project parked 2026-10-03, unparked 2026-10-17 for configurable plans (6.1, done) and 2026-11-26 for a calmer sidebar (6.2, done), then practice modes (Wave 7, epic #21: 7.1, 7.2 and 7.4 done, #24, #26 and #27 to follow). Live at mission-employed.vanndavidteng.com.
 
 ## How to use this file
 
@@ -1012,6 +1012,57 @@ mode tabs; the admin question bank (#23), code review (#24), system design
   - For #23: sync owns only `source = seed` rows, so an admin edit to a seeded
     question should make it `admin`, or the next deploy puts the file's
     version back. Not in the MCP server yet (#27).
+
+### 7.2 Admin question bank, AI drafts reviewed before publishing ✅
+
+- [x] Done, 2026-11-26. Issue #23, after Eleph's admin generator
+  (`src/features/pte/lib/generateExercise/`) and its Questions tab.
+  - **The AI drafts, code checks, an admin publishes.**
+    `POST /api/admin/practice/questions/generate {kind, count <= 5, ...}` makes
+    one `generateJson` call with a response schema; each item is mapped,
+    normalized and checked in code, and repeats of the bank or the batch are
+    dropped. Valid items are saved as `draft`, `source` ai; the rest come back
+    as `rejected: [{index, prompt, reasons}]`. A Gemini failure is a 502
+    `ai_unavailable` with nothing saved. The model is shown what the bank
+    already has on that language and topic so it does not repeat it.
+  - **`QuizDraftValidator`**: exactly four distinct non-empty options (each at
+    most 500 characters, so it can be sent back as an answer), the answer one
+    of them, a prompt and an explanation, a snippet of at most 40 lines, a
+    known language, one of its topics and a difficulty; for a draft, the
+    language and topic asked for (the model echoes both, so a drifted draft is
+    caught rather than misfiled). The model's answer is untrusted: odd types
+    become blanks the checks name, Markdown fences are stripped.
+  - **Review notes.** The model also writes one line per wrong option on why
+    it is wrong, stored in `practice_questions.review_notes` and hidden from
+    serialization like `answer`. The admin reads them beside the key; a note
+    written against the answer is flagged, which is how a bad key shows.
+  - **The admin bank.** `GET /api/admin/practice/questions?kind=&status=&language=&topic=&source=&reported=1&page=`
+    (25 a page, open reports first, then newest, every kind) carries the key,
+    notes, attempt count and open reports, plus `generators`, the kinds the AI
+    can draft. `PATCH /{id}` edits any content field or publishes and
+    unpublishes, and re-runs the kind's validator on the whole question every
+    time. `DELETE /{id}` deletes a question nobody answered and otherwise
+    unpublishes it. Seed rows are read-only (422 naming the file's id): the fix
+    belongs in the JSON file, or `practice:sync` puts it back. Admin routes
+    take no `feature:`; the draft call's tokens are recorded as
+    `admin/practice/questions/generate`, "Question bank drafts".
+  - **Reports.** `POST /api/practice/questions/{id}/report {reason}`, a
+    "Report this question" link under every quiz verdict. One row per user per
+    question (`practice_question_reports`): a second while it is open is 409
+    `already_reported`, one after a resolution reopens it; a draft is a bare
+    404. `POST /api/admin/practice/questions/{id}/reports/resolve` clears the
+    open count and keeps the rows, seed rows included.
+  - **Screen.** Admin · Question bank (`/account/admin/questions`), in the
+    sidebar's Account group beside the other admin pages: a generate form,
+    filters, and a card per question showing it as a user would see it, then
+    the answer, explanation, review notes and open reports with their reasons;
+    Edit (the quiz form), Publish, Unpublish, Delete, Resolve reports.
+  - **For #24 and #25.** A kind plugs into the same endpoint with a
+    `DraftKind` (request rules, pinned columns, prompt, schema, item mapping,
+    `DraftValidator`) and one line in `DraftKinds::KINDS`; until then the
+    generate endpoint and every edit refuse that kind with a 422 naming it.
+    The admin page's generate form and edit form are the quiz's, and a new
+    kind adds its own fields there.
 
 ### 7.4 System design, scored against a fixed rubric ✅
 

@@ -17,7 +17,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *
  * `answer` is the key and is hidden from serialization: only the controller
  * that scores an answer reads it, and only after the user has answered. For
- * the quiz it is {"choice": "<one of the options>"}.
+ * the quiz it is {"choice": "<one of the options>"}. `review_notes` (the AI's
+ * notes on its own draft) is hidden the same way: it is for admins only.
  *
  * @property PracticeKind $kind
  * @property PracticeLanguage|null $language
@@ -25,6 +26,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property PracticeQuestionSource $source
  * @property list<string>|null $options
  * @property array<string, mixed> $answer
+ * @property array<string, mixed>|null $review_notes
  */
 class PracticeQuestion extends Model
 {
@@ -52,6 +54,7 @@ class PracticeQuestion extends Model
         'status',
         'source',
         'external_id',
+        'review_notes',
     ];
 
     /**
@@ -60,7 +63,7 @@ class PracticeQuestion extends Model
      *
      * @var list<string>
      */
-    protected $hidden = ['answer'];
+    protected $hidden = ['answer', 'review_notes'];
 
     /** @return array<string, string> */
     protected function casts(): array
@@ -72,6 +75,7 @@ class PracticeQuestion extends Model
             'source' => PracticeQuestionSource::class,
             'options' => 'array',
             'answer' => 'array',
+            'review_notes' => 'array',
         ];
     }
 
@@ -79,6 +83,12 @@ class PracticeQuestion extends Model
     public function attempts(): HasMany
     {
         return $this->hasMany(PracticeAttempt::class);
+    }
+
+    /** @return HasMany<PracticeQuestionReport, $this> */
+    public function reports(): HasMany
+    {
+        return $this->hasMany(PracticeQuestionReport::class);
     }
 
     /**

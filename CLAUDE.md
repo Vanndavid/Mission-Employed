@@ -135,7 +135,10 @@ reintroduce it or build features that depend on it:
    the word gates and adds up, the AI rates the traits against written
    descriptors and the scenario's key points), with a report on how the score
    was reached; the `system_design` plan feature. More modes are planned on
-   the same question bank (epic #21, `TASKS.md` Wave 7).
+   the same question bank (epic #21, `TASKS.md` Wave 7). An admin grows the bank on
+   **Admin · Question bank**: the AI drafts questions, code checks each one,
+   and users only ever see what an admin has reviewed and published. Users can
+   report a question they think is wrong.
 3. **Job application tracker** — CRUD, statuses, interview stages, paste-a-JD
    parsing, tailored CV and cover letter, and **spreadsheet import**: drop in an
    `.xlsx`/`.xls`/`.csv` whose columns are named anything at all, an AI proposes
@@ -237,8 +240,27 @@ the emergency modal.
   rolls the deploy back. A wrong answer key is the worst bug the quiz can
   have: `PracticeSeedContentTest` checks every question straight from the
   files, and a new question's key should be run, not reasoned about, where
-  the language allows. An admin who edits a seed question must make it
-  `source` admin, or the next sync puts the file's version back.
+  the language allows. Seed rows are read-only on the question bank (422): a
+  seeded question is fixed in its file, or the next sync would put the file's
+  version back.
+- **AI drafts are reviewed before users see them.** `POST
+  /api/admin/practice/questions/generate` makes one `generateJson` call, and
+  every item goes through the kind's checks in code before anything is saved
+  (`QuizDraftValidator` for the quiz: four distinct options, the answer one of
+  them, an explanation, a snippet of at most 40 lines, the language and topic
+  asked for). What passes is saved as a `draft` with `source` ai, which no
+  user route serves; what fails comes back with its reasons. The model's
+  one-line note per wrong option goes in `review_notes`, hidden from
+  serialization like `answer`. Every admin save (`PATCH`, publishing
+  included) re-runs the same validator, so an edit cannot publish what a
+  draft could not. Deleting a question with attempts unpublishes it instead.
+  A kind plugs in with a `DraftKind` (request rules, prompt, schema, item
+  mapping, validator) registered in `App\Services\Practice\DraftKinds`; an
+  unregistered kind is a 422. These are admin routes
+  (`routes/api/practice_bank.php`), so they take no `feature:`; the draft
+  call's tokens are recorded as usual. Reports (`practice_question_reports`)
+  are one per user per question; an admin resolving them keeps the rows and
+  clears the open count.
 - **A system design score is computed by the rubric; the AI only rates.**
   `App\Services\Practice\SystemDesignRubric` (`VERSION` `sd-1`) owns the seven
   sections, the seven traits with their weights and descriptors (product copy,
