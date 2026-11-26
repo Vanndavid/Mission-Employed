@@ -5,6 +5,7 @@ import type { Config } from "./config.js";
 import { registerPrompts } from "./prompts.js";
 import { registerAiTools } from "./tools/ai.js";
 import { registerAuthTools } from "./tools/auth.js";
+import { registerPracticeTools } from "./tools/practice.js";
 import { registerTrackerTools } from "./tools/tracker.js";
 
 export const SERVER_NAME = "mission-employed";
@@ -35,9 +36,14 @@ export function createServer(
         "When updating the tracker from email or any other source, record what happened with " +
         "append_application_note and a `ref` so it is never applied twice; the sync_job_emails " +
         "prompt describes the whole routine. " +
-        "Which AI tools (parsing, cover letters, CVs, ATS scores, problems, interviews) an account can use, " +
+        "Which AI tools (parsing, cover letters, CVs, ATS scores, problems, interviews, code review and " +
+        "system design scoring) an account can use, " +
         "and how many uses each has left today, this week or this month, depends on its plan; whoami lists " +
         "both. A refusal names the feature and when its limit resets — pass that on rather than retrying. " +
+        "Practice is a language quiz (free, never metered), code review and system design: the " +
+        "user is the one practising. Ask the user each question, wait for their answer and send " +
+        "it in their own words; never answer for them, and never reveal or hint at an answer " +
+        "before they have answered — the API reveals the key with the verdict. " +
         "Ask before deleting anything.",
     },
   );
@@ -45,6 +51,7 @@ export function createServer(
   registerAuthTools(server, api, { withLogin: !options.hosted });
   registerTrackerTools(server, api);
   registerAiTools(server, api);
+  registerPracticeTools(server, api);
   registerPrompts(server);
 
   return server;

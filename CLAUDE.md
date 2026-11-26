@@ -98,6 +98,14 @@ Live mock interview's `/live` and `/exchanges`) are deliberately not exposed:
 they only make sense in the browser. The typed mock `/turns` route stays for the
 MCP tools. See `mcp/README.md`.
 
+The practice modes are tools too (`mcp/src/tools/practice.ts`): the quiz, code
+review and system design routes and reporting a question, never the admin bank.
+The user is the one practising, so the tool descriptions and the server
+instructions tell the client to ask each question and send the user's own
+answer, never to answer for them or reveal an answer first. The tools that serve
+a question pass on only the fields it is served with, so no key reaches the
+model before the user has answered. A new practice route gets its tool there.
+
 It is deployed as the `mcp` compose service. It serves OAuth plus `/mcp`, so
 Claude and Cowork can add it as a custom connector. All of its OAuth state is
 sealed with `MCP_OAUTH_SECRET` from the server `.env`, and it keeps no database.
@@ -230,8 +238,8 @@ the emergency modal.
   attempts every time, not stored. The quiz never calls a model, so its
   routes in `routes/api/practice.php` name no `feature:` and nothing is metered;
   keep it that way (`PracticeQuizTest` asserts no `feature_usages` row and no Gemini
-  call). Topics are code, `PracticeLanguage::topics()`. Not in the MCP server
-  yet (#27).
+  call). Topics are code, `PracticeLanguage::topics()`. The MCP server wraps
+  these routes (`mcp/src/tools/practice.ts`, 7.6).
 - **The hand-written bank ships with a deploy.** It lives in
   `backend/resources/practice/<kind>/<language>.json` (format in
   `App\Services\Practice\SeedBank`). `php artisan practice:sync` runs in
@@ -283,7 +291,7 @@ the emergency modal.
   scenario must meet, the same ones an AI draft will have to pass. The routes
   (`/api/practice/system-design/*`) are behind `feature:system_design` and
   `throttle:features`; an answer under 15 words in all is a 422 before any of
-  it. Not in the MCP server yet (#27).
+  it. The MCP server wraps these routes too (7.6).
 - A Premium plan can end: past `users.plan_expires_at` the account reads as
   Free everywhere (`User::isPremium()`, `effectivePlan()`). An admin setting
   either plan clears `premium_requested_at`.

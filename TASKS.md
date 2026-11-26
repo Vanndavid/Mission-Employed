@@ -1204,6 +1204,51 @@ mode tabs; the admin question bank (#23), code review (#24), system design
     `ai_sessions` that probes the weakest trait. Not in the MCP server yet
     (#27).
 
+### 7.6 MCP tools for the practice modes ✅
+
+- [x] Done, 2026-11-26. Issue #27. "Quiz me on Python", "give me some code to
+  review" and "run a system design question" work from Claude through the
+  Mission-Employed connector, hosted and local alike.
+  - **Ten tools** in `mcp/src/tools/practice.ts`: `quiz_catalog`,
+    `start_quiz_round` (`{language, topic}`, topic defaulting to `mixed`),
+    `answer_quiz_question` (`{questionId, choice}`, choice the option's text
+    or null to pass), `quiz_progress` (`?language=`); `next_code_review`
+    (`?language=&difficulty=&exclude=`), `submit_code_review`
+    (`{comments: [{line, body}], summary?}`), `get_code_review`;
+    `next_system_design` (`?difficulty=&skip=`), `submit_system_design`
+    (`{sections}`, only the sections the user wrote); and
+    `report_practice_question` (`{reason}`). The admin bank is not exposed.
+  - **Still a thin client.** No scoring, no key and no plan rule in `mcp/`:
+    the API picks the questions and scores every answer. A plan refusal (403
+    `premium_required`, 429 `quota_exceeded`), a 422 such as "Write at least
+    15 words" and the 409 `already_reported` reach the model word for word.
+    The quiz is free and unmetered; opening a snippet or scenario needs its
+    feature and uses none of it, as in the web app.
+  - **The user answers.** The tool descriptions and the server instructions
+    tell the client to ask each question, wait, and send the user's own
+    answer in their words: never answer, review or write a design for them,
+    and never reveal or hint at an answer before they have answered. The
+    "before answering" tools pass on only the fields a question is served
+    with (as `whoami` picks its fields), so a key could not reach the model
+    through them even if the API sent one; the tests plant one to prove it.
+  - **Snippets come numbered.** `next_code_review` sends the code as
+    `n | line`, counted the way `CodeReviewItemValidator::lines()` counts
+    (trailing newlines are not a line), so the user's line numbers are the
+    API's.
+  - 27 new `node:test` tests against the fake API (`src/practice.test.ts`, 60
+    in the package): each tool's route, method, body and query; refusals word
+    for word; no key in any output before answering; the descriptions and
+    instructions. The fake API now also matches a route by its path without
+    the query. Plus a manual run of every tool against `php artisan serve` on
+    a throwaway database, with model-backed submissions stopped at validation
+    so nothing reached Gemini.
+  - For #26: `practice_progress` is not here because its routes were not on
+    this branch. Once 7.5 lands it should wrap `GET /api/practice/progress`,
+    and `GET /api/practice/attempts?kind=&page=` and
+    `GET /api/practice/attempts/{id}` as `list_practice_attempts` and
+    `get_practice_attempt`, in the same file. A stored attempt is already
+    scored, so passing its feedback on reveals nothing early.
+
 ---
 
 ---

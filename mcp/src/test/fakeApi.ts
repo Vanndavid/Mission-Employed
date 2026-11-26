@@ -39,7 +39,11 @@ export class FakeApi {
           auth: req.headers.authorization,
         });
 
-        const handler = this.routes.get(`${req.method} ${path}`);
+        // The exact path, query included, wins; otherwise the path alone, so
+        // a test can fake a filtered GET once and assert its query separately.
+        const handler =
+          this.routes.get(`${req.method} ${path}`) ??
+          this.routes.get(`${req.method} ${path.split("?")[0]}`);
 
         if (!handler) {
           res.writeHead(404, { "Content-Type": "application/json" });
