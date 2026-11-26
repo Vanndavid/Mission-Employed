@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AiSession;
 use App\Models\Application;
+use App\Models\PracticeQuestion;
 use App\Models\User;
 use App\Services\FakeGeminiService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -66,6 +67,10 @@ class AiPremiumGateTest extends TestCase
             'cv refine session' => ['POST', '/api/ai/cv/sessions', $refine, null],
             'ats check' => ['POST', '/api/ai/applications/{application}/ats', [], null],
             'tts' => ['POST', '/api/ai/tts', ['text' => 'hello'], null],
+            'system design next' => ['GET', '/api/practice/system-design/next', [], null],
+            'system design answer' => ['POST', '/api/practice/system-design/{question}/answers', [
+                'sections' => ['requirements' => 'Create short links and redirect them in under 50 ms at the 99th percentile, five nines for redirects.'],
+            ], null],
         ];
     }
 
@@ -87,6 +92,11 @@ class AiPremiumGateTest extends TestCase
         if (str_contains($uri, '{application}')) {
             $application = Application::factory()->for($user)->create(['tailored_cv' => 'Ten years of PHP.']);
             $uri = str_replace('{application}', (string) $application->id, $uri);
+        }
+
+        if (str_contains($uri, '{question}')) {
+            $question = PracticeQuestion::factory()->systemDesign()->create();
+            $uri = str_replace('{question}', (string) $question->id, $uri);
         }
 
         $gemini = FakeGeminiService::swap();

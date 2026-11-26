@@ -1,0 +1,43 @@
+{
+  "id": "sd-news-feed",
+  "title": "Social news feed",
+  "difficulty": "hard",
+  "prompt": "Design the home feed for a social network with 200 million daily active users. Each user follows about 200 accounts, and a few thousand celebrities have more than 10 million followers each. Users publish 100 million posts a day and open their feed about 10 times a day. The feed shows posts from the accounts a user follows, newest first, and must load in under 300 ms. A new post should appear in followers' feeds within a minute.",
+  "explanation": "Pushing every post into every follower's feed makes reads fast, until a celebrity with ten million followers posts. What it tests is seeing that, and combining push for most accounts with pull for the few huge ones.",
+  "keyPoints": {
+    "requirements": [
+      "Covers the feed of followed accounts, newest first with pagination, plus posting and following",
+      "Puts numbers on feed latency (under 300 ms) and freshness (a minute), and accepts eventual consistency",
+      "Calls out celebrity accounts as the case that breaks a naive design"
+    ],
+    "estimation": [
+      "About 2 billion feed reads a day, over 20,000 a second on average, and about 1,200 posts a second",
+      "Pushing every post to 200 followers is about 20 billion feed inserts a day, and one celebrity post alone is over 10 million",
+      "Keeping the latest few hundred post ids for each user is hundreds of gigabytes, which fits a sharded cache"
+    ],
+    "api_data_model": [
+      "GET /feed with a cursor rather than an offset, and POST /posts",
+      "Posts keyed by a time-sortable id (Snowflake-style), follows stored in both directions, and a per-user feed list of post ids",
+      "Feeds hold post ids that are hydrated from a post cache, not copies of the posts"
+    ],
+    "architecture": [
+      "Fan-out on write for ordinary accounts: async workers push a new post id into each follower's feed list",
+      "Fan-out on read for celebrities: their recent posts are merged into the feed when it is read",
+      "A feed service reading the feed cache, with post and social graph services behind it"
+    ],
+    "scalability": [
+      "A hybrid of push and pull, switched on a follower-count threshold",
+      "A feed cache sharded by user id and capped at a few hundred entries per user",
+      "Skips fan-out to inactive users and builds their feed on demand when they return"
+    ],
+    "reliability": [
+      "Weighs fan-out on write (fast reads, heavy writes) against fan-out on read (cheap writes, slow reads) explicitly",
+      "Queues fan-out work so a surge of posts delays feeds slightly instead of failing posts",
+      "Rebuilds a lost feed cache from the follows and posts tables"
+    ],
+    "communication": [
+      "Follows one ordinary post and one celebrity post through to a follower's feed",
+      "Uses the estimates to justify where the push and pull threshold sits"
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 # Mission-Employed — task list
 
-**Branch:** `main` · **Status:** rebuild complete; project parked 2026-10-03, unparked 2026-10-17 for configurable plans (6.1, done) and 2026-11-26 for a calmer sidebar (6.2, done), then practice modes (Wave 7, epic #21: 7.1 done, #23 to #27 to follow). Live at mission-employed.vanndavidteng.com.
+**Branch:** `main` · **Status:** rebuild complete; project parked 2026-10-03, unparked 2026-10-17 for configurable plans (6.1, done) and 2026-11-26 for a calmer sidebar (6.2, done), then practice modes (Wave 7, epic #21: 7.1 and 7.4 done, #23, #24, #26 and #27 to follow). Live at mission-employed.vanndavidteng.com.
 
 ## How to use this file
 
@@ -1012,6 +1012,79 @@ mode tabs; the admin question bank (#23), code review (#24), system design
   - For #23: sync owns only `source = seed` rows, so an admin edit to a seeded
     question should make it `admin`, or the next deploy puts the file's
     version back. Not in the MCP server yet (#27).
+
+### 7.4 System design, scored against a fixed rubric ✅
+
+- [x] Done, 2026-11-26. Issue #25, modelled on Eleph's writing rubric
+  (`src/features/pte/lib/writingRubric.ts`, `src/shared/server/writingScorer.ts`)
+  and its score breakdown. **A scope change:** "system design drills" were on
+  CLAUDE.md's deleted list since e0db404; the owner asked for system design
+  practice back on 2026-11-26. What was cut was a free-form mentor chat with an
+  unstructured evaluation; this is a structured answer scored against a fixed
+  rubric, so scores are comparable over time. CLAUDE.md's scope and deleted
+  list say so.
+  - **Code decides what it can count; the AI only rates.**
+    `SystemDesignRubric` (`sd-1`) has seven answer sections (Requirements,
+    Estimates, API, Data model, High-level design, Deep dive and scaling,
+    Trade-offs and failure modes) and seven traits rated 0 to 4 (requirements
+    and scope 12 points, estimation 12, API and data model 16, architecture
+    20, scalability 16, reliability and trade-offs 16, communication 8), each
+    with five written descriptors. A trait whose sections have under 15 words
+    between them scores 0 and is left out of the prompt; communication reads
+    the whole answer. The model rates the rest, each with a quote, an
+    improvement and the expected key points covered; `SystemDesignScorer`
+    clamps scores, drops a quote that is not in the answer, ignores unknown
+    traits and key point numbers, and fails the call (502, nothing stored,
+    no use) when a trait asked about comes back unrated. Weights are
+    multiples of 4, so the total out of 100 is exact. Default model
+    (`gemini-3.7-flash`), already priced.
+  - **The key stays on the server.** Key points are `answer`
+    `{"keyPoints": {trait: [...]}}`; `next` serves id, title (the bank's
+    `topic`), difficulty and prompt plus the rubric, never key points or the
+    explanation. Attempts store `response` `{sections}`, `score` out of
+    `max_score` 100, `correct` null, `feedback` `{traits: [...]}` (the
+    report's traits as returned) and `rubric_version` `sd-1`.
+  - **Content.** Nine hand-written scenarios in
+    `backend/resources/practice/system_design/<slug>.json`, one a file (id
+    `sd-<slug>`): URL shortener and game leaderboard (easy); API rate limiter,
+    notification service, search typeahead and concert ticket booking
+    (medium); social news feed, chat messaging and ride-hailing driver
+    matching (hard). Each prompt has real scale numbers, each trait 2 to 4
+    key points (the estimation ones carry the worked figures, checked by
+    hand), and an explanation of what the scenario tests, shown after
+    scoring. `SystemDesignItemValidator` holds the well-formedness rules (every
+    trait and only rubric traits, 2 to 6 distinct key points under 200
+    characters, a title that fits `topic`, scale numbers in the prompt) and
+    is what the admin bank's generator should reuse for AI drafts (#23 had not
+    landed; a follow-up adds the generator). `PracticeSystemDesignContentTest`
+    reads the files directly.
+  - **Plan.** New `Feature::SystemDesign` (`system_design`, group Coding
+    practice): off on Free, 20 a day on Premium. `GET next` is
+    `feature:system_design,access`; `POST answers` counts one use and is
+    under `throttle:features`. An answer under 15 words in all is a 422 before
+    the model, so every scored answer is one model call.
+  - **Screen.** `SystemDesignMode.tsx` at `/dashboard/system-design`, a mode tab
+    (`practice_system_design`) behind a `TabGate` and a `PremiumGate`: a
+    difficulty filter and Another scenario, the scenario card, a box per
+    section with its word count and a warning when a trait would be gated,
+    the gate rule and the traits that would score 0 before submitting, then
+    the report: the total, a bar per trait with the descriptor met, its
+    quote and its improvement, key points covered and missed, what the
+    scenario tests, and "How this was scored" folding out every descriptor.
+    The answer in progress is kept in localStorage with its scenario and
+    account (`utils/systemDesign.ts`) until it is scored.
+  - **API.** `GET /api/practice/system-design/next?difficulty=&skip=` →
+    `{question: {id, title, difficulty, prompt} | null, rubric}` (never
+    answered first, then least recently answered; `skip` passes over the one
+    on screen); `POST /api/practice/system-design/{question}/answers
+    {sections: {requirements, estimates, api, data_model, high_level,
+    deep_dive, tradeoffs}}` → `{attemptId, questionId, score, maxScore,
+    rubricVersion, traits: [{key, label, score, max, points, maxPoints, gated,
+    words, descriptor, evidence, improvement, keyPoints: {covered, missed}}],
+    explanation}`. A draft, unknown or other-kind question is a bare 404.
+  - Later, not this task: a "defend your design" follow-up chat on
+    `ai_sessions` that probes the weakest trait. Not in the MCP server yet
+    (#27).
 
 ---
 

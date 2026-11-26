@@ -30,6 +30,8 @@ use App\Models\PracticeQuestion;
  * fails the whole load: a wrong or malformed key is the worst bug the quiz
  * can have, so it never ships quietly. A new kind adds a directory and a
  * parser in rows().
+ *
+ * A system design file is one scenario: see {@see SystemDesignSeed}.
  */
 class SeedBank
 {
@@ -94,6 +96,10 @@ class SeedBank
      */
     private function rows(PracticeKind $kind, string $file, array $data, array &$problems): array
     {
+        if ($kind === PracticeKind::SystemDesign) {
+            return SystemDesignSeed::rows($file, $data, $problems);
+        }
+
         if ($kind !== PracticeKind::Quiz) {
             $problems[] = "{$file}: there is no seed format for {$kind->value} yet";
 

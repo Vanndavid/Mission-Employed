@@ -48,7 +48,7 @@ describe('TabGate', () => {
 
   it('sends a user to the first visible tab when it is hidden', () => {
     isAdmin = false;
-    hiddenTabs = ['training_room', 'mission_control', 'practice_quiz'];
+    hiddenTabs = ['training_room', 'mission_control', 'practice_quiz', 'practice_system_design'];
     renderAt();
 
     expect(screen.getByText('Job Applications')).toBeTruthy();

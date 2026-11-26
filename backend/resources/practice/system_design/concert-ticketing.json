@@ -1,0 +1,42 @@
+{
+  "id": "sd-concert-ticketing",
+  "title": "Concert ticket booking",
+  "difficulty": "medium",
+  "prompt": "Design seat booking for a concert ticketing site. A stadium show has 50,000 seats, each with its own price and position, and 500,000 people try to buy in the first 10 minutes after tickets go on sale. A buyer picks seats on a seat map and holds them for 10 minutes while paying through an external payment provider; the seats go back on sale if payment does not complete. A buyer may take at most 6 seats, and no seat may ever be sold twice.",
+  "explanation": "The data fits on one machine; the difficulty is half a million people wanting fifty thousand seats at once. What it tests is preventing a double sale under contention, holding seats safely while payment happens elsewhere, and smoothing the on-sale spike.",
+  "keyPoints": {
+    "requirements": [
+      "Covers the seat map, the 10-minute hold, payment through a provider, release on timeout and the 6-seat limit",
+      "Names never selling a seat twice as the requirement that must hold, ahead of availability",
+      "Plans for the on-sale spike and for fairness, such as a waiting room, rather than first come first served chaos"
+    ],
+    "estimation": [
+      "About 830 buyers arriving a second (500,000 in 600 seconds), each loading the seat map several times: thousands of reads a second",
+      "Only 50,000 seats: the data is tiny and the contention is the problem"
+    ],
+    "api_data_model": [
+      "Calls to view the seat map, hold seats (returning a hold id and expiry) and confirm with a payment reference",
+      "A seats table with event, seat, status (available, held, sold), hold id and hold expiry",
+      "An idempotency key on confirm so a repeated payment callback cannot sell a seat twice"
+    ],
+    "architecture": [
+      "A virtual waiting room that admits buyers at a rate the booking service can handle",
+      "A booking service that holds seats in a transaction, and a payment flow that confirms or releases them",
+      "Seat map reads served from a cache, with seat status refreshed by push or polling"
+    ],
+    "scalability": [
+      "Prevents double booking with a conditional update (UPDATE ... WHERE status = 'available') or row locks, never read-then-write",
+      "Partitions by event so one hot show does not slow the others",
+      "Lets the cached seat map be seconds stale and checks availability again when seats are held"
+    ],
+    "reliability": [
+      "Expires holds after 10 minutes with a TTL or a sweeper, so abandoned checkouts free their seats",
+      "Decides what happens when payment succeeds after the hold expired: refund it or honour it",
+      "Chooses consistency over availability for holds and sales, and explains why"
+    ],
+    "communication": [
+      "Walks one buyer from the waiting room to a confirmed ticket",
+      "Spells out exactly what happens when two buyers click the same seat at the same moment"
+    ]
+  }
+}

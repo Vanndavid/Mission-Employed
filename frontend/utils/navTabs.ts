@@ -79,6 +79,15 @@ export const NAV_TABS: NavTab[] = [
     icon: '👔',
     end: true,
   },
+  {
+    key: 'practice_system_design',
+    modeOf: 'mission_control',
+    path: '/dashboard/system-design',
+    label: 'System design',
+    sub: 'Rubric-scored designs',
+    icon: '🏗️',
+    end: true,
+  },
 ];
 
 /** Where Plan & Usage lives: home when every feature tab is hidden. */

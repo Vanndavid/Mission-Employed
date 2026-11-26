@@ -17,6 +17,11 @@ enum PracticeKind: string
     /** Multiple choice, scored in code. Free and never metered. */
     case Quiz = 'quiz';
     case CodeReview = 'code_review';
+    /**
+     * A scenario answered in sections; the model rates rubric traits and
+     * code gates and sums them (Services\Practice\SystemDesignRubric). The
+     * `system_design` plan feature.
+     */
     case SystemDesign = 'system_design';
 
     /** @return list<string> */

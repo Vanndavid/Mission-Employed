@@ -129,8 +129,13 @@ reintroduce it or build features that depend on it:
    **Quiz**: multiple-choice questions on a language (JavaScript, Python, Java,
    SQL) from a hand-written bank, in rounds of ten, each answer explained and
    scored on the server in code, missed questions brought back later. The quiz
-   is free on every plan and never metered. More modes are planned on the same
-   question bank (epic #21, `TASKS.md` Wave 7).
+   is free on every plan and never metered. **System design**: a scenario with
+   scale numbers ("a URL shortener for 100M new links a month") answered in
+   seven fixed sections, scored out of 100 against a fixed rubric (code applies
+   the word gates and adds up, the AI rates the traits against written
+   descriptors and the scenario's key points), with a report on how the score
+   was reached; the `system_design` plan feature. More modes are planned on
+   the same question bank (epic #21, `TASKS.md` Wave 7).
 3. **Job application tracker** — CRUD, statuses, interview stages, paste-a-JD
    parsing, tailored CV and cover letter, and **spreadsheet import**: drop in an
    `.xlsx`/`.xls`/`.csv` whose columns are named anything at all, an AI proposes
@@ -143,7 +148,7 @@ reintroduce it or build features that depend on it:
 5. **Full mock interview** — multi-turn session ending in a written report.
 
 Deleted and staying deleted: talent ranking, analytics, contacts, the Codex/rules
-page, offer tools and negotiation scripts, follow-up emails, system design drills,
+page, offer tools and negotiation scripts, follow-up emails,
 hunt personas and onboarding, criteria scoring, daily logs and task streaks,
 the emergency modal.
 
@@ -155,8 +160,13 @@ the emergency modal.
 > The ATS check is not "criteria scoring". That scored a job against the user's
 > own wish-list and never read the CV; this scores the CV against the job.
 
-> `system_design` is still a valid **interview stage type** in the tracker — people
-> get scheduled for one. Only the practice drill was cut.
+> This list used to say "system design drills". What was cut (e0db404) was a
+> free-form mentor chat ending in an unstructured evaluation. The owner asked for
+> system design practice back on 2026-11-26, and the rubric-scored mode in 2
+> above replaced it: a structured answer scored against a fixed rubric, so
+> scores are consistent and comparable. Do not bring back the chat drill.
+> `system_design` is also still a valid **interview stage type** in the
+> tracker — people get scheduled for one.
 
 ## Conventions
 
@@ -211,9 +221,9 @@ the emergency modal.
   and the first place the key leaves the server. A draft, an unknown id and
   another kind's question are the same bare 404. An open mistake is a
   question whose latest attempt was wrong; progress is worked out from
-  attempts every time, not stored. The quiz never calls a model, so
-  `routes/api/practice.php` names no `feature:` and nothing is metered; keep it
-  that way (`PracticeQuizTest` asserts no `feature_usages` row and no Gemini
+  attempts every time, not stored. The quiz never calls a model, so its
+  routes in `routes/api/practice.php` name no `feature:` and nothing is metered;
+  keep it that way (`PracticeQuizTest` asserts no `feature_usages` row and no Gemini
   call). Topics are code, `PracticeLanguage::topics()`. Not in the MCP server
   yet (#27).
 - **The hand-written bank ships with a deploy.** It lives in
@@ -229,6 +239,26 @@ the emergency modal.
   files, and a new question's key should be run, not reasoned about, where
   the language allows. An admin who edits a seed question must make it
   `source` admin, or the next sync puts the file's version back.
+- **A system design score is computed by the rubric; the AI only rates.**
+  `App\Services\Practice\SystemDesignRubric` (`VERSION` `sd-1`) owns the seven
+  sections, the seven traits with their weights and descriptors (product copy,
+  shown under "How this was scored"), the gate and the sum. A trait whose
+  sections have fewer than 15 words between them scores 0 and is left out of
+  the prompt: no name, descriptors or key points. The model rates only the
+  rest, 0 to 4, each with a quote, an improvement and the key points covered;
+  `SystemDesignScorer::sanitise()` clamps, drops a quote that is not in the
+  answer, and ignores unknown traits and key points, and a reply that leaves a
+  trait unrated is a 502 with nothing stored or charged. Changing a
+  descriptor, a weight or the gate is a new `VERSION`: every attempt stores
+  the one it was scored against. Key points are the key, `answer`
+  `{"keyPoints": {trait: [...]}}`, and leave the server only in a scored
+  answer; the scenario's title is the bank's `topic`, and `language` is null.
+  Seeds are one scenario a file in `backend/resources/practice/system_design/`
+  (`SystemDesignSeed`), and `SystemDesignItemValidator` holds the rules a
+  scenario must meet, the same ones an AI draft will have to pass. The routes
+  (`/api/practice/system-design/*`) are behind `feature:system_design` and
+  `throttle:features`; an answer under 15 words in all is a 422 before any of
+  it. Not in the MCP server yet (#27).
 - A Premium plan can end: past `users.plan_expires_at` the account reads as
   Free everywhere (`User::isPremium()`, `effectivePlan()`). An admin setting
   either plan clears `premium_requested_at`.

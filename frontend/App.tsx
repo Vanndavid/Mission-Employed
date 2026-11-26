@@ -4,6 +4,7 @@ import { Sidebar, MobileHeader } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { MissionControl } from './components/MissionControl';
 import { QuizMode } from './components/QuizMode';
+import { SystemDesignMode } from './components/SystemDesignMode';
 import { JobApplications } from './components/JobApplications';
 import { PrepRoom } from './components/PrepRoom';
 import { MockTest } from './components/MockTest';
@@ -85,6 +86,16 @@ function AppRoutes() {
           element={
             <TabGate tab="practice_quiz">
               <QuizMode />
+            </TabGate>
+          }
+        />
+        <Route
+          path="system-design"
+          element={
+            <TabGate tab="practice_system_design">
+              <PremiumGate feature="system_design" title="System design (Premium)">
+                <SystemDesignMode />
+              </PremiumGate>
             </TabGate>
           }
         />

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Practice\QuizController;
+use App\Http\Controllers\Practice\SystemDesignController;
 use Illuminate\Support\Facades\Route;
 
 // Practice modes on Mission Control that share the question bank
@@ -19,4 +20,18 @@ Route::prefix('practice/quiz')->middleware('auth:sanctum')->group(function (): v
     Route::post('/answers', [QuizController::class, 'answer']);
     // ?language=: accuracy per topic and open mistakes.
     Route::get('/progress', [QuizController::class, 'progress']);
+});
+
+// System design (task 7.4): a scenario answered in fixed sections, scored
+// against App\Services\Practice\SystemDesignRubric. It calls a model, so
+// unlike the quiz it is a plan feature: reading a scenario needs
+// `system_design` and each scored answer is one use, under the same
+// per-minute cap as the /ai routes.
+Route::prefix('practice/system-design')->middleware(['auth:sanctum', 'throttle:features'])->group(function (): void {
+    // ?difficulty=&skip=: {question: {id, title, difficulty, prompt} | null, rubric}. No key points.
+    Route::get('/next', [SystemDesignController::class, 'next'])->middleware('feature:system_design,access');
+    // {sections: {...}}: the score, each trait's rating and the key points covered and missed.
+    Route::post('/{question}/answers', [SystemDesignController::class, 'answer'])
+        ->whereNumber('question')
+        ->middleware('feature:system_design');
 });

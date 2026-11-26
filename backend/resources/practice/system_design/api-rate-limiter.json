@@ -1,0 +1,43 @@
+{
+  "id": "sd-api-rate-limiter",
+  "title": "API rate limiter",
+  "difficulty": "medium",
+  "prompt": "Design the rate limiter for a public REST API. The API runs on 40 stateless servers behind a load balancer and handles 100,000 requests a second at peak from about 1 million API keys. Free keys may make 100 requests a minute and paid keys 10,000, and some expensive endpoints have tighter limits of their own. A request over its limit gets HTTP 429 with a header saying when to retry. The limiter may add at most 5 ms to a request.",
+  "explanation": "Forty servers share one budget per key, so the counters must live somewhere shared, and checking them must be atomic and nearly free. The design turns on the algorithm you pick and on what happens when the counter store is down.",
+  "keyPoints": {
+    "requirements": [
+      "Limits per API key by plan, plus per-endpoint limits, answering 429 with Retry-After or rate limit headers",
+      "States the latency budget and decides what happens when the limiter itself is down: fail open or fail closed",
+      "Says how exact the limits must be, accepting a little overshoot in exchange for speed"
+    ],
+    "estimation": [
+      "100,000 checks a second at peak, so the counter store needs 100,000 to 200,000 operations a second",
+      "About 1 million keys with a few counters each at around 100 bytes is a few hundred megabytes, which fits in memory",
+      "One Redis node handles on the order of 100,000 simple operations a second, so a few shards give headroom"
+    ],
+    "api_data_model": [
+      "An internal check taking key, endpoint and cost, returning allowed, remaining and reset time",
+      "Counter keys such as rate:{apiKey}:{endpoint}:{window} with a TTL equal to the window",
+      "Plan and endpoint limits kept in a config store and cached on each API server"
+    ],
+    "architecture": [
+      "The limiter runs as middleware on each API server or at the gateway, before the request handler",
+      "Counters live in a shared store such as Redis, because the load balancer spreads one key across 40 servers",
+      "Names an algorithm (token bucket, sliding window log or sliding window counter) and why it fits"
+    ],
+    "scalability": [
+      "Makes the check atomic in one round trip, with a Lua script or INCR with EXPIRE",
+      "Shards counters by API key so all of one key's counters live on one node",
+      "Cuts round trips for very busy keys by giving servers small local token allowances, accepting slight overshoot"
+    ],
+    "reliability": [
+      "Fails open when the counter store is unreachable and explains why that suits a public API",
+      "Weighs fixed windows (simple, but double bursts at the boundary) against sliding windows or token buckets",
+      "Avoids clock skew between servers by using window keys or the counter store's clock"
+    ],
+    "communication": [
+      "Walks one request through the check to either the handler or a 429",
+      "Explains the fixed-window boundary burst with a concrete example"
+    ]
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "id": "sd-game-leaderboard",
+  "title": "Game leaderboard",
+  "difficulty": "easy",
+  "prompt": "Design the leaderboard for a mobile game with 25 million monthly players, 5 million of them playing each day. Every finished game submits a score: about 50 million submissions a day, peaking at 4 times the average in the evening. Players can see the global top 100, their own rank with the 10 players above and below them, and a top 100 among their friends. The board resets at the start of every monthly season, and a new score should show in the player's rank within a few seconds.",
+  "explanation": "Ranking 25 million players is cheap in an in-memory sorted structure and expensive if you sort a table on every read. What it tests is choosing that structure, keeping a durable record behind it, and handling the season reset and cheating.",
+  "keyPoints": {
+    "requirements": [
+      "Covers the global top 100, a player's rank with neighbours, the friends board and the monthly reset",
+      "Sets a freshness target for ranks (seconds) and decides whether a rank may be approximate",
+      "Decides which score counts: the player's best this season, not their latest"
+    ],
+    "estimation": [
+      "About 580 score submissions a second on average (50 million ÷ 86,400) and about 2,300 at peak",
+      "25 million entries at roughly 100 bytes each is about 2.5 GB, which fits in memory on one machine"
+    ],
+    "api_data_model": [
+      "A submit-score call, and reads for the top N, a player's rank with neighbours, and the friends board",
+      "A sorted set per season, such as Redis ZADD, ZREVRANK and ZREVRANGE, keyed by player id",
+      "A durable scores table as the source of truth behind the in-memory ranking",
+      "Keeps a lower score from overwriting the player's best for the season"
+    ],
+    "architecture": [
+      "Game servers submit scores to a score service that writes the durable store and updates the ranking",
+      "Top 100 and rank reads are served from the in-memory sorted set, never by sorting the database",
+      "The friends board comes from looking up each friend's score, not from a sorted set per player"
+    ],
+    "scalability": [
+      "Caches the global top 100 for a second or two, since every player reads the same list",
+      "Shows one sorted set handles the write rate, and says how to split it (score buckets, or approximate ranks from a histogram) if it did not",
+      "Reads friends' scores in one batch (ZMSCORE or a pipeline) rather than a call per friend"
+    ],
+    "reliability": [
+      "Rebuilds the ranking from the durable scores table if the cache node is lost, and runs a replica",
+      "Accepts scores only from game servers or as signed results, with sanity limits against cheating",
+      "Starts a new key for each season rather than deleting the old board in place"
+    ],
+    "communication": [
+      "Follows one score from submission to the player's updated rank",
+      "Explains why a sorted set beats ORDER BY on a large table for this read pattern"
+    ]
+  }
+}

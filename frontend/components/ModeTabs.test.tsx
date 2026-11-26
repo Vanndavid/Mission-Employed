@@ -42,7 +42,7 @@ describe('ModeTabs', () => {
   });
 
   it('draws nothing when a user can see only one mode', () => {
-    hiddenTabs = ['practice_quiz'];
+    hiddenTabs = ['practice_quiz', 'practice_system_design'];
     renderAt('/dashboard');
 
     expect(screen.queryByRole('navigation')).toBeNull();

@@ -1,0 +1,44 @@
+{
+  "id": "sd-url-shortener",
+  "title": "URL shortener",
+  "difficulty": "easy",
+  "prompt": "Design a URL shortener like bit.ly. A user pastes a long URL and gets a short link back; anyone who opens the short link is redirected to the original. Expect 100 million new links a month and 10 redirects for every link created, with traffic peaking at 3 times the average. Links are kept for 5 years, and a redirect should take under 50 ms at the 99th percentile. Custom aliases and link expiry are nice to have.",
+  "explanation": "A read-heavy key-value lookup in disguise. What it tests is generating short codes that never collide without a central bottleneck, and serving redirects fast from a cache when reads outnumber writes ten to one.",
+  "keyPoints": {
+    "requirements": [
+      "Separates creating a link from following one, and treats custom aliases and expiry as optional",
+      "Puts numbers on redirect latency and availability, since a dead short link breaks every page it is on",
+      "Decides whether the same long URL gets the same short code or a new one each time"
+    ],
+    "estimation": [
+      "About 40 new links a second (100 million ÷ 2.6 million seconds a month) and about 400 redirects a second, around 1,200 at peak",
+      "About 6 billion links over 5 years; at roughly 500 bytes each, about 3 TB",
+      "Shows that 7 base62 characters give about 3.5 trillion codes, far more than 6 billion"
+    ],
+    "api_data_model": [
+      "A create call taking the long URL, an optional alias and expiry, returning the short URL",
+      "GET /{code} answering 301 or 302 with a Location header, and 404 for an unknown code",
+      "A links table keyed by short code holding the long URL, owner, created and expiry times",
+      "Chooses a key-value or wide-column store (or a sharded table) because every read is a lookup by code"
+    ],
+    "architecture": [
+      "Separate write path (generate a code, store the link) and read path (look up, redirect)",
+      "A cache such as Redis in front of the store on the redirect path",
+      "A code generator that cannot hand out the same code twice: a counter encoded in base62, pre-allocated ranges, or a hash with a collision check"
+    ],
+    "scalability": [
+      "Caches hot links with LRU eviction, since a small share of links gets most of the clicks",
+      "Partitions links by short code so a redirect touches a single shard",
+      "Hands each app server a range of ids so generating a code needs no coordination per request"
+    ],
+    "reliability": [
+      "Weighs 301 (cached by browsers, less load, no click counts) against 302 (every click reaches the service)",
+      "Replicates the store so losing a node does not break redirects, accepting slight replication lag on reads",
+      "Says what happens to expired or deleted links and whether their codes are ever reused"
+    ],
+    "communication": [
+      "Traces one redirect from the browser to the destination step by step",
+      "Ties the ten-to-one read ratio from the estimates to the cache and storage choices"
+    ]
+  }
+}

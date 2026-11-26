@@ -65,4 +65,27 @@ class PracticeQuestionFactory extends Factory
             'answer' => ['choice' => $answer],
         ]);
     }
+
+    /** A system design scenario: no language, the title as topic, key points as the answer. */
+    public function systemDesign(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'kind' => PracticeKind::SystemDesign,
+            'language' => null,
+            'topic' => 'URL shortener '.fake()->unique()->numberBetween(1, 99999),
+            'prompt' => 'Design a URL shortener for 100 million new links a month, with ten redirects for every link created.',
+            'code' => null,
+            'options' => null,
+            'answer' => ['keyPoints' => [
+                'requirements' => ['Separates creating a link from following one', 'Puts a number on redirect latency'],
+                'estimation' => ['About 40 new links a second', 'About 3 TB over five years'],
+                'api_data_model' => ['POST to create, GET to redirect', 'Links keyed by short code'],
+                'architecture' => ['Separate read and write paths', 'A cache in front of the store'],
+                'scalability' => ['Shard by short code', 'Cache hot redirects'],
+                'reliability' => ['Weighs 301 against 302', 'Replicates the store'],
+                'communication' => ['Traces one redirect end to end', 'Ties the read ratio to the cache'],
+            ]],
+            'explanation' => 'A read-heavy key-value problem: codes that never collide, and redirects served from a cache.',
+        ]);
+    }
 }
